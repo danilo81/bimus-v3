@@ -1,0 +1,40 @@
+{
+    "placeholderImages": [
+        {
+            "id": "project-1",
+            "description": "Tech platform dashboard",
+            "imageUrl": "https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHx0ZWNobm9sb2d5JTIwZGFzaGJvYXJkfGVufDB8fHx8MTc3MTAyNTA5NHww&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "technology dashboard"
+        },
+        {
+            "id": "project-2",
+            "description": "Mobile banking app",
+            "imageUrl": "https://images.unsplash.com/photo-1599202875854-23b7cd490ff4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxtb2JpbGUlMjBiYW5raW5nfGVufDB8fHx8MTc3MTAxODE3MHww&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "mobile banking"
+        },
+        {
+            "id": "project-3",
+            "description": "Eco-friendly energy solution",
+            "imageUrl": "https://images.unsplash.com/photo-1594818379496-da1e345b0ded?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxncmVlbiUyMGVuZXJneXxlbnwwfHx8fDE3NzEwMjUwOTR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "green energy"
+        },
+        {
+            "id": "project-4",
+            "description": "Modern architecture portfolio",
+            "imageUrl": "https://images.unsplash.com/photo-1578803203370-8b000b589edd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8bW9kZXJuJTIwYXJjaGl0ZWN0dXJlfGVufDB8fHx8MTc3MDkzMzA3Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "modern architecture"
+        },
+        {
+            "id": "project-5",
+            "description": "E-learning platform",
+            "imageUrl": "https://images.unsplash.com/photo-1619852182277-79aa23f82c8e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxlZHVjYXRpb24lMjBsZWFybmluZ3xlbnwwfHx8fDE3NzA5MjExNTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "education learning"
+        },
+        {
+            "id": "project-6",
+            "description": "Health & wellness tracker",
+            "imageUrl": "https://images.unsplash.com/photo-1557935728-e6d1eaabe558?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxoZWFsdGglMjB0cmFja2VyfGVufDB8fHx8MTc3MTAyNTA5NHww&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "health tracker"
+        }
+    ]
+}

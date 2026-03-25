@@ -1,14 +1,476 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
+
 
 datasource db {
   provider = "postgresql"
+}
+
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String
+  role          String    @default("viewer")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  projects      Project[]
+  tasks         Task[]
+  siteLogs      SiteLog[]
+  contacts      Contact[]
+  notifications Notification[]
+  supplies      Supply[]
+  constructionItems ConstructionItem[]
+  addedProjectContacts ProjectContact[] @relation("AddedContacts")
+  warehouseMovements WarehouseMovement[]
+  fixedAssets   FixedAsset[]
+  calendarEvents CalendarEvent[]
+
+  bimVersions BimVersion[]
+}
+
+model Project {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  client        String?
+  location      String?
+  projectType   String?
+  area          Float?    @default(0)
+  status        String    @default("activo")
+  imageUrl      String?
+  startDate     DateTime?
+  authorId      String?
+  author        User?     @relation(fields: [authorId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  config        ProjectConfig?
+  levels        Level[]
+  items         ProjectItem[]
+  contacts      ProjectContact[]
+  transactions  ProjectTransaction[]
+  siteLogs      SiteLog[]
+  purchaseOrders PurchaseOrder[]
+  movements     WarehouseMovement[]
+  supplyRequests SupplyRequest[]
+  fixedAssets   FixedAsset[]
+  bimDocument   BimDocument?
+  tasks         Task[]
+
+  bimBranches BimBranch[]
+
+  inspectionRecords InspectionRecord[]
+}
+
+model ProjectConfig {
+  id                 String  @id @default(cuid())
+  projectId          String  @unique
+  project            Project @relation(fields: [projectId], references: [id])
+  utility            Float   @default(10)
+  adminExpenses      Float   @default(5)
+  iva                Float   @default(13)
+  it                 Float   @default(3)
+  socialCharges      Float   @default(55)
+  toolWear           Float   @default(3)
+  exchangeRate       Float   @default(6.96)
+  financing          Float   @default(0)
+  guaranteeRetention Float   @default(7)
+  mainCurrency       String? @default("BS")
+  secondaryCurrency  String? @default("USD")
+  workingDays        Int?    @default(6)
+}
+
+model Level {
+  id              String    @id @default(cuid())
+  name            String
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  itemQuantities  ProjectItemLevelQuantity[]
+  movements       WarehouseMovement[]
+
+  inspectionRecords InspectionRecord[]
+}
+
+model ConstructionItem {
+  id          String    @id @default(cuid())
+  chapter     String
+  description String
+  unit        String
+  performance Float     @default(1)
+  directCost  Float     @default(0)
+  total       Float     @default(0)
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  supplies    ConstructionItemSupply[]
+  projectItems ProjectItem[]
+  qualityControls QualityControl[]
+}
+
+model Supply {
+  id          String    @id @default(cuid())
+  typology    String
+  description String
+  unit        String
+  price       Float     @default(0)
+  tag         String?
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  costs       SupplyCost[]
+  itemUsage   ConstructionItemSupply[]
+  requests    SupplyRequest[]
+  movements   WarehouseMovement[]
+  poItems     PurchaseOrderItem[]
+}
+
+model SupplyCost {
+  id          String   @id @default(cuid())
+  supplyId    String
+  supply      Supply   @relation(fields: [supplyId], references: [id])
+  supplierId  String
+  supplier    Contact  @relation(fields: [supplierId], references: [id])
+  price       Float
+  date        DateTime @default(now())
+  isPreferred Boolean  @default(false)
+  notes       String?
+}
+
+model ConstructionItemSupply {
+  id        String           @id @default(cuid())
+  itemId    String
+  item      ConstructionItem @relation(fields: [itemId], references: [id])
+  supplyId  String
+  supply    Supply           @relation(fields: [supplyId], references: [id])
+  quantity  Float            @default(0)
+}
+
+model ProjectItem {
+  id              String    @id @default(cuid())
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id])
+  itemId          String
+  item            ConstructionItem @relation(fields: [itemId], references: [id])
+  quantity        Float     @default(0)
+  progress        Float     @default(0)
+  levelQuantities ProjectItemLevelQuantity[]
+  movements       WarehouseMovement[]
+
+  @@unique([projectId, itemId])
+  inspectionRecords InspectionRecord[]
+}
+
+model ProjectItemLevelQuantity {
+  id            String      @id @default(cuid())
+  projectItemId String
+  projectItem   ProjectItem @relation(fields: [projectItemId], references: [id], onDelete: Cascade)
+  levelId       String
+  level         Level       @relation(fields: [levelId], references: [id])
+  quantity      Float       @default(0)
+
+  @@unique([projectItemId, levelId])
+}
+
+model ProjectContact {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id])
+  addedById String?
+  addedBy     User?   @relation("AddedContacts", fields: [addedById], references: [id])
+  permissions Json?   @default("{}")
+
+  @@unique([projectId, contactId])
+}
+
+model ProjectTransaction {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  amount      Float
+  type        String   // "ingreso" | "egreso"
+  category    String
+  description String
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SiteLog {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  type        String   // "info" | "incident" | "milestone"
+  content     String
+  date        DateTime @default(now())
+}
+
+model PurchaseOrder {
+  id          String   @id @default(cuid())
+  number      String   @unique
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  supplierId  String?
+  supplier    Contact? @relation(fields: [supplierId], references: [id])
+  totalAmount Float    @default(0)
+  status      String   @default("pendiente") // "pendiente" | "completado"
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  items       PurchaseOrderItem[]
+  movements   WarehouseMovement[]
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  supplyId        String
+  supply          Supply        @relation(fields: [supplyId], references: [id])
+  quantity        Float         @default(0)
+  price           Float         @default(0)
+}
+
+model WarehouseMovement {
+  id              String         @id @default(cuid())
+  type            String         // "entry" | "exit"
+  quantity        Float
+  notes           String?
+  projectId       String
+  project         Project        @relation(fields: [projectId], references: [id])
+  supplyId        String
+  supply          Supply         @relation(fields: [supplyId], references: [id])
+  purchaseOrderId String?
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  itemId          String?
+  projectItem     ProjectItem?   @relation(fields: [itemId], references: [id])
+  levelId         String?
+  level           Level?         @relation(fields: [levelId], references: [id])
+  authorId        String?
+  author          User?          @relation(fields: [authorId], references: [id])
+  createdAt       DateTime       @default(now())
+}
+
+model SupplyRequest {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  supplyId  String
+  supply    Supply   @relation(fields: [supplyId], references: [id])
+  quantity  Float
+  status    String   @default("pendiente") // "pendiente" | "procesado" | "almacenado"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("pendiente")
+  priority    String    @default("media")
+  dueDate     DateTime?
+  assignee    String?
+  projectId   String?
+  project     Project?  @relation(fields: [projectId], references: [id])
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Contact {
+  id           String        @id @default(cuid())
+  name         String
+  email        String?
+  phone        String
+  type         String        @default("cliente") // "cliente" | "proveedor" | "personal"
+  status       String        @default("active")
+  company      String?
+  nit          String?
+  address      String?
+  notes        String?
+  userId       String?
+  user         User?         @relation(fields: [userId], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  bankAccounts BankAccount[]
+  supplyCosts  SupplyCost[]
+  projects     ProjectContact[]
+  purchaseOrders PurchaseOrder[]
+}
+
+model BankAccount {
+  id            String   @id @default(cuid())
+  contactId     String
+  contact       Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  bankName      String
+  accountNumber String
+  swiftCode     String?
+  isPreferred   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model FixedAsset {
+  id            String   @id @default(cuid())
+  name          String
+  code          String   @unique
+  brand         String?
+  model         String?
+  serialNumber  String?
+  purchasePrice Float    @default(0)
+  purchaseDate  DateTime
+  location      String?
+  status        String   @default("disponible")
+  userId        String?
+  projectId     String?
+  project       Project? @relation(fields: [projectId], references: [id])
+  authorId      String?
+  author        User?    @relation(fields: [authorId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String   @default("info")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model QualityControl {
+  id          String           @id @default(cuid())
+  description String
+  itemId      String
+  item        ConstructionItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  subPoints   QualityControlSubPoint[]
+}
+
+model QualityControlSubPoint {
+  id               String         @id @default(cuid())
+  description      String
+  qualityControlId String
+  qualityControl   QualityControl @relation(fields: [qualityControlId], references: [id], onDelete: Cascade)
+}
+
+model BimDocument {
+  id        String     @id @default(cuid())
+  projectId String     @unique
+  project   Project    @relation(fields: [projectId], references: [id])
+  topics    BimTopic[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model BimTopic {
+  id         String       @id @default(cuid())
+  documentId String
+  document   BimDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  parentId   String?
+  parent     BimTopic?    @relation("TopicHierarchy", fields: [parentId], references: [id])
+  children   BimTopic[]   @relation("TopicHierarchy")
+  title      String
+  content    String?
+  order      Int          @default(0)
+  status     String       @default("in_progress")
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
+
+model Unit {
+  id           String @id @default(cuid())
+  name         String
+  abbreviation String
+  magnitude    String
+  userId       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Chapter {
+  id        String @id @default(cuid())
+  name      String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  date        DateTime
+  type        String   @default("reunion") // hitos | obra | reunion | tarea
+  project     String?
+  description String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
+
+
+model BimBranch {
+  id        String       @id @default(cuid())
+  projectId String
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  isMain    Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  versions  BimVersion[]
+}
+
+model BimVersion {
+  id         String    @id @default(cuid())
+  branchId   String
+  branch     BimBranch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User      @relation(fields: [authorId], references: [id])
+  authorName String
+  message    String
+  hash       String
+  createdAt  DateTime  @default(now())
+}
+
+model InspectionRecord {
+  id          String            @id @default(cuid())
+  projectId   String
+  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectItemId String
+  projectItem ProjectItem       @relation(fields: [projectItemId], references: [id], onDelete: Cascade)
+  levelId     String?
+  level       Level?            @relation(fields: [levelId], references: [id])
+  inspector   String?
+  date        DateTime          @default(now())
+  status      String            @default("pendiente")
+  notes       String?
+  checks      InspectionCheck[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model InspectionCheck {
+  id                 String            @id @default(cuid())
+  inspectionRecordId String
+  inspectionRecord   InspectionRecord  @relation(fields: [inspectionRecordId], references: [id], onDelete: Cascade)
+  qualityControlId   String
+  subPointId         String?
+  passed             Boolean           @default(false)
+  observation        String?
 }

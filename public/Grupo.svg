@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="186.902" height="282.949" viewBox="0 0 186.902 282.949">
+  <defs>
+    <linearGradient id="linear-gradient" x1="-0.194" y1="0.401" x2="0.972" y2="0.977" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#7f7f7f"/>
+      <stop offset="0.247" stop-color="#767676"/>
+      <stop offset="0.753" stop-color="#6c6c6c"/>
+      <stop offset="1" stop-color="#696969"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient-2" x1="0.5" x2="0.486" y2="1.072" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#7f7f7f"/>
+      <stop offset="1" stop-color="#696969"/>
+    </linearGradient>
+  </defs>
+  <g id="Grupo" style="isolation: isolate">
+    <path id="Sendero" d="M124.6,174.788V105.565L62.294,67.492,62.3,0,0,36.18v70.954Z" fill="#7f7f7f" fill-rule="evenodd"/>
+    <path id="Sendero-2" data-name="Sendero" d="M62.3,67.492V0L0,36.552Z" fill-rule="evenodd" fill="url(#linear-gradient)"/>
+    <path id="Sendero-3" data-name="Sendero" d="M186.9,145.031,60.571,223.772,0,189.161V115.611L60.571,81v70.954L124.6,115.611Z" transform="translate(0 59.176)" fill="#696969" fill-rule="evenodd"/>
+    <path id="Sendero-4" data-name="Sendero" d="M.112,189.161V115.611L60.683,81v70.954Z" transform="translate(0.082 59.176)" fill-rule="evenodd" fill="url(#linear-gradient-2)"/>
+  </g>
+</svg>
