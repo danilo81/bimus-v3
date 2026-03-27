@@ -115,7 +115,7 @@ export default function AdminPage() {
                 description: `El rol del usuario se ha actualizado a ${newRole} con éxito.`,
             });
         } else {
-            setUsers(originalProjects);
+            setUsers(originalUsers);
             toast({
                 title: "Error",
                 description: "Error al actualizar el rol del usuario.",

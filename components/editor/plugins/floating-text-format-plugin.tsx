@@ -199,8 +199,8 @@ function FloatingTextFormat({
       {editor.isEditable() && (
         <>
           <ToggleGroup
-            type="multiple"
-            defaultValue={[
+            multiple={true}
+            value={[
               isBold ? "bold" : "",
               isItalic ? "italic" : "",
               isUnderline ? "underline" : "",
@@ -209,7 +209,7 @@ function FloatingTextFormat({
               isSuperscript ? "superscript" : "",
               isCode ? "code" : "",
               isLink ? "link" : "",
-            ]}
+            ].filter(Boolean)}
           >
             <ToggleGroupItem
               value="bold"
@@ -273,10 +273,10 @@ function FloatingTextFormat({
             <Separator orientation="vertical" />
           </ToggleGroup>
           <ToggleGroup
-            type="single"
-            defaultValue={
+            multiple={false}
+            value={[
               isSubscript ? "subscript" : isSuperscript ? "superscript" : ""
-            }
+            ].filter(Boolean)}
           >
             <ToggleGroupItem
               value="subscript"

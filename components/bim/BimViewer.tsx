@@ -712,7 +712,7 @@ export function BimViewer({
             <PersistentDimensions dimensions={dimensions} />
             <DrawnShapes shapes={drawnShapes} />
           </Stage>
-          {showGrid && <Grid renderOrder={-1} position={[0, -0.06, 0]} infiniteGrid cellSize={1} cellThickness={0.5} sectionSize={5} sectionThickness={1} sectionColor={[0.2, 0.2, 0.2]} fadeDistance={50} />}
+          {showGrid && <Grid renderOrder={-1} position={[0, -0.06, 0]} infiniteGrid cellSize={1} cellThickness={0.5} sectionSize={5} sectionThickness={1} sectionColor="#333333" fadeDistance={50} />}
           <Environment preset="night" />
         </Suspense>
         <OrbitControls 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CreateProjectData, Project } from '../../lib/types';
 import { Card, CardContent } from '../../components/ui/card';
@@ -48,6 +48,19 @@ import { useAuth } from '../../hooks/use-auth';
 import { cn } from '../../lib/utils';
 
 export default function ProjectsPage() {
+    return (
+        <Suspense fallback={
+            <div className="container mx-auto p-8 flex items-center justify-center h-[50vh]">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-3 text-muted-foreground font-black uppercase tracking-[0.2em] text-[10px]">Sincronizando...</span>
+            </div>
+        }>
+            <ProjectsPageContent />
+        </Suspense>
+    );
+}
+
+function ProjectsPageContent() {
     const { user } = useAuth();
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);

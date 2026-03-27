@@ -276,4 +276,44 @@ export interface ProjectItem {
     ganttStatus?: string;
     item?: ConstructionItem;
     levelQuantities?: any[];
-}
+}
+
+export interface ProjectDocument {
+    id: string;
+    projectId: string;
+    name: string;
+    type: string;
+    size: string;
+    url: string;
+    source: 'local' | 'google_drive';
+    status: string;
+    authorName: string;
+    createdAt: string;
+    updatedAt?: string;
+}
+
+export interface PurchaseOrder {
+    id: string;
+    number: string;
+    projectId: string;
+    supplierId: string;
+    authorId: string;
+    status: string;
+    totalAmount: number;
+    notes?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface WarehouseMovement {
+    id: string;
+    projectId: string;
+    supplyId: string;
+    authorId: string;
+    quantity: number;
+    type: 'entry' | 'exit' | 'adjustment';
+    reference?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+

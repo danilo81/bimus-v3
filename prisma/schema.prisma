@@ -57,6 +57,7 @@ model Project {
   supplyRequests    SupplyRequest[]
   tasks             Task[]
   movements         WarehouseMovement[]
+  documents         ProjectDocument[]
 }
 
 model ProjectConfig {
@@ -470,4 +471,19 @@ model InspectionCheck {
   passed             Boolean          @default(false)
   observation        String?
   inspectionRecord   InspectionRecord @relation(fields: [inspectionRecordId], references: [id], onDelete: Cascade)
+}
+
+model ProjectDocument {
+  id         String   @id @default(cuid())
+  projectId  String
+  name       String
+  type       String
+  size       String
+  url        String
+  source     String   @default("local") // local, google_drive
+  status     String   @default("uploaded")
+  authorName String   @default("Usuario Bimus")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }

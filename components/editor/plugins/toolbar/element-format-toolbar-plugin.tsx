@@ -112,10 +112,9 @@ export function ElementFormatToolbarPlugin({
   return (
     <>
       <ToggleGroup
-        type="single"
-        value={elementFormat}
-        defaultValue={elementFormat}
-        onValueChange={handleValueChange}
+        multiple={false}
+        value={[elementFormat]}
+        onValueChange={(values) => handleValueChange(values[0])}
       >
         {/* Alignment toggles */}
         {Object.entries(ELEMENT_FORMAT_OPTIONS).map(([value, option]) => (
@@ -130,13 +129,12 @@ export function ElementFormatToolbarPlugin({
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
-      {separator && <Separator orientation="vertical" className="!h-7" />}
+      {separator && <Separator orientation="vertical" className="h-7!" />}
       {/* Indentation toggles */}
       <ToggleGroup
-        type="single"
-        value={elementFormat}
-        defaultValue={elementFormat}
-        onValueChange={handleValueChange}
+        multiple={false}
+        value={[elementFormat]}
+        onValueChange={(values) => handleValueChange(values[0])}
       >
         <ToggleGroupItem
           value="outdent"
