@@ -105,9 +105,9 @@ import { TWEET } from "@/components/editor/transformers/markdown-tweet-transform
 import { Separator } from "@/components/ui/separator"
 
 const placeholder = "Press / for commands..."
-const maxLength = 500
+const maxLength = 5000
 
-export function Plugins({}) {
+export function Plugins({ }) {
   const [floatingAnchorElem, setFloatingAnchorElem] =
     useState<HTMLDivElement | null>(null)
   const [isLinkEditMode, setIsLinkEditMode] = useState<boolean>(false)
@@ -124,8 +124,8 @@ export function Plugins({}) {
         {({ blockType }) => (
           <div className="vertical-align-middle sticky top-0 z-10 flex items-center gap-2 overflow-auto border-b p-1">
             <HistoryToolbarPlugin />
-            <Separator orientation="vertical" className="!h-7" />
-            <BlockFormatDropDown>
+            <Separator orientation="vertical" className="h-7!" />
+            {/* <BlockFormatDropDown>
               <FormatParagraph />
               <FormatHeading levels={["h1", "h2", "h3"]} />
               <FormatNumberedList />
@@ -133,26 +133,26 @@ export function Plugins({}) {
               <FormatCheckList />
               <FormatCodeBlock />
               <FormatQuote />
-            </BlockFormatDropDown>
+            </BlockFormatDropDown> */}
             {blockType === "code" ? (
               <CodeLanguageToolbarPlugin />
             ) : (
               <>
                 <FontFamilyToolbarPlugin />
                 <FontSizeToolbarPlugin />
-                <Separator orientation="vertical" className="!h-7" />
+                <Separator orientation="vertical" className="h-7!" />
                 <FontFormatToolbarPlugin />
-                <Separator orientation="vertical" className="!h-7" />
+                <Separator orientation="vertical" className="h-7!" />
                 <SubSuperToolbarPlugin />
                 <LinkToolbarPlugin setIsLinkEditMode={setIsLinkEditMode} />
-                <Separator orientation="vertical" className="!h-7" />
+                <Separator orientation="vertical" className="h-7!" />
                 <ClearFormattingToolbarPlugin />
-                <Separator orientation="vertical" className="!h-7" />
+                <Separator orientation="vertical" className="h-7!" />
                 <FontColorToolbarPlugin />
                 <FontBackgroundToolbarPlugin />
-                <Separator orientation="vertical" className="!h-7" />
+                <Separator orientation="vertical" className="h-7!" />
                 <ElementFormatToolbarPlugin />
-                <Separator orientation="vertical" className="!h-7" />
+                <Separator orientation="vertical" className="h-7!" />
                 <BlockInsertPlugin>
                   <InsertHorizontalRule />
                   <InsertImage />
@@ -199,7 +199,7 @@ export function Plugins({}) {
         <LayoutPlugin />
 
         <AutoEmbedPlugin />
-        <TwitterPlugin />
+        {/* <TwitterPlugin /> */}
         <YouTubePlugin />
 
         <CodeHighlightPlugin />

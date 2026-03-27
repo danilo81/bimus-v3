@@ -364,7 +364,7 @@ export default function BimDocumentationPage() {
                                 filteredTopics.map((topic) => (
                                     <div key={topic.id} className={cn(
                                         "rounded-xl border transition-all group/card overflow-hidden",
-                                        selectedTopicId === topic.id ? "border-primary/40 bg-primary/10" : "border-accent bg-card hover:border-white/10"
+                                        selectedTopicId === topic.id ? "border-accent bg-primary/10" : "border-accent bg-card hover:border-accent"
                                     )}>
                                         <div
                                             className="p-2.5 flex items-center justify-between cursor-pointer"
@@ -394,11 +394,11 @@ export default function BimDocumentationPage() {
                                         {topic.children && topic.children.length > 0 && (
                                             <Accordion type="single" collapsible className="w-full">
                                                 <AccordionItem value="subs" className="border-none">
-                                                    <AccordionTrigger className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-muted-foreground/60 hover:no-underline hover:text-white transition-colors bg-white/1 h-6">
-                                                        Sub-secciones ({topic.children.length})
+                                                    <AccordionTrigger className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-muted-foreground/60 hover:no-underline hover:text-primary transition-colors bg-card h-6">
+                                                        Páginas ({topic.children.length})
                                                     </AccordionTrigger>
                                                     <AccordionContent className="p-0">
-                                                        <div className="flex flex-col border-t border-white/5 bg-black/20">
+                                                        <div className="flex flex-col border-t border-accent bg-card">
                                                             {topic.children.map(child => (
                                                                 <div
                                                                     key={child.id}
