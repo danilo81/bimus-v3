@@ -64,6 +64,7 @@ export async function getContactAccountingInfo(contactId: string) {
                     recentMovements.push({
                         date: t.date.toISOString().split('T')[0],
                         type: 'ingreso',
+                        status: 'PAGO',
                         desc: t.description,
                         project: link.project.title,
                         amount: t.amount
@@ -81,6 +82,7 @@ export async function getContactAccountingInfo(contactId: string) {
                     recentMovements.push({
                         date: po.createdAt.toISOString().split('T')[0],
                         type: 'egreso',
+                        status: po.status.toUpperCase(),
                         desc: `ORDEN DE COMPRA: ${po.number}`,
                         project: link.project.title,
                         amount: po.totalAmount

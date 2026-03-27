@@ -10,7 +10,9 @@ import { getSession } from "../../lib/auth";
 
 async function getAuthUserId() {
     const cookieStore = await cookies();
-    return cookieStore.get('userId')?.value;
+    const userId = cookieStore.get('userId')?.value;
+    if (!userId || userId === 'undefined' || userId === 'null' || userId === '') return undefined;
+    return userId;
 }
 
 export async function getProjects() {
@@ -160,7 +162,7 @@ export async function inviteCollaborator(projectId: string, email: string) {
 
         // 1. Buscar o crear el contacto en la base de datos para este email
         let contact = await prisma.contact.findFirst({
-            where: { 
+            where: {
                 email: { equals: email, mode: 'insensitive' },
                 userId: userId
             }
@@ -186,8 +188,8 @@ export async function inviteCollaborator(projectId: string, email: string) {
 
         if (!existingLink) {
             await prisma.projectContact.create({
-                data: { 
-                    projectId, 
+                data: {
+                    projectId,
                     contactId: contact.id,
                     addedById: userId
                 }
@@ -207,7 +209,7 @@ export async function inviteCollaborator(projectId: string, email: string) {
 
         revalidatePath(`/projects/${projectId}`);
         revalidatePath('/projects');
-        
+
         return { success: true };
     } catch (error: any) {
         console.error("Invite error:", error);
@@ -217,12 +219,12 @@ export async function inviteCollaborator(projectId: string, email: string) {
 
 export async function getProjectById(id: string) {
     if (!id || typeof id !== 'string') return null;
-    
+
     const cleanId = id.trim();
     const RESERVED_KEYWORDS = ['reportes', 'construction', 'operations', 'documentation', 'tasks', 'model', 'board', 'desing', 'shop', 'warehouse', 'accounting', 'undefined', 'null'];
-    
+
     if (cleanId === '' || RESERVED_KEYWORDS.includes(cleanId)) return null;
-    
+
     try {
         const project = await prisma.project.findUnique({
             where: { id: cleanId }
@@ -238,20 +240,22 @@ export async function getProjectById(id: string) {
                 include: {
                     item: {
                         include: {
-                            supplies: { include: { supply: true } }
+                            supplies: { include: { supply: true } },
+                            qualityControls: { include: { subPoints: true } }
                         }
                     },
+                    predecessor: true,
                     levelQuantities: true
                 }
             }).catch(() => [])
         ]);
 
         const [contacts, siteLogs, transactions] = await Promise.all([
-            prisma.projectContact.findMany({ 
+            prisma.projectContact.findMany({
                 where: { projectId: cleanId },
-                include: { 
+                include: {
                     contact: { include: { bankAccounts: true } },
-                    addedBy: { select: { name: true } } 
+                    addedBy: { select: { name: true } }
                 }
             }).catch(() => []),
             prisma.siteLog.findMany({
@@ -334,19 +338,21 @@ export async function addContactToProject(projectId: string, contactId: string) 
     if (!projectId || !contactId) return { success: false, error: 'Datos de vinculación incompletos.' };
     try {
         const userId = await getAuthUserId();
+        if (!userId) return { success: false, error: 'Sesión expirada.' };
+
         const existing = await prisma.projectContact.findFirst({
             where: { projectId, contactId }
         });
         if (existing) return { success: false, error: 'Este contacto ya está vinculado.' };
-        
-        await prisma.projectContact.create({ 
-            data: { 
-                projectId, 
+
+        await prisma.projectContact.create({
+            data: {
+                projectId,
                 contactId,
                 addedById: userId
-            } 
+            }
         });
-        
+
         revalidatePath(`/projects/${projectId}`);
         return { success: true };
     } catch (error: any) {
@@ -368,7 +374,7 @@ export async function updateProjectContactPermissions(projectId: string, contact
             where: { projectId_contactId: { projectId, contactId } },
             data: { permissions: permissions as any }
         });
-        
+
         revalidatePath(`/projects/${projectId}`);
         return { success: true };
     } catch (error: any) {
@@ -403,7 +409,7 @@ export async function leaveProject(projectId: string) {
             where: { email: { equals: userRecord.email, mode: 'insensitive' } },
             select: { id: true }
         });
-        
+
         if (contacts.length === 0) return { success: true };
 
         const contactIds = contacts.map((c: any) => c.id);
@@ -417,7 +423,7 @@ export async function leaveProject(projectId: string) {
 
         revalidatePath('/projects');
         revalidatePath('/dashboard');
-        
+
         return { success: true };
     } catch (error: any) {
         console.error("Leave project error:", error);
@@ -439,8 +445,8 @@ export async function getProjectAssets(projectId: string) {
             projectId: a.projectId || null
         }));
         return { success: true, assets: formattedAssets };
-    } catch (error: any) { 
-        return { success: false, error: error.message }; 
+    } catch (error: any) {
+        return { success: false, error: error.message };
     }
 }
 
@@ -452,8 +458,8 @@ export async function assignAssetToProject(assetId: string, projectId: string) {
         });
         revalidatePath(`/projects/${projectId}/model`);
         return { success: true, asset };
-    } catch (error: any) { 
-        return { success: false, error: error.message }; 
+    } catch (error: any) {
+        return { success: false, error: error.message };
     }
 }
 
@@ -465,8 +471,8 @@ export async function unassignAssetFromProject(assetId: string, projectId: strin
         });
         revalidatePath(`/projects/${projectId}/model`);
         return { success: true, asset };
-    } catch (error: any) { 
-        return { success: false, error: error.message }; 
+    } catch (error: any) {
+        return { success: false, error: error.message };
     }
 }
 
@@ -496,7 +502,7 @@ export async function updateProject(id: string, data: {
             }
             if (updateData.status) updateData.status = updateData.status.toLowerCase();
             await tx.project.update({ where: { id }, data: updateData });
-            
+
             if (config) {
                 const { id: _confId, projectId: _projId, ...configData } = config;
                 await tx.projectConfig.upsert({
@@ -505,7 +511,7 @@ export async function updateProject(id: string, data: {
                     create: { projectId: id, ...configData as any }
                 });
             }
-            
+
             if (levels) {
                 const newLevelIds = levels.map(l => l.id).filter(Boolean) as string[];
                 await tx.level.deleteMany({ where: { projectId: id, id: { notIn: newLevelIds } } });
@@ -518,21 +524,54 @@ export async function updateProject(id: string, data: {
         revalidatePath('/projects');
         revalidatePath(`/projects/${id}`);
         return { success: true };
-    } catch (error: any) { 
+    } catch (error: any) {
         console.error("Server Action Update Error:", error);
-        return { success: false, error: error.message || "Fallo técnico al actualizar el proyecto." }; 
+        return { success: false, error: error.message || "Fallo técnico al actualizar el proyecto." };
     }
 }
 
-export async function updateProjectItem(projectId: string, itemId: string, quantity: number, levelQuantities?: { levelId: string, quantity: number }[]) {
+export async function updateProjectItem(
+    projectId: string, 
+    itemId: string, 
+    data: { 
+        quantity?: number, 
+        performance?: number, 
+        extraDays?: number, 
+        ganttStatus?: string,
+        startDate?: Date | null,
+        predecessorId?: string | null,
+        levelQuantities?: { levelId: string, quantity: number }[] 
+    }
+) {
     try {
         await prisma.$transaction(async (tx) => {
+            const updateData: any = {};
+            if (data.quantity !== undefined) updateData.quantity = Number(data.quantity);
+            if (data.performance !== undefined) updateData.performance = Number(data.performance);
+            if (data.extraDays !== undefined) updateData.extraDays = Number(data.extraDays);
+            if (data.ganttStatus !== undefined) updateData.ganttStatus = data.ganttStatus;
+            if (data.startDate !== undefined) updateData.startDate = data.startDate;
+            
+            if (data.predecessorId !== undefined) {
+                if (data.predecessorId === "" || data.predecessorId === null) {
+                    updateData.predecessorId = null;
+                } else {
+                    const predItem = await tx.projectItem.findUnique({
+                        where: { projectId_itemId: { projectId, itemId: data.predecessorId } }
+                    });
+                    if (predItem) {
+                        updateData.predecessorId = predItem.id;
+                    }
+                }
+            }
+
             const projectItem = await tx.projectItem.update({
                 where: { projectId_itemId: { projectId, itemId } },
-                data: { quantity: Number(quantity) || 0 }
+                data: updateData
             });
-            if (levelQuantities && levelQuantities.length > 0) {
-                for (const lq of levelQuantities) {
+
+            if (data.levelQuantities && data.levelQuantities.length > 0) {
+                for (const lq of data.levelQuantities) {
                     await tx.projectItemLevelQuantity.upsert({
                         where: { projectItemId_levelId: { projectItemId: projectItem.id, levelId: lq.levelId } },
                         update: { quantity: Number(lq.quantity) || 0 },
@@ -542,8 +581,11 @@ export async function updateProjectItem(projectId: string, itemId: string, quant
             }
         });
         revalidatePath(`/projects/${projectId}`);
+        revalidatePath(`/projects/${projectId}/construction`);
         return { success: true };
-    } catch (error: any) { return { success: false, error: error.message || "Error al actualizar cantidad" }; }
+    } catch (error: any) { 
+        return { success: false, error: error.message || "Error al actualizar partida" }; 
+    }
 }
 
 export async function updateProjectItemProgress(projectId: string, itemId: string, progressIncrement: number, logDescription?: string) {
@@ -659,12 +701,12 @@ export async function createProjectChangeOrder(projectId: string, reason: string
 
             // Registrar el evento en la bitácora técnica oficial
             await tx.siteLog.create({
-                data: { 
-                    projectId, 
-                    authorId: userId, 
-                    type: 'milestone', 
-                    content: `ORDEN DE CAMBIO AUTORIZADA: ${reason}`, 
-                    date: new Date() 
+                data: {
+                    projectId,
+                    authorId: userId,
+                    type: 'milestone',
+                    content: `ORDEN DE CAMBIO AUTORIZADA: ${reason}`,
+                    date: new Date()
                 }
             });
         });
@@ -672,11 +714,11 @@ export async function createProjectChangeOrder(projectId: string, reason: string
         // Forzar actualización de cache en las rutas críticas
         revalidatePath(`/projects/${projectId}`);
         revalidatePath(`/projects/${projectId}/construction`);
-        
+
         return { success: true };
-    } catch (error: any) { 
+    } catch (error: any) {
         console.error("Change Order Error:", error);
-        return { success: false, error: error.message || "Error al procesar la orden de cambio en base de datos." }; 
+        return { success: false, error: error.message || "Error al procesar la orden de cambio en base de datos." };
     }
 }
 
@@ -713,6 +755,21 @@ export async function createProjectPayroll(data: {
 export async function createProject(data: CreateProjectData) {
     try {
         const userId = await getAuthUserId();
+
+        if (!userId) {
+            return { success: false, error: 'Sesión no válida o expirada. Por favor, inicie sesión nuevamente.' };
+        }
+
+        // Verificar que el usuario existe en la DB para evitar errores de llave foránea
+        const userExists = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true }
+        });
+
+        if (!userExists) {
+            return { success: false, error: 'Usuario no encontrado en el sistema.' };
+        }
+
         const result = await prisma.$transaction(async (tx) => {
             const project = await tx.project.create({
                 data: {
@@ -724,7 +781,7 @@ export async function createProject(data: CreateProjectData) {
                     area: Number(data.area) || 0,
                     status: (data.status || 'activo').toLowerCase(),
                     imageUrl: data.imageUrl || `https://picsum.photos/seed/${Math.random()}/800/600`,
-                    authorId: userId || null,
+                    authorId: userId,
                     config: {
                         create: {
                             utility: data.config?.utility ?? 10,
@@ -750,7 +807,10 @@ export async function createProject(data: CreateProjectData) {
         });
         revalidatePath('/projects');
         return { success: true, project: JSON.parse(JSON.stringify(result)) };
-    } catch (error: any) { return { success: false, error: error.message }; }
+    } catch (error: any) {
+        console.error("Create project error:", error);
+        return { success: false, error: error.message || "Fallo técnico al crear el proyecto." };
+    }
 }
 
 export async function deleteProject(id: string) {
@@ -821,11 +881,11 @@ export async function getGlobalFinancialStats() {
         const access = await getAccessibleProjectIds();
         if (!access) return { totalIncome: 0, totalExpense: 0, netBalance: 0 };
         const transactions = await prisma.projectTransaction.findMany({
-            where: { 
-                project: { 
+            where: {
+                project: {
                     status: 'activo',
-                    OR: [ { authorId: access.userId }, { id: { in: access.collabIds } } ] 
-                } 
+                    OR: [{ authorId: access.userId }, { id: { in: access.collabIds } }]
+                }
             },
             select: { amount: true, type: true }
         });
@@ -840,7 +900,7 @@ export async function getGlobalWarehouseMovements() {
         const access = await getAccessibleProjectIds();
         if (!access) return [];
         const movements = await prisma.warehouseMovement.findMany({
-            where: { project: { OR: [ { authorId: access.userId }, { id: { in: access.collabIds } } ] } },
+            where: { project: { OR: [{ authorId: access.userId }, { id: { in: access.collabIds } }] } },
             include: { project: { select: { title: true } }, supply: { select: { description: true } } },
             orderBy: { createdAt: 'desc' },
             take: 8
@@ -861,7 +921,7 @@ export async function getGlobalSiteLogs() {
         const access = await getAccessibleProjectIds();
         if (!access) return [];
         const siteLogs = await prisma.siteLog.findMany({
-            where: { project: { OR: [ { authorId: access.userId }, { id: { in: access.collabIds } } ] } },
+            where: { project: { OR: [{ authorId: access.userId }, { id: { in: access.collabIds } }] } },
             include: { project: { select: { title: true } }, author: { select: { name: true } } },
             orderBy: { date: 'desc' },
             take: 10
@@ -882,11 +942,11 @@ export async function getGlobalPurchaseOrders() {
         const access = await getAccessibleProjectIds();
         if (!access) return [];
         const orders = await prisma.purchaseOrder.findMany({
-            where: { 
-                project: { 
+            where: {
+                project: {
                     status: 'activo',
-                    OR: [ { authorId: access.userId }, { id: { in: access.collabIds } } ]
-                } 
+                    OR: [{ authorId: access.userId }, { id: { in: access.collabIds } }]
+                }
             },
             include: { project: { select: { title: true } }, supplier: { select: { company: true, name: true } } },
             orderBy: { createdAt: 'desc' },

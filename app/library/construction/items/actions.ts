@@ -131,11 +131,6 @@ export async function createConstructionItem(data: {
         const directCost = Number(data.directCost) || 0;
         const total = Number(data.total) || 0;
 
-        const cleanSupplies = (data.supplies || []).map(s => ({
-            supplyId: s.id,
-            quantity: Number(s.quantity) || 0
-        }));
-
         const item = await prisma.constructionItem.create({
             data: {
                 chapter: data.chapter,
@@ -148,15 +143,46 @@ export async function createConstructionItem(data: {
             }
         });
 
-        if (cleanSupplies.length > 0) {
-            for (const supply of cleanSupplies) {
-                await prisma.constructionItemSupply.create({
-                    data: {
-                        itemId: item.id,
-                        supplyId: supply.supplyId,
-                        quantity: supply.quantity
+        // Procesar suministros: vincular existentes y crear nuevos
+        if (data.supplies && data.supplies.length > 0) {
+            for (const s of data.supplies) {
+                let supplyId = s.id;
+
+                // Si es un nuevo insumo creado desde el modal de items
+                if (s.isNew) {
+                    // Verificar si ya existe en el catálogo maestro
+                    const existingSupply = await prisma.supply.findFirst({
+                        where: {
+                            description: { equals: s.description, mode: 'insensitive' },
+                            userId: data.userId
+                        }
+                    });
+
+                    if (existingSupply) {
+                        supplyId = existingSupply.id;
+                    } else {
+                        const newSupply = await prisma.supply.create({
+                            data: {
+                                typology: s.typology,
+                                description: s.description,
+                                unit: s.unit,
+                                price: Number(s.price) || 0,
+                                userId: data.userId
+                            }
+                        });
+                        supplyId = newSupply.id;
                     }
-                });
+                }
+
+                if (supplyId) {
+                    await prisma.constructionItemSupply.create({
+                        data: {
+                            itemId: item.id,
+                            supplyId: supplyId,
+                            quantity: Number(s.quantity) || 0
+                        }
+                    });
+                }
             }
         }
 
@@ -233,14 +259,42 @@ export async function updateConstructionItem(id: string, data: {
                 where: { itemId: id }
             });
 
-            for (const supply of updateData.supplies) {
-                await prisma.constructionItemSupply.create({
-                    data: {
-                        itemId: id,
-                        supplyId: supply.id,
-                        quantity: Number(supply.quantity) || 0
+            for (const s of updateData.supplies) {
+                let supplyId = s.id;
+
+                if (s.isNew && userId) {
+                    const existingSupply = await prisma.supply.findFirst({
+                        where: {
+                            description: { equals: s.description, mode: 'insensitive' },
+                            userId: userId
+                        }
+                    });
+
+                    if (existingSupply) {
+                        supplyId = existingSupply.id;
+                    } else {
+                        const newSupply = await prisma.supply.create({
+                            data: {
+                                typology: s.typology,
+                                description: s.description,
+                                unit: s.unit,
+                                price: Number(s.price) || 0,
+                                userId: userId
+                            }
+                        });
+                        supplyId = newSupply.id;
                     }
-                });
+                }
+
+                if (supplyId) {
+                    await prisma.constructionItemSupply.create({
+                        data: {
+                            itemId: id,
+                            supplyId: supplyId,
+                            quantity: Number(s.quantity) || 0
+                        }
+                    });
+                }
             }
         }
 

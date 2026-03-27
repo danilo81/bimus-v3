@@ -451,7 +451,7 @@ export default function ProjectsPage() {
                                 <span className="text-[16px] font-bold text-primary uppercase truncate max-w-[120px]">{project.client || 'N/A'}</span>
                             </div>
                             <Link href={`/projects/${project.id}`}>
-                                <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 hover:text-primary group/btn">
+                                <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 hover:text-primary group/btn cursor-pointer">
                                     Detalles <ChevronRight className="ml-1 h-3 w-3 transition-transform group-hover/btn:translate-x-0.5" />
                                 </Button>
                             </Link>
@@ -495,7 +495,7 @@ export default function ProjectsPage() {
 
                     <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-primary hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 rounded-xl">
+                            <Button className="bg-primary hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 rounded-xl cursor-pointer">
                                 <Plus className="mr-2 h-4 w-4" /> Nuevo Proyecto
                             </Button>
                         </DialogTrigger>
@@ -568,11 +568,11 @@ export default function ProjectsPage() {
                                         </Select>
                                     </div>
                                 </div>
-                                <DialogFooter className="p-6 border-t border-accent gap-3 items-center bg-black/20">
-                                    <Button type="button" variant="ghost" onClick={() => setIsCreateModalOpen(false)} disabled={isSubmitting} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary">
+                                <DialogFooter className="p-6 border-t border-accent gap-3 items-center ">
+                                    <Button type="button" variant="ghost" onClick={() => setIsCreateModalOpen(false)} disabled={isSubmitting} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary cursor-pointer">
                                         Cancelar
                                     </Button>
-                                    <Button type="submit" className="bg-secondary hover:bg-primary/90 text-primary font-black text-[10px] uppercase tracking-widest px-12 h-11 shadow-xl" disabled={isSubmitting}>
+                                    <Button type="submit" className="bg-primary hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-12 h-11 cursor-pointer" disabled={isSubmitting}>
                                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Registrar Proyecto"}
                                     </Button>
                                 </DialogFooter>
@@ -601,9 +601,9 @@ export default function ProjectsPage() {
 
             {/* Modal de Invitación */}
             <Dialog open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
-                <DialogContent className="sm:max-w-[425px] bg-[#0a0a0a] border-white/10 text-primary p-0 overflow-hidden shadow-2xl">
+                <DialogContent className="sm:max-w-[425px] bg-card border-accent text-primary p-0 overflow-hidden shadow-2xl">
                     <form onSubmit={handleInviteSubmit}>
-                        <DialogHeader className="p-6 bg-white/2 border-b border-white/5">
+                        <DialogHeader className="p-6 bg-card border-b border-accent">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-blue-500/20 rounded-lg">
                                     <UserPlus className="h-6 w-6 text-blue-400" />
@@ -617,7 +617,7 @@ export default function ProjectsPage() {
                             </div>
                         </DialogHeader>
                         <div className="p-6 space-y-6">
-                            <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                            <div className="bg-card p-4 rounded-xl border border-accent">
                                 <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Proyecto Seleccionado</p>
                                 <p className="text-sm font-bold text-primary uppercase">{selectedProjectForInvite?.title}</p>
                             </div>
@@ -631,7 +631,7 @@ export default function ProjectsPage() {
                                     onChange={(e) => setInviteEmail(e.target.value)}
                                     placeholder="ejemplo@correo.com"
                                     required
-                                    className="h-12 bg-white/5 border-white/10 font-mono text-sm"
+                                    className="h-12 bg-card border-accent font-mono text-sm"
                                 />
                             </div>
                             <div className="p-4 bg-blue-500/5 rounded-xl border border-blue-500/10">
@@ -640,11 +640,11 @@ export default function ProjectsPage() {
                                 </p>
                             </div>
                         </div>
-                        <DialogFooter className="p-6 border-t border-white/5 bg-black/20">
-                            <Button type="button" variant="ghost" onClick={() => setIsInviteModalOpen(false)} className="text-[10px] font-black uppercase tracking-widest">
+                        <DialogFooter className="p-6 border-t border-accent bg-card">
+                            <Button type="button" variant="ghost" onClick={() => setIsInviteModalOpen(false)} className="text-[10px] font-black uppercase tracking-widest cursor-pointer">
                                 Cancelar
                             </Button>
-                            <Button type="submit" disabled={isSubmitting || !inviteEmail} className="bg-blue-500 hover:bg-blue-600 text-primary font-black text-[10px] uppercase h-11 px-8 tracking-widest shadow-xl shadow-blue-500/20">
+                            <Button type="submit" disabled={isSubmitting || !inviteEmail} className="bg-blue-500 hover:bg-blue-600 text-primary font-black text-[10px] uppercase h-11 px-8 tracking-widest cursor-pointer">
                                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                                 Enviar Invitación
                             </Button>

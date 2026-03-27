@@ -23,6 +23,8 @@ import { getAccountingOverview } from './actions';
 import { cn } from '../../lib/utils';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export default function AccountingPage() {
     const [data, setData] = useState<any>(null);
@@ -45,7 +47,7 @@ export default function AccountingPage() {
     ];
 
     if (loading) return (
-        <div className="flex flex-col min-h-screen bg-card items-center justify-center gap-4">
+        <div className="flex flex-col min-h-screen  items-center justify-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Sincronizando Finanzas...</p>
         </div>
@@ -54,15 +56,15 @@ export default function AccountingPage() {
     return (
         <div className="container mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
+                <div className=' bg-card w-fit'>
                     <h1 className="text-3xl font-bold font-headline flex items-center gap-3">
                         <Landmark className="h-8 w-8 text-primary" /> Contabilidad General
                     </h1>
                     <p className="text-muted-foreground mt-1 text-[10px] font-black uppercase tracking-[0.3em] opacity-50">Consolidado Financiero</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button variant="outline" className="border-white/10 text-[10px] font-black uppercase h-10 px-6">
-                        <Calendar className="mr-2 h-4 w-4" /> Mayo 2024
+                    <Button variant="ghost" disabled size="lg" className="bg-card text-[10px] font-black uppercase h-10 px-6">
+                        <Calendar className="mr-2 h-4 w-4" /> {format(new Date(), 'dd MMMM yyyy', { locale: es })}
                     </Button>
 
                 </div>
@@ -81,9 +83,7 @@ export default function AccountingPage() {
                                 {data?.totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </p>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-4 text-[9px] font-black text-emerald-500 uppercase">
-                            <TrendingUp className="h-3 w-3" /> +12.5% vs Mes Anterior
-                        </div>
+
                     </CardContent>
                 </Card>
 
@@ -99,9 +99,7 @@ export default function AccountingPage() {
                                 {data?.totalExpense.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </p>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-4 text-[9px] font-black text-red-500 uppercase">
-                            <ArrowUpRight className="h-3 w-3" /> +5.2% vs Mes Anterior
-                        </div>
+
                     </CardContent>
                 </Card>
 
@@ -117,9 +115,7 @@ export default function AccountingPage() {
                                 {data?.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </p>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-4 text-[9px] font-black text-primary uppercase">
-                            <History className="h-3 w-3" /> Basado en {data?.transactionCount} movimientos
-                        </div>
+
                     </CardContent>
                 </Card>
             </div>
@@ -152,11 +148,10 @@ export default function AccountingPage() {
                 <Card className="bg-card border-accent lg:col-span-2 overflow-hidden h-fit gap-0 p-0 ">
                     <CardHeader className="border-b border-accent bg-accent flex flex-row items-center justify-between h-16">
                         <div className='items-center justify-center'>
-                            <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2 ">
+                            <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2 p-2 mt-6">
                                 <History className="h-4 w-4 text-primary" /> Historial Reciente de Transacciones
                             </CardTitle>
                         </div>
-                        {/* <Button variant="ghost" size="sm" className="text-[10px] font-black uppercase tracking-widest hover:text-primary">Ver Libro Mayor</Button> */}
                     </CardHeader>
 
                     <CardContent className="p-0">
@@ -192,34 +187,7 @@ export default function AccountingPage() {
                             </div>
                         )}
                     </CardContent>
-
                 </Card>
-
-                {/* <Card className="bg-card/30 border-white/5 overflow-hidden shadow-2xl h-fit">
-                    <CardHeader className="border-b border-white/5 bg-white/2">
-                        <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-primary" /> Distribución por Categoría
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6 space-y-6">
-                        {[
-                            { label: 'Materiales', value: 45, color: 'bg-blue-500' },
-                            { label: 'Mano de Obra', value: 30, color: 'bg-emerald-500' },
-                            { label: 'Maquinaria', value: 15, color: 'bg-amber-500' },
-                            { label: 'Administración', value: 10, color: 'bg-purple-500' },
-                        ].map((cat, i) => (
-                            <div key={i} className="space-y-2">
-                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                                    <span className="text-muted-foreground">{cat.label}</span>
-                                    <span className="text-white">{cat.value}%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                    <div className={cn("h-full rounded-full transition-all", cat.color)} style={{ width: `${cat.value}%` }} />
-                                </div>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card> */}
             </div>
         </div>
     );

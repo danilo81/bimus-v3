@@ -50,7 +50,7 @@ export default function ReceivablesPage() {
     ) || [];
 
     if (loading) return (
-        <div className="flex flex-col min-h-screen bg-background items-center justify-center gap-4">
+        <div className="flex flex-col min-h-screen  items-center justify-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Sincronizando Cobros...</p>
         </div>
@@ -59,7 +59,7 @@ export default function ReceivablesPage() {
     return (
         <div className="container mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 bg-card w-fit">
                     <Button variant="ghost" size="icon" className="hover:bg-white/5" onClick={() => router.push('/accounting')}>
                         <ChevronLeft className="h-6 w-6" />
                     </Button>
@@ -71,12 +71,12 @@ export default function ReceivablesPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    {/* <Button variant="outline" className="border-white/10 text-[10px] font-black uppercase h-10 px-6">
+                    <Button variant="outline" className="border-white/10 text-[10px] font-black uppercase h-10 px-6">
                         <Download className="mr-2 h-4 w-4" /> Exportar Reporte
                     </Button>
                     <Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest h-10 px-6">
                         <Plus className="mr-2 h-4 w-4" /> Registrar Cobro
-                    </Button> */}
+                    </Button>
                 </div>
             </div>
 
@@ -109,8 +109,8 @@ export default function ReceivablesPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="bg-card border-white/10  relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-white/20" />
+                <Card className="bg-card border-accent  relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-accent" />
                     <CardHeader className="pb-2">
                         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cobrado este Mes</span>
                     </CardHeader>
@@ -135,17 +135,14 @@ export default function ReceivablesPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                {/* <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest hover:bg-white/5">
-                    <Filter className="mr-2 h-4 w-4" /> Filtros Avanzados
-                </Button> */}
             </div>
 
             {filteredItems.length > 0 ? (
-                <Card className="bg-card border-white/5 overflow-hidden shadow-2xl pt-0">
+                <Card className="bg-card border-accent overflow-hidden  pt-0">
                     <CardContent className="p-0">
                         <Table>
                             <TableHeader className="bg-card">
-                                <TableRow className="border-card hover:bg-transparent">
+                                <TableRow className="border-accent hover:bg-transparent">
                                     <TableHead className="py-5 px-8 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cliente / Proyecto</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">ID Registro</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center">Vencimiento</TableHead>
@@ -156,10 +153,10 @@ export default function ReceivablesPage() {
                             </TableHeader>
                             <TableBody>
                                 {filteredItems.map((rec: any) => (
-                                    <TableRow key={rec.id} className="border-white/5 hover:bg-white/3 transition-colors group">
+                                    <TableRow key={rec.id} className="border-accent  transition-colors group">
                                         <TableCell className="py-6 px-8">
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-white uppercase group-hover:text-emerald-500 transition-colors">{rec.client}</span>
+                                                <span className="text-sm font-bold text-primary uppercase group-hover:text-emerald-500 transition-colors">{rec.client}</span>
                                                 <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mt-1 flex items-center gap-1.5">
                                                     <Building2 className="h-3 w-3" /> {rec.project}
                                                 </span>
@@ -168,7 +165,7 @@ export default function ReceivablesPage() {
                                         <TableCell className="font-mono text-xs text-muted-foreground">{rec.id}</TableCell>
                                         <TableCell className="text-center">
                                             <div className="flex flex-col items-center">
-                                                <span className={cn("text-xs font-bold", rec.status === 'overdue' ? 'text-red-500' : 'text-white')}>{rec.dueDate}</span>
+                                                <span className={cn("text-xs font-bold", rec.status === 'overdue' ? 'text-red-500' : 'text-primary')}>{rec.dueDate}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right font-mono font-black text-emerald-500 text-sm">
@@ -190,12 +187,12 @@ export default function ReceivablesPage() {
                                                         <MoreVertical className="h-4 w-4 text-muted-foreground" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="bg-card border-white/10 text-white shadow-2xl">
+                                                <DropdownMenuContent align="end" className="bg-card border-accent text-primary">
                                                     <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer">
                                                         <FileText className="h-3.5 w-3.5" /> Ver Comprobante
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer text-emerald-500 focus:text-emerald-500">
-                                                        <HandCoins className="h-3.5 w-3.5" /> Conciliar Pago
+                                                        <HandCoins className="h-3.5 w-3.5 text-emerald-500" /> Conciliar Pago
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -207,7 +204,7 @@ export default function ReceivablesPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="flex flex-col items-center justify-center py-40 border border-dashed border-white/5 rounded-3xl opacity-20">
+                <div className="flex flex-col items-center justify-center py-40 border border-dashed border-accent rounded-3xl opacity-20">
                     <HandCoins className="h-16 w-16 mb-4" />
                     <p className="text-[10px] font-black uppercase tracking-[0.3em]">No se encontraron cuentas por cobrar activas.</p>
                 </div>

@@ -50,7 +50,7 @@ export default function PayablesPage() {
     ) || [];
 
     if (loading) return (
-        <div className="flex flex-col min-h-screen bg-background items-center justify-center gap-4">
+        <div className="flex flex-col min-h-screen items-center justify-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Sincronizando Deudas...</p>
         </div>
@@ -59,7 +59,7 @@ export default function PayablesPage() {
     return (
         <div className="container mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 bg-card w-fit">
                     <Button variant="ghost" size="icon" className="hover:bg-white/5" onClick={() => router.push('/accounting')}>
                         <ChevronLeft className="h-6 w-6" />
                     </Button>
@@ -70,24 +70,24 @@ export default function PayablesPage() {
                         <p className="text-muted-foreground mt-1 text-[10px] font-black uppercase tracking-[0.3em] opacity-50">Control de Egresos Pendientes</p>
                     </div>
                 </div>
-                {/* <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3">
                     <Button variant="outline" className="border-white/10 text-[10px] font-black uppercase h-10 px-6">
                         <Download className="mr-2 h-4 w-4" /> Exportar Reporte
                     </Button>
-                    <Button className="bg-red-500 hover:bg-red-600 text-white font-black text-[10px] uppercase tracking-widest h-10 px-6 shadow-xl shadow-red-500/10">
+                    <Button className="bg-red-500 hover:bg-red-600 text-white font-black text-[10px] uppercase tracking-widest h-10 px-6">
                         <Wallet className="mr-2 h-4 w-4" /> Programar Pago
                     </Button>
-                </div> */}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="bg-card border-red-500/20 shadow-xl relative overflow-hidden">
+                <Card className="bg-card border-red-500/20 relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
                     <CardHeader className="pb-2">
                         <span className="text-[10px] font-black uppercase tracking-widest text-red-500/70">Total por Pagar</span>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-3xl font-black text-white tracking-tighter">
+                        <p className="text-3xl font-black text-primary tracking-tighter">
                             ${(data?.totalPayable || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </p>
                         <p className="text-[9px] font-black text-muted-foreground uppercase mt-2 flex items-center gap-1">
@@ -96,13 +96,13 @@ export default function PayablesPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="bg-card border-amber-500/20 shadow-xl relative overflow-hidden">
+                <Card className="bg-card border-amber-500/20  relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
                     <CardHeader className="pb-2">
                         <span className="text-[10px] font-black uppercase tracking-widest text-amber-500/70">Vencimientos Próximos</span>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-3xl font-black text-white tracking-tighter">
+                        <p className="text-3xl font-black text-primary tracking-tighter">
                             ${(data?.totalPayable || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </p>
                         <p className="text-[9px] font-black text-amber-500 uppercase mt-2 flex items-center gap-1">
@@ -111,13 +111,13 @@ export default function PayablesPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="bg-card border-emerald-500/20 shadow-xl relative overflow-hidden">
+                <Card className="bg-card border-emerald-500/20 relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
                     <CardHeader className="pb-2">
                         <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500/70">Liquidadas hoy</span>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-3xl font-black text-white tracking-tighter">$0.00</p>
+                        <p className="text-3xl font-black text-primary tracking-tighter">$0.00</p>
                         <p className="text-[9px] font-black text-emerald-500 uppercase mt-2 flex items-center gap-1">
                             <CheckCircle2 className="h-3 w-3" /> 0 Pagos realizados
                         </p>
@@ -125,27 +125,24 @@ export default function PayablesPage() {
                 </Card>
             </div>
 
-            <div className="flex items-center gap-4 bg-card p-4 rounded-2xl border border-white/5 backdrop-blur-xl">
+            <div className="flex items-center gap-4 bg-card p-4 rounded-2xl border border-accent">
                 <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="BUSCAR PROVEEDOR O PROYECTO..."
-                        className="pl-10 h-11 bg-black/40 border-white/10 text-[10px] font-black uppercase tracking-widest"
+                        className="pl-10 h-11 bg-card border-accent text-[10px] font-black uppercase tracking-widest"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                {/* <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest hover:bg-white/5">
-                    <Filter className="mr-2 h-4 w-4" /> Filtros Avanzados
-                </Button> */}
             </div>
 
             {filteredItems.length > 0 ? (
-                <Card className="bg-card border-accent overflow-hidden shadow-2xl pt-0">
+                <Card className="bg-card border-accent overflow-hidden  pt-0">
                     <CardContent className="p-0">
                         <Table>
-                            <TableHeader className="bg-white/2">
-                                <TableRow className="border-white/5 hover:bg-transparent">
+                            <TableHeader className="bg-card">
+                                <TableRow className="border-accent hover:bg-transparent">
                                     <TableHead className="py-5 px-8 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Proveedor / Proyecto</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">ID Registro</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center">Vencimiento</TableHead>
@@ -156,10 +153,10 @@ export default function PayablesPage() {
                             </TableHeader>
                             <TableBody>
                                 {filteredItems.map((pay: any) => (
-                                    <TableRow key={pay.id} className="border-white/5 hover:bg-white/3 transition-colors group">
+                                    <TableRow key={pay.id} className="border-accent hover:bg-white/3 transition-colors group">
                                         <TableCell className="py-6 px-8">
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-white uppercase group-hover:text-red-500 transition-colors">{pay.supplier}</span>
+                                                <span className="text-sm font-bold text-primary uppercase group-hover:text-red-500 transition-colors">{pay.supplier}</span>
                                                 <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mt-1 flex items-center gap-1.5">
                                                     <Building2 className="h-3 w-3" /> {pay.project}
                                                 </span>
@@ -168,7 +165,7 @@ export default function PayablesPage() {
                                         <TableCell className="font-mono text-xs text-muted-foreground">{pay.id}</TableCell>
                                         <TableCell className="text-center">
                                             <div className="flex flex-col items-center">
-                                                <span className={cn("text-xs font-bold", pay.status === 'overdue' ? 'text-red-500' : 'text-white')}>{pay.dueDate}</span>
+                                                <span className={cn("text-xs font-bold", pay.status === 'overdue' ? 'text-red-500' : 'text-primary')}>{pay.dueDate}</span>
                                                 {pay.status === 'overdue' && <span className="text-[8px] font-black text-red-500 uppercase mt-1">Crítico / Retraso</span>}
                                             </div>
                                         </TableCell>
@@ -176,7 +173,7 @@ export default function PayablesPage() {
                                             ${pay.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Badge variant="outline" className={cn("text-[8px] font-black uppercase border-white/10 tracking-widest",
+                                            <Badge variant="outline" className={cn("text-[8px] font-black uppercase border-accent tracking-widest",
                                                 pay.status === 'paid' ? 'bg-emerald-500/10 text-emerald-500' :
                                                     pay.status === 'overdue' ? 'bg-red-500/10 text-red-500' :
                                                         'bg-amber-500/10 text-amber-500'
@@ -191,9 +188,9 @@ export default function PayablesPage() {
                                                         <MoreVertical className="h-4 w-4 text-muted-foreground" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="bg-card border-white/10 text-white shadow-2xl">
+                                                <DropdownMenuContent align="end" className="bg-card border-accent text-primary">
                                                     <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer text-red-500 focus:text-red-500">
-                                                        <Wallet className="h-3.5 w-3.5" /> Procesar Pago
+                                                        <Wallet className="h-3.5 w-3.5 text-red-500" /> Procesar Pago
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer">
                                                         <Calendar className="h-3.5 w-3.5" /> Reprogramar
@@ -208,7 +205,7 @@ export default function PayablesPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="flex flex-col items-center justify-center py-40 border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest">
+                <div className="flex flex-col items-center justify-center py-40 border border-dashed border-accent rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest">
                     No se encontraron cuentas por pagar activas.
                 </div>
             )}

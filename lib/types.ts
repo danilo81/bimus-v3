@@ -264,3 +264,16 @@ export interface BimVersion {
     hash: string;
     createdAt: string;
 }
+
+export interface ProjectItem {
+    id: string;
+    projectId: string;
+    itemId: string;
+    quantity: number;
+    progress: number;
+    performance?: number | null;
+    extraDays?: number;
+    ganttStatus?: string;
+    item?: ConstructionItem;
+    levelQuantities?: any[];
+}

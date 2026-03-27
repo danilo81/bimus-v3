@@ -10,9 +10,10 @@ async function getAuthUserId() {
     return cookieStore.get('userId')?.value;
 }
 
-export async function getTasks() {
+export async function getTasks(projectId?: string) {
     try {
         const tasks = await prisma.task.findMany({
+            where: projectId ? { projectId } : undefined,
             include: {
                 project: {
                     select: {

@@ -470,7 +470,7 @@ export default function ProjectWarehousePage() {
                         <div className="flex items-center gap-3">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="border-accent bg-card text-muted-foreground font-black text-[10px] uppercase tracking-widest h-11 px-6 rounded-xl hover:bg-card/10">
+                                    <Button variant="outline" className="border-accent bg-card text-muted-foreground font-black text-[10px] uppercase tracking-widest h-11 px-6 rounded-xl hover:bg-card/10 cursor-pointer">
                                         <Printer className="mr-2 h-4 w-4 text-primary" /> Imprimir Reportes <ChevronDown className="ml-2 h-3 w-3" />
                                     </Button>
                                 </DropdownMenuTrigger>
@@ -488,13 +488,13 @@ export default function ProjectWarehousePage() {
                             </DropdownMenu>
 
                             <Button
-                                className="bg-emerald-500 hover:bg-emerald-600 text-black font-black text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl "
+                                className="bg-emerald-500 hover:bg-emerald-600 text-black font-black text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl cursor-pointer"
                                 onClick={() => setIsWarehouseEntryOpen(true)}
                             >
                                 <ArrowDownCircle className="mr-2 h-4 w-4" /> Nuevo Ingreso
                             </Button>
                             <Button
-                                className="bg-red-500 hover:bg-red-600 text-white font-black text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl "
+                                className="bg-red-500 hover:bg-red-600 text-white font-black text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl cursor-pointer"
                                 onClick={() => setIsWarehouseExitOpen(true)}
                             >
                                 <ArrowUpCircle className="mr-2 h-4 w-4" /> Nueva Salida
@@ -525,7 +525,7 @@ export default function ProjectWarehousePage() {
                                                         <span className="text-sm font-black uppercase tracking-tight text-primary">{item.description}</span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-center font-bold text-muted-foreground uppercase text-xs">{item.unit}</TableCell>
+                                                <TableCell className="text-center font-bold text-muted-foreground uppercase text-[12px]">{item.unit}</TableCell>
                                                 <TableCell className="text-right">
                                                     <span className={cn("font-mono text-base font-black",
                                                         item.stock <= 0 ? "text-red-500" : item.stock < 10 ? "text-amber-500" : "text-emerald-500"
@@ -534,7 +534,7 @@ export default function ProjectWarehousePage() {
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-right pr-12">
-                                                    <Badge variant="outline" className={cn("text-[8px] font-black uppercase tracking-widest border-none px-2",
+                                                    <Badge variant="outline" className={cn("text-[12px] font-black uppercase tracking-widest border-none px-2",
                                                         item.status === 'ok' ? 'bg-emerald-500/10 text-emerald-500' :
                                                             item.status === 'bajo' ? 'bg-amber-500/10 text-amber-500' :
                                                                 'bg-red-500/10 text-red-500'
@@ -549,7 +549,7 @@ export default function ProjectWarehousePage() {
                             </CardContent>
                         </Card>
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-40 border border-dashed border-white/5 rounded-3xl opacity-20">
+                        <div className="flex flex-col items-center justify-center py-40 border border-dashed border-accent rounded-3xl opacity-20">
                             <Package className="h-16 w-16 mb-4" />
                             <p className="text-[10px] font-black uppercase tracking-[0.3em]">No hay existencias en el almacén de este proyecto.</p>
                         </div>
@@ -558,11 +558,11 @@ export default function ProjectWarehousePage() {
 
                 <TabsContent value="history">
                     {movements.length > 0 ? (
-                        <Card className="bg-[#0a0a0a] border-white/10 overflow-hidden shadow-2xl">
+                        <Card className="bg-card border-accent overflow-hidden shadow-2xl">
                             <CardContent className="p-0">
                                 <Table>
-                                    <TableHeader className="bg-white/5">
-                                        <TableRow className="border-white/10 hover:bg-transparent">
+                                    <TableHeader className="bg-accent">
+                                        <TableRow className="border-accent hover:bg-transparent">
                                             <TableHead className="py-5 px-8 text-[10px] font-black uppercase tracking-widest">Fecha / Registro</TableHead>
                                             <TableHead className="text-[10px] font-black uppercase">Tipo</TableHead>
                                             <TableHead className="text-[10px] font-black uppercase">Insumo</TableHead>
@@ -572,7 +572,7 @@ export default function ProjectWarehousePage() {
                                     </TableHeader>
                                     <TableBody>
                                         {movements.map((m) => (
-                                            <TableRow key={m.id} className="border-white/5 hover:bg-white/3 transition-colors group">
+                                            <TableRow key={m.id} className="border-accent hover:bg-accent/2 transition-colors group">
                                                 <TableCell className="py-5 px-8">
                                                     <span className="text-[10px] font-mono text-muted-foreground uppercase">{new Date(m.date).toLocaleString('es-ES')}</span>
                                                 </TableCell>
@@ -588,7 +588,7 @@ export default function ProjectWarehousePage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className="text-xs font-bold text-white uppercase">{m.supplyName}</span>
+                                                    <span className="text-xs font-bold text-primary uppercase">{m.supplyName}</span>
                                                 </TableCell>
                                                 <TableCell className="text-right font-mono text-xs font-bold">
                                                     {m.quantity.toFixed(2)} {m.unit}
@@ -817,7 +817,7 @@ export default function ProjectWarehousePage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="pr-4">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setCurrentExitItems(prev => prev.filter(i => i.id !== item.id))}>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 cursor-pointer" onClick={() => setCurrentExitItems(prev => prev.filter(i => i.id !== item.id))}>
                                                             <X className="h-4 w-4" />
                                                         </Button>
                                                     </TableCell>
@@ -833,8 +833,8 @@ export default function ProjectWarehousePage() {
                     </div>
 
                     <DialogFooter className="p-6 border-t border-white/5 bg-black/20 shrink-0">
-                        <Button variant="ghost" onClick={() => setIsWarehouseExitOpen(false)} className="text-[10px] font-black uppercase tracking-widest">Cancelar</Button>
-                        <Button onClick={handleConfirmWarehouseExit} disabled={isSaving || currentExitItems.length === 0} className="bg-red-500 hover:bg-red-600 text-white font-black text-[10px] uppercase tracking-widest px-12 h-11 shadow-xl shadow-red-500/10">
+                        <Button variant="ghost" onClick={() => setIsWarehouseExitOpen(false)} className="text-[10px] font-black uppercase tracking-widest cursor-pointer">Cancelar</Button>
+                        <Button onClick={handleConfirmWarehouseExit} disabled={isSaving || currentExitItems.length === 0} className="bg-red-500 hover:bg-red-600 text-white font-black text-[10px] uppercase tracking-widest px-12 h-11 shadow-xl shadow-red-500/10 cursor-pointer">
                             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Activity className="mr-2 h-4 w-4" />}
                             Confirmar Despacho a Obra
                         </Button>
@@ -852,9 +852,6 @@ export default function ProjectWarehousePage() {
                             </div>
                             <DialogTitle className="text-lg font-bold uppercase tracking-tight">Existencias en Almacén</DialogTitle>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={() => setIsSelectStockForExitOpen(false)}>
-                            <X className="h-4 w-4" />
-                        </Button>
                     </DialogHeader>
                     <div className="p-6 flex-1 overflow-hidden">
                         <ScrollArea className="h-full border border-accent rounded-xl bg-card">

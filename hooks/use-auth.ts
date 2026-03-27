@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { User, UserRole } from '../lib/types';
 import { useRouter } from 'next/navigation';
-import { logout as serverLogout } from '../app/(auth)/actions';
+import { logout as serverLogout } from '@/actions';
 
 const AUTH_KEY = 'project_showcase_auth';
 

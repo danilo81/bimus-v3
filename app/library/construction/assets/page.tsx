@@ -27,7 +27,8 @@ import {
     MapPin,
     CheckCircle2,
     Wrench,
-    XCircle
+    XCircle,
+    Drill
 } from 'lucide-react';
 import {
     Dialog,
@@ -256,7 +257,7 @@ export default function AssetsPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card w-fit">
                 <div>
                     <h1 className="text-3xl font-bold font-headline flex items-center gap-3 text-foreground">
-                        <Truck className="h-8 w-8 text-primary" /> Activos Fijos
+                        <Drill className="h-8 w-8 text-primary" /> Activos Fijos
                     </h1>
                     <p className="text-muted-foreground mt-1 S tracking-widest ">Control de maquinaria, herramientas y equipos de obra.</p>
                 </div>
@@ -289,7 +290,7 @@ export default function AssetsPage() {
                         if (!open) resetForm();
                     }}>
                         <DialogTrigger asChild>
-                            <Button className="bg-primary hover:bg-primary/20 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11">
+                            <Button className="bg-primary hover:bg-primary/20 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 cursor-pointer">
                                 <Plus className="mr-2 h-4 w-4" /> Nuevo Activo
                             </Button>
                         </DialogTrigger>
@@ -298,7 +299,7 @@ export default function AssetsPage() {
                                 <DialogHeader className="p-6 border-b border-accent">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-primary/20 rounded-lg border border-primary/20">
-                                            <Truck className="h-6 w-6 text-primary" />
+                                            <Drill className="h-6 w-6 text-primary" />
                                         </div>
                                         <div>
                                             <DialogTitle className="text-xl font-bold uppercase tracking-tight">
@@ -370,8 +371,8 @@ export default function AssetsPage() {
                                     </div>
                                 </div>
                                 <DialogFooter className="p-6 border-t border-accent gap-3 items-center">
-                                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary">Cancelar</Button>
-                                    <Button type="submit" className="bg-primary hover:bg-muted/40 text-background font-black text-[10px] uppercase tracking-widest px-12 h-11 " disabled={isSubmitting}>
+                                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary cursor-pointer">Cancelar</Button>
+                                    <Button type="submit" className="bg-primary hover:bg-muted/40 text-background font-black text-[10px] uppercase tracking-widest px-12 h-11 cursor-pointer " disabled={isSubmitting}>
                                         {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                                         {editingAsset ? 'Actualizar Activo' : 'Guardar Activo'}
                                     </Button>
@@ -421,7 +422,7 @@ export default function AssetsPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-center">
-                                                <Badge variant="outline" className={cn("text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 border-white/10 gap-1.5", getStatusBadge(asset.status))}>
+                                                <Badge variant="outline" className={cn("text-[12px] font-black uppercase tracking-widest px-2.5 py-0.5 border-white/10 gap-1.5", getStatusBadge(asset.status))}>
                                                     {getStatusIcon(asset.status)}
                                                     {asset.status.replace('_', ' ')}
                                                 </Badge>
@@ -432,7 +433,7 @@ export default function AssetsPage() {
                                             <TableCell className="text-right pr-6">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10">
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 cursor-pointer">
                                                             <MoreVertical className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
@@ -458,7 +459,7 @@ export default function AssetsPage() {
                 </Card>
             ) : (
                 <div className="flex flex-col items-center justify-center py-40 border border-dashed border-white/5 rounded-3xl opacity-20">
-                    <Truck className="h-16 w-16 mb-4" />
+                    <Drill className="h-16 w-16 mb-4" />
                     <p className="text-[10px] font-black uppercase tracking-[0.3em]">No hay activos fijos registrados en el catálogo.</p>
                 </div>
             )}

@@ -18,7 +18,8 @@ import {
     LayoutTemplate,
     PlusCircle,
     Layers,
-    CloudUpload} from 'lucide-react';
+    CloudUpload
+} from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { Input } from '../../../../components/ui/input';
 import { Badge } from '../../../../components/ui/badge';
@@ -309,7 +310,7 @@ export default function BimDocumentationPage() {
             setSelectedTemplate('none');
         }
     };
-////////////////////////////////////////////
+    ////////////////////////////////////////////
     const editorConfig: InitialConfigType = {
         namespace: "Editor",
         theme: editorTheme,
@@ -319,7 +320,7 @@ export default function BimDocumentationPage() {
         },
     }
 
-/////////////////////////////
+    /////////////////////////////
     if (!isMounted) return null;
 
     return (
@@ -484,7 +485,7 @@ export default function BimDocumentationPage() {
                                 <div className="p-2  mx-auto space-y-6">
                                     <div className="space-y-4 bg-card border-accent p-6 rounded-2xl border">
                                         <div className='flex flex-row items-center justify-between'>
-                                        <div className='flex flex-row items-center justify-between gap-4'>
+                                            <div className='flex flex-row items-center justify-between gap-4'>
                                                 <div className=''>
                                                     <Label className="text-[12px] font-black uppercase tracking-[0.2em] text-muted-foreground">Título de la Sección Técnica</Label>
                                                     <Input
@@ -506,22 +507,7 @@ export default function BimDocumentationPage() {
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
-                                        </div>
-                                    </div>
-                                        </div>
-                                    <div className="grid grid-cols-1 gap-8 bg-card p-6 rounded-2xl border border-accent">
-                                        <div className="space-y-3">
-                                            <Label className="text-[9px] font-black uppercase text-primary tracking-widest">Validación de Estado</Label>
-                                            <Select value={localStatus} onValueChange={(val: BimTopicStatus) => { setLocalStatus(val); setHasUnsavedChanges(true); }}>
-                                                <SelectTrigger className="h-11 bg-card border-accent uppercase text-[10px] font-black w-72">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent className="bg-card text-primary border-white/10">
-                                                    <SelectItem value="in_progress" className="text-[10px] font-bold uppercase">En Desarrollo</SelectItem>
-                                                    <SelectItem value="reviewed" className="text-[10px] font-bold uppercase">En Revisión</SelectItem>
-                                                    <SelectItem value="approved" className="text-[10px] font-bold uppercase text-emerald-400">Aprobado / Publicado</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -533,7 +519,9 @@ export default function BimDocumentationPage() {
                                             className="min-h-[450px] bg-card border-accent focus:border-primary/20 text-sm leading-relaxed uppercase font-medium p-8 rounded-3xl resize-none "
                                             placeholder="Redacte los requerimientos de información o protocolos técnicos aquí..."
                                         /> */}
-                                        <EditorRich></EditorRich>
+                                        <div className='w-full'>
+                                            <EditorRich></EditorRich>
+                                        </div>
                                     </div>
                                 </div>
                             </ScrollArea>

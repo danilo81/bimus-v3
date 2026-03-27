@@ -267,7 +267,7 @@ export default function OperationsPage() {
 
     if (isLoading) {
         return (
-            <div className="flex flex-col min-h-screen bg-[#050505] items-center justify-center gap-4 h-[50vh]">
+            <div className="flex flex-col min-h-screen  items-center justify-center gap-4 h-[50vh]">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Sincronizando Operaciones...</p>
             </div>
@@ -276,7 +276,7 @@ export default function OperationsPage() {
 
     if (!project) {
         return (
-            <div className="flex flex-col min-h-screen bg-[#050505] items-center justify-center p-8 gap-4 h-[50vh]">
+            <div className="flex flex-col min-h-screen  items-center justify-center p-8 gap-4 h-[50vh]">
                 <Info className="h-12 w-12 text-muted-foreground opacity-20" />
                 <p className="text-muted-foreground italic uppercase tracking-widest text-[10px]">No se encontró el proyecto.</p>
                 <Button variant="outline" onClick={() => router.push('/projects')}>Volver a Proyectos</Button>
@@ -285,7 +285,7 @@ export default function OperationsPage() {
     }
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#050505] text-white p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
+        <div className="flex flex-col min-h-screen  text-primary p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" className="hover:bg-white/10" onClick={() => router.back()}>
                     <ChevronLeft className="h-6 w-6" />
@@ -296,10 +296,10 @@ export default function OperationsPage() {
                     </h1>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Gestión administrativa y logística de obra</p>
                 </div>
-                                <div className="ml-auto">
+                <div className="ml-auto">
                     <Button
                         onClick={() => setIsInspectionOpen(true)}
-                        className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 font-black text-[10px] uppercase tracking-widest h-10 px-5"
+                        className="bg-primary hover:bg-primary/80 text-background border border-primary font-black text-[10px] uppercase tracking-widest h-10 px-5"
                     >
                         <ClipboardList className="mr-2 h-4 w-4" /> Nueva Inspección
                     </Button>
@@ -311,7 +311,7 @@ export default function OperationsPage() {
                 <p className="text-[10px] font-black uppercase tracking-[0.3em]">Terminal de operaciones listo. Use los menús superiores para gestionar la obra.</p>
             </div>
 
-            {/* Salida de Almacén Dialog */}
+            {/* Salida de Almacén Dialog
             <Dialog open={isWarehouseExitOpen} onOpenChange={setIsWarehouseExitOpen}>
                 <DialogContent className="max-w-[95vw] bg-[#0a0a0a] border-white/10 text-white p-0 overflow-hidden h-[95vh] flex flex-col shadow-2xl">
                     <DialogHeader className="p-6 border-b border-white/5 bg-white/2 flex flex-row items-center justify-between shrink-0">
@@ -450,7 +450,7 @@ export default function OperationsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Sub-Dialog: Seleccionar del Stock */}
+             Sub-Dialog: Seleccionar del Stock 
             <Dialog open={isSelectStockForExitOpen} onOpenChange={setIsSelectStockForExitOpen}>
                 <DialogContent className="max-w-3xl bg-[#0a0a0a] border-white/10 text-white p-0 overflow-hidden h-[80vh] flex flex-col shadow-2xl">
                     <DialogHeader className="p-6 border-b border-white/5 bg-white/2">
@@ -480,7 +480,7 @@ export default function OperationsPage() {
                         <Button onClick={confirmSelectedStockForExit} className="bg-primary text-black font-black text-[10px] uppercase px-8 h-10">Vincular para Salida</Button>
                     </DialogFooter>
                 </DialogContent>
-            </Dialog>
+            </Dialog> */}
         </div>
     );
 }

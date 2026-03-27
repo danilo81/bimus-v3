@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import Link from 'next/link';
 import { UserPlus, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '../../../hooks/use-toast';
-import { register as registerAction } from '../actions';
+import { register as registerAction } from '@/actions';
 import { User } from '../../../lib/types';
 import Image from 'next/image';
 
@@ -70,12 +70,12 @@ export default function RegisterPage() {
                         </div>
                     </div>
                     <div className='flex flex-col items-center justify-center'>
-                    <div className='flex flex-col items-center justify-center  bg-card w-fit'>
-                        <CardTitle className="text-2xl font-headline font-bold bg-card w-fit">Crear una cuenta</CardTitle>
-                        <CardDescription className="text-center bg-card w-fit">
-                            Ingresa tus datos para empezar
-                        </CardDescription>
-                    </div>
+                        <div className='flex flex-col items-center justify-center  bg-card w-fit'>
+                            <CardTitle className="text-2xl font-headline font-bold bg-card w-fit">Crear una cuenta</CardTitle>
+                            <CardDescription className="text-center bg-card w-fit">
+                                Ingresa tus datos para empezar
+                            </CardDescription>
+                        </div>
                     </div>
                 </CardHeader>
                 <form onSubmit={handleRegister}>

@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { Bell, LogOut, Sun, Moon, Box, Layers, Users, FolderOpen, Shield, Ruler, Truck, Settings, User as UserIcon, Bell as BellIcon, Lock, CreditCard, FileText, Wrench, Check, X, Info, AlertTriangle, CheckCircle2, Trash2, Landmark, Receipt, CheckSquare, Clock, Handshake, Palette, Menu, Building2, Calendar, Smartphone, Globe, ShieldCheck, LifeBuoy, FileCode, Activity, Presentation, PlusCircle, Save, UserPlus, Send, Hammer, ShoppingCart, Package, Banknote, BookOpen, Coins, MapPin, TrendingUp, Search, SquareLibrary, Blocks, Loader2, Plus, Mail } from 'lucide-react';
+import { Bell, LogOut, Sun, Moon, Box, Layers, Users, FolderOpen, Shield, Ruler, Truck, Settings, User as UserIcon, Bell as BellIcon, Lock, CreditCard, FileText, Wrench, Check, X, Info, AlertTriangle, CheckCircle2, Trash2, Landmark, Receipt, CheckSquare, Clock, Handshake, Palette, Menu, Building2, Calendar, Smartphone, Globe, ShieldCheck, LifeBuoy, FileCode, Activity, Presentation, PlusCircle, Save, UserPlus, Send, Hammer, ShoppingCart, Package, Banknote, BookOpen, Coins, MapPin, TrendingUp, Search, SquareLibrary, Blocks, Loader2, Plus, Mail, Drill, Boxes } from 'lucide-react';
 import { useAuth } from '../../hooks/use-auth';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { Button } from '../../components/ui/button';
@@ -85,7 +85,7 @@ export function Navbar() {
 
     const handleTogglePermission = async (contactId: string, moduleId: string, field: 'view' | 'edit', value: boolean) => {
         if (!activeProject?.id) return;
-        
+
         const previousTeam = [...(activeProject.team || [])];
         const newTeam = previousTeam.map((c: any) => {
             if (c.id === contactId) {
@@ -94,7 +94,7 @@ export function Navbar() {
                 const newModPerms = { ...modPerms, [field]: value };
                 if (field === 'edit' && value) newModPerms.view = true;
                 if (field === 'view' && !value) newModPerms.edit = false;
-                
+
                 return {
                     ...c,
                     permissions: { ...currentPerms, [moduleId]: newModPerms }
@@ -102,9 +102,9 @@ export function Navbar() {
             }
             return c;
         });
-        
+
         setActiveProject((prev: any) => prev ? { ...prev, team: newTeam } : null);
-        
+
         try {
             const contact = newTeam.find((c: any) => c.id === contactId);
             if (contact) {
@@ -593,7 +593,7 @@ export function Navbar() {
         { name: 'COMPRAS', icon: ShoppingCart, url: `/projects/${activeProject?.id}/shop`, permissionId: 'purchasing' },
         { name: 'ALMACENES', icon: Package, url: `/projects/${activeProject?.id}/warehouse`, permissionId: 'warehouses' },
         { name: 'CONTABILIDAD', icon: Banknote, url: `/projects/${activeProject?.id}/accounting`, permissionId: 'accounting' },
-        { name: 'DOCS', icon: FolderOpen, url: `/projects/${activeProject?.id}/documentation`, permissionId: 'documents' },
+        { name: 'DOCUMENTOS', icon: FolderOpen, url: `/projects/${activeProject?.id}/documentation`, permissionId: 'documents' },
         { name: 'TAREAS', icon: CheckSquare, url: `/projects/${activeProject?.id}/tasks`, permissionId: 'tasks' },
         { name: 'BITACORA', icon: BookOpen, url: null, onClick: () => setIsLogOpen(true), permissionId: null },
         { name: 'EQUIPO', icon: Users, url: null, onClick: () => setIsTeamOpen(true), permissionId: null },
@@ -651,7 +651,7 @@ export function Navbar() {
             <div className="flex items-center gap-6">
                 <Link href="/dashboard" className="flex items-center space-x-2 mr-4">
                     <div>
-                        <Image src="/Grupo.svg" alt="Logo" width={24} height={24} />
+                        <Image src="/Grupo.svg" className='h-8 w-8' alt="grupo" width={24} height={24} />
                     </div>
                     <span className="text-lg font-black tracking-tighter font-headline text-primary uppercase hidden sm:block">
                         Bim<span className="text-primary/50">us</span>
@@ -720,13 +720,13 @@ export function Navbar() {
                                         </NavigationMenuLink>
                                         <NavigationMenuLink asChild>
                                             <Link href="/library/construction/items" className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-primary transition-all">
-                                                <Layers className="h-4 w-4" />
+                                                <Boxes className="h-4 w-4" />
                                                 <span className="text-[10px] font-black uppercase tracking-widest">Items / Partidas</span>
                                             </Link>
                                         </NavigationMenuLink>
                                         <NavigationMenuLink asChild>
                                             <Link href="/library/construction/assets" className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-primary transition-all">
-                                                <Truck className="h-4 w-4" />
+                                                <Drill className="h-4 w-4" />
                                                 <span className="text-[10px] font-black uppercase tracking-widest">Activos Fijos</span>
                                             </Link>
                                         </NavigationMenuLink>
@@ -843,7 +843,7 @@ export function Navbar() {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="text-muted-foreground hover:text-primary h-9 w-9 rounded-xl hover:bg-secondary transition-all"
+                    className="text-muted-foreground hover:text-primary h-9 w-9 rounded-xl hover:bg-secondary transition-all cursor-pointer"
                     onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                 >
                     {theme === 'dark' ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />}
@@ -851,7 +851,7 @@ export function Navbar() {
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary relative h-9 w-9 rounded-xl hover:bg-secondary transition-all">
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary relative h-9 w-9 rounded-xl hover:bg-secondary transition-all cursor-pointer">
                             <Calendar className="h-4.5 w-4.5" />
                             {upcomingEvents.length > 0 && (
                                 <span className="absolute top-2 right-2 w-3 h-3 bg-amber-500 rounded-full border-2 border-background animate-pulse"></span>
@@ -918,7 +918,7 @@ export function Navbar() {
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary relative h-9 w-9 rounded-xl hover:bg-secondary transition-all">
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary relative h-9 w-9 rounded-xl hover:bg-secondary transition-all cursor-pointer">
                             <CheckSquare className="h-4.5 w-4.5" />
                             {pendingTasksCount > 0 && (
                                 <span className="absolute top-2 right-2 w-3 h-3 bg-amber-500 rounded-full border-2 border-background animate-pulse"></span>
@@ -983,7 +983,7 @@ export function Navbar() {
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary relative h-9 w-9 rounded-xl hover:bg-secondary transition-all">
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary relative h-9 w-9 rounded-xl hover:bg-secondary transition-all cursor-pointer">
                             <Bell className="h-4.5 w-4.5" />
                             {unreadCount > 0 && (
                                 <span className="absolute top-2 right-2 w-3 h-3 bg-amber-500 rounded-full border-2 border-background animate-pulse"></span>
@@ -1015,7 +1015,7 @@ export function Navbar() {
                                                         <p className="text-[11px] font-bold uppercase leading-tight">{n.title}</p>
                                                         <button
                                                             onClick={() => handleDeleteNotification(n.id)}
-                                                            className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                                                         >
                                                             <Trash2 className="h-3 w-3" />
                                                         </button>
@@ -1029,7 +1029,7 @@ export function Navbar() {
                                             {!n.isRead && (
                                                 <button
                                                     onClick={() => handleMarkAsRead(n.id)}
-                                                    className="absolute bottom-2 right-2 p-1 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary transition-all shadow-lg"
+                                                    className="absolute bottom-2 right-2 p-1 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary transition-all cursor-pointer"
                                                     title="Marcar como leída"
                                                 >
                                                     <Check className="h-2.5 w-2.5" />
@@ -1142,13 +1142,13 @@ export function Navbar() {
                             </div>
 
                             <DialogFooter className="p-6 border-t border-accent bg-card">
-                                <Button type="button" variant="ghost" onClick={() => setIsNewTaskOpen(false)} className="text-[11px] font-black uppercase tracking-widest h-12 px-8">
+                                <Button type="button" variant="ghost" onClick={() => setIsNewTaskOpen(false)} className="text-[11px] font-black uppercase tracking-widest h-12 px-8 cursor-pointer">
                                     CANCELAR
                                 </Button>
                                 <Button
                                     type="submit"
                                     disabled={isSubmittingTask || isFetchingTaskProjects}
-                                    className="bg-primary text-background font-black uppercase text-[11px] h-12 px-10 tracking-widest "
+                                    className="bg-primary text-background font-black uppercase text-[11px] h-12 px-10 tracking-widest cursor-pointer"
                                 >
                                     {isSubmittingTask ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                                     CREAR
@@ -1230,13 +1230,13 @@ export function Navbar() {
                             </div>
 
                             <DialogFooter className="p-6 border-t border-accent bg-card">
-                                <Button type="button" variant="ghost" onClick={() => setIsNewEventOpen(false)} className="text-[11px] font-black uppercase tracking-widest h-12 px-8">
+                                <Button type="button" variant="ghost" onClick={() => setIsNewEventOpen(false)} className="text-[11px] font-black uppercase tracking-widest h-12 px-8 cursor-pointer">
                                     CANCELAR
                                 </Button>
                                 <Button
                                     type="submit"
                                     disabled={isSubmittingEvent || isFetchingEventProjects}
-                                    className="bg-primary text-background font-black uppercase text-[11px] h-12 px-10 tracking-widest "
+                                    className="bg-primary text-background font-black uppercase text-[11px] h-12 px-10 tracking-widest cursor-pointer"
                                 >
                                     {isSubmittingEvent ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                                     CREAR
@@ -1250,7 +1250,7 @@ export function Navbar() {
                 <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="relative h-11 flex items-center gap-3 px-3 hover:bg-secondary rounded-xl border border-transparent hover:border-white/5 transition-all">
+                            <Button variant="ghost" className="relative h-11 flex items-center gap-3 px-3 hover:bg-secondary rounded-xl border border-transparent hover:border-white/5 transition-all cursor-pointer">
                                 <div className="flex flex-col items-end leading-none sm:flex">
                                     <span className="text-xs font-bold text-primary uppercase tracking-tight">{user?.name || 'Usuario'}</span>
                                     <span className="text-[9px] text-primary font-black uppercase tracking-widest mt-0.5">{user?.role || 'Viewer'}</span>
@@ -1348,7 +1348,7 @@ export function Navbar() {
                                 </ScrollArea>
 
                                 <div className="p-6 border-t border-white/5">
-                                    <Button variant="ghost" onClick={logout} className="w-full justify-start gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive text-[10px] font-black uppercase tracking-widest h-11 rounded-xl">
+                                    <Button variant="ghost" onClick={logout} className="w-full justify-start gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive text-[10px] font-black uppercase tracking-widest h-11 rounded-xl cursor-pointer">
                                         <LogOut className="h-4 w-4" /> Cerrar Sesión
                                     </Button>
                                 </div>
@@ -1406,7 +1406,7 @@ export function Navbar() {
                                                 </div>
                                             </div>
                                             <div className="pt-6 flex justify-end">
-                                                <Button className="bg-primary text-background font-black uppercase text-[10px] h-11 px-10 tracking-widest ">
+                                                <Button className="bg-primary text-background font-black uppercase text-[10px] h-11 px-10 tracking-widest cursor-pointer">
                                                     Actualizar Perfil
                                                 </Button>
                                             </div>
@@ -1429,7 +1429,7 @@ export function Navbar() {
                                                             <p className="text-[10px] text-muted-foreground uppercase font-black opacity-40">Último cambio: Hace 3 meses</p>
                                                         </div>
                                                     </div>
-                                                    <Button variant="default" className="text-[10px] font-black uppercase h-9 px-6 border-accent hover:bg-primary/40">Cambiar</Button>
+                                                    <Button variant="default" className="text-[10px] font-black uppercase h-9 px-6 border-accent hover:bg-primary/40 cursor-pointer">Cambiar</Button>
                                                 </div>
                                                 <div className="p-6 rounded-2xl bg-card border border-accent flex items-center justify-between group transition-all">
                                                     <div className="flex items-center gap-4">
@@ -1441,7 +1441,7 @@ export function Navbar() {
                                                             <p className="text-[10px] text-muted-foreground uppercase font-black opacity-40">Aumente la seguridad de su cuenta</p>
                                                         </div>
                                                     </div>
-                                                    <Button variant="default" className="text-[10px] font-black uppercase h-9 px-6 border-accent hover:bg-primary/40">Configurar</Button>
+                                                    <Button variant="default" className="text-[10px] font-black uppercase h-9 px-6 border-accent hover:bg-primary/40 cursor-pointer">Configurar</Button>
                                                 </div>
                                             </div>
                                         </TabsContent>
@@ -1584,7 +1584,7 @@ export function Navbar() {
                             <div className="bg-secondary border-b border-accent shrink-0">
                                 <TabsList className="h-14 bg-transparent p-0 gap-0 w-full" variant="default">
                                     <TabsTrigger value="informacion" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">INFORMACIÓN</TabsTrigger>
-                                    <TabsTrigger value="parametros" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary border-x">PARÁMETROS ECONÓMICOS</TabsTrigger>
+                                    <TabsTrigger value="parametros" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary border-x">PARÁMETROS</TabsTrigger>
                                     <TabsTrigger value="niveles" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">NIVELES</TabsTrigger>
                                     <TabsTrigger value="modelobim" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">MODELO</TabsTrigger>
                                     <TabsTrigger value="permisos" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">PERMISOS</TabsTrigger>
@@ -1667,13 +1667,13 @@ export function Navbar() {
                                 <TabsContent value="niveles" className="mt-0 space-y-6">
                                     <div className="flex items-center justify-between mb-4">
                                         <div><h3 className="text-sm font-bold uppercase">Gestión de Niveles</h3></div>
-                                        <Button onClick={handleAddLevel} size="sm" variant="default" className="bg-primary border-accent text-[10px] font-black uppercase text-background"><PlusCircle className="h-3.5 w-3.5 mr-2" /> Añadir Nivel</Button>
+                                        <Button onClick={handleAddLevel} size="sm" variant="default" className="bg-primary border-accent text-[10px] font-black uppercase text-background cursor-pointer"><PlusCircle className="h-3.5 w-3.5 mr-2" /> Añadir Nivel</Button>
                                     </div>
                                     <div className="space-y-3">{localLevels.map((lvl, idx) => (
                                         <div key={idx} className="flex items-center gap-4 bg-card border border-accent p-3 rounded-xl group hover:border-accent transition-all">
                                             <div className="h-8 w-8 rounded-lg bg-card flex items-center justify-center text-[10px] font-black text-muted-foreground">{idx + 1}</div>
                                             <Input value={lvl.name} onChange={(e) => handleLevelNameChange(idx, e.target.value)} className="flex-1 bg-card border-accent font-bold uppercase text-xs focus-visible:ring-0" />
-                                            <Button variant="ghost" size="icon" onClick={() => handleRemoveLevel(idx)} className="opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => handleRemoveLevel(idx)} className="opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 cursor-pointer"><Trash2 className="h-4 w-4" /></Button>
                                         </div>
                                     ))}</div>
                                 </TabsContent>
@@ -1716,14 +1716,14 @@ export function Navbar() {
                                                                                 {mod.label}
                                                                             </td>
                                                                             <td className="px-4 py-3 text-center">
-                                                                                <Switch 
-                                                                                    checked={modPerms.view} 
+                                                                                <Switch
+                                                                                    checked={modPerms.view}
                                                                                     onCheckedChange={(val) => handleTogglePermission(member.id, mod.id, 'view', val)}
                                                                                 />
                                                                             </td>
                                                                             <td className="px-4 py-3 text-center">
-                                                                                <Switch 
-                                                                                    checked={modPerms.edit} 
+                                                                                <Switch
+                                                                                    checked={modPerms.edit}
                                                                                     onCheckedChange={(val) => handleTogglePermission(member.id, mod.id, 'edit', val)}
                                                                                 />
                                                                             </td>
@@ -1750,8 +1750,8 @@ export function Navbar() {
                                 </TabsContent>
                             </ScrollArea>
                             <DialogFooter className="p-8 border-t border-accent  shrink-0">
-                                <Button variant="ghost" onClick={() => setIsConfigOpen(false)} className="text-[11px] font-black uppercase tracking-widest h-12 px-8">CANCELAR</Button>
-                                <Button onClick={handleSaveConfig} disabled={isSubmittingProject} className="bg-primary text-background font-black uppercase text-[11px] h-12 px-10 tracking-widest ">{isSubmittingProject ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} GUARDAR</Button>
+                                <Button variant="ghost" onClick={() => setIsConfigOpen(false)} className="text-[11px] font-black uppercase tracking-widest h-12 px-8 cursor-pointer">CANCELAR</Button>
+                                <Button onClick={handleSaveConfig} disabled={isSubmittingProject} className="bg-primary text-background font-black uppercase text-[11px] h-12 px-10 tracking-widest cursor-pointer">{isSubmittingProject ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} GUARDAR</Button>
                             </DialogFooter>
                         </Tabs>
                     </DialogContent>
@@ -1783,7 +1783,7 @@ export function Navbar() {
                                                 <Badge variant="outline" className="text-[7px] h-4 border-accent bg-card font-black uppercase mt-1">{member.type}</Badge>
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleRemoveTeamMember(member.id)} disabled={isSubmittingProject}><Trash2 className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => handleRemoveTeamMember(member.id)} disabled={isSubmittingProject}><Trash2 className="h-4 w-4" /></Button>
                                     </div>
                                 ))}</div></ScrollArea></TabsContent>
                                 <TabsContent value="add" className="h-full m-0 flex flex-col overflow-hidden">
@@ -1797,7 +1797,7 @@ export function Navbar() {
                                         <div className="space-y-3">{isFetchingLibrary ? <div className="flex flex-col items-center justify-center py-20 opacity-20 gap-3"><Loader2 className="h-8 w-8 animate-spin" /><p className="text-[10px] font-black uppercase tracking-widest">Consultando Directorio...</p></div> : filteredLibraryContacts.map((contact) => (
                                             <div key={contact.id} className="flex items-center justify-between p-4 rounded-xl bg-white/2 border border-white/5 hover:bg-white/5 transition-all group">
                                                 <div className="flex items-center gap-4"><Avatar className="h-10 w-10 border border-white/10 opacity-60 group-hover:opacity-100 transition-opacity"><AvatarFallback className="text-[10px] font-black uppercase">{contact.name[0]}</AvatarFallback></Avatar><div className="flex flex-col"><span className="text-xs font-bold text-white uppercase">{contact.name}</span><span className="text-[8px] text-muted-foreground uppercase font-black tracking-widest mt-1">{contact.type}</span></div></div>
-                                                <Button size="sm" className="h-8 bg-secondary hover:bg-primary/90 text-primary hover:text-black font-black text-[9px] uppercase tracking-widest px-4 rounded-lg" onClick={() => handleAddTeamMember(contact.id)} disabled={isSubmittingProject}><Plus className="h-3 w-3 mr-1.5" /> Adicionar</Button>
+                                                <Button size="sm" className="h-8 bg-secondary hover:bg-primary/90 text-primary hover:text-black font-black text-[9px] uppercase tracking-widest px-4 rounded-lg cursor-pointer" onClick={() => handleAddTeamMember(contact.id)} disabled={isSubmittingProject}><Plus className="h-3 w-3 mr-1.5" /> Adicionar</Button>
                                             </div>
                                         ))}</div>
                                     </ScrollArea>
@@ -1830,7 +1830,7 @@ export function Navbar() {
                                             <Button
                                                 onClick={handleInviteSubmit}
                                                 disabled={isSubmittingProject || !inviteEmail}
-                                                className="w-full bg-primary text-black font-black uppercase text-[11px] h-12 tracking-widest shadow-xl shadow-primary/20"
+                                                className="w-full bg-primary text-black font-black uppercase text-[11px] h-12 tracking-widest shadow-xl shadow-primary/20 cursor-pointer"
                                             >
                                                 {isSubmittingProject ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                                                 Enviar Invitación de Colaboración
@@ -1840,7 +1840,7 @@ export function Navbar() {
                                 </TabsContent>
                             </div>
                         </Tabs>
-                        <DialogFooter className="p-4 border-t border-white/5 bg-black shrink-0"><Button variant="ghost" onClick={() => setIsTeamOpen(false)} className="w-full text-[9px] font-black uppercase tracking-[0.2em] h-10 hover:bg-white/5">Cerrar Terminal de Equipo</Button></DialogFooter>
+                        <DialogFooter className="p-4 border-t border-white/5 bg-black shrink-0"><Button variant="ghost" onClick={() => setIsTeamOpen(false)} className="w-full text-[9px] font-black uppercase tracking-[0.2em] h-10 hover:bg-white/5 cursor-pointer">Cerrar Terminal de Equipo</Button></DialogFooter>
                     </DialogContent>
                 </Dialog>
             )}
@@ -1875,7 +1875,7 @@ export function Navbar() {
                                 )}
                             </ScrollArea>
                         </div>
-                        <DialogFooter className="p-4 border-t border-accent bg-card shrink-0"><Button variant="ghost" onClick={() => setIsLogOpen(false)} className="w-full text-[9px] font-black uppercase h-10 hover:bg-white/5 bg-primary text-background">Cerrar Historial</Button></DialogFooter>
+                        <DialogFooter className="p-4 border-t border-accent bg-card shrink-0"><Button variant="ghost" onClick={() => setIsLogOpen(false)} className="w-full text-[9px] font-black uppercase h-10 hover:bg-white/5 bg-primary text-background cursor-pointer">Cerrar Historial</Button></DialogFooter>
                     </DialogContent>
                 </Dialog>
             )}

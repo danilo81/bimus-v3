@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../../../c
 import Link from 'next/link';
 import { LogIn, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '../../../hooks/use-toast';
-import { login as loginAction } from '../actions';
+import { login as loginAction } from '@/actions';
 import { User } from '../../../lib/types';
 import Image from 'next/image';
 
@@ -55,7 +55,7 @@ export default function LoginPage() {
                     </div>
                     <div className='flex flex-col items-center justify-center'>
                         <div className='flex flex-col items-center justify-center  bg-card w-fit'>
-                        <CardTitle className="text-2xl font-headline font-bold bg-card ">Iniciar Sesión</CardTitle>
+                            <CardTitle className="text-2xl font-headline font-bold bg-card ">Iniciar Sesión</CardTitle>
                         </div>
                     </div>
                 </CardHeader>

@@ -29,6 +29,7 @@ import { getProjects, getGlobalFinancialStats, getGlobalWarehouseMovements, getG
 import { getTasks } from '../../app/tasks/actions';
 import { getContacts } from '../../app/library/contacts/actions';
 import { getProjectBalances } from '../../app/accounting/actions';
+import { getUpcomingEvents } from '../../app/calendar/actions';
 import { cn } from '../../lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 
@@ -37,7 +38,7 @@ export default function DashboardPage() {
         activeProjects: '0',
         pendingTasks: '0',
         contactsCount: '0',
-        upcomingEvents: '3' // Valor inicial mockeado
+        upcomingEvents: '0' // Valor inicial corregido
     });
     const [projectBalances, setProjectBalances] = useState<any[]>([]);
     const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
@@ -55,7 +56,7 @@ export default function DashboardPage() {
 
         async function fetchDashboardStats() {
             try {
-                const [projects, tasks, contacts, finStats, balances, movements, logs, pos] = await Promise.all([
+                const [projects, tasks, contacts, finStats, balances, movements, logs, pos, upcomingEvents] = await Promise.all([
                     getProjects(),
                     getTasks(),
                     getContacts(),
@@ -63,7 +64,8 @@ export default function DashboardPage() {
                     getProjectBalances(),
                     getGlobalWarehouseMovements(),
                     getGlobalSiteLogs(),
-                    getGlobalPurchaseOrders()
+                    getGlobalPurchaseOrders(),
+                    getUpcomingEvents()
                 ]);
 
                 const activeCount = projects.filter((p: { status: string; }) => p.status === 'activo' || p.status === 'construccion').length;
@@ -74,7 +76,7 @@ export default function DashboardPage() {
                     activeProjects: activeCount.toString(),
                     pendingTasks: pendingCount.toString(),
                     contactsCount: contacts.length.toString(),
-                    upcomingEvents: '3' // Aquí podrías integrar el conteo real de eventos de calendario
+                    upcomingEvents: upcomingEvents.length.toString() // Integrado conteo real
                 });
 
                 setProjectBalances(activeBalances);

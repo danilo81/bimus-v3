@@ -213,7 +213,7 @@ export default function ChaptersPage() {
                     if (!open) setChapterName('');
                 }}>
                     <DialogTrigger asChild>
-                        <Button className="bg-primary hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-6 h-11 ">
+                        <Button className="bg-primary hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-6 h-11 cursor-pointer ">
                             <Plus className="mr-2 h-4 w-4" /> Nuevo Capítulo
                         </Button>
                     </DialogTrigger>
@@ -246,10 +246,10 @@ export default function ChaptersPage() {
                                 </div>
                             </div>
                             <DialogFooter className="p-4 border-t border-accent gap-3 items-center">
-                                <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting} className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary">
+                                <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting} className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary cursor-pointer">
                                     Cancelar
                                 </Button>
-                                <Button type="submit" className="bg-primary hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 " disabled={isSubmitting}>
+                                <Button type="submit" className="bg-primary hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 cursor-pointer " disabled={isSubmitting}>
                                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                                     Guardar Capítulo
                                 </Button>
@@ -280,7 +280,7 @@ export default function ChaptersPage() {
                                             <TableCell className="text-right px-6">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10">
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 cursor-pointer">
                                                             <MoreVertical className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
@@ -348,10 +348,10 @@ export default function ChaptersPage() {
                             </div>
                         </div>
                         <DialogFooter className="p-4  border-t border-accent gap-3 items-center">
-                            <Button type="button" variant="ghost" onClick={() => setIsEditOpen(false)} disabled={isSubmitting} className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary">
+                            <Button type="button" variant="ghost" onClick={() => setIsEditOpen(false)} disabled={isSubmitting} className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary cursor-pointer">
                                 Cancelar
                             </Button>
-                            <Button type="submit" className="bg-primary hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11" disabled={isSubmitting}>
+                            <Button type="submit" className="bg-primary hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 cursor-pointer" disabled={isSubmitting}>
                                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                                 Guardar Cambios
                             </Button>

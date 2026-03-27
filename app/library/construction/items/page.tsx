@@ -33,7 +33,8 @@ import {
     AlertCircle,
     Printer,
     ArrowRight,
-    Check
+    Check,
+    Boxes
 } from 'lucide-react';
 import {
     Dialog,
@@ -84,6 +85,7 @@ interface ItemSupply {
     quantity: number;
     subtotal: number;
     typology: string;
+    isNew?: boolean;
 }
 
 export default function ItemsPage() {
@@ -118,6 +120,7 @@ export default function ItemsPage() {
         notes: ''
     });
     const [selectedSupplies, setSelectedSupplies] = useState<ItemSupply[]>([]);
+    const [selectedSuppliesSearchTerm, setSelectedSuppliesSearchTerm] = useState('');
     const [qualityControls, setQualityControls] = useState<any[]>([]);
 
     const [newSupplyData, setNewSupplyData] = useState({
@@ -169,6 +172,13 @@ export default function ItemsPage() {
             s.typology.toLowerCase().includes(supplySearchTerm.toLowerCase())
         );
     }, [dbSupplies, supplySearchTerm]);
+
+    const filteredSelectedSupplies = useMemo(() => {
+        return selectedSupplies.filter(s =>
+            s.description.toLowerCase().includes(selectedSuppliesSearchTerm.toLowerCase()) ||
+            s.typology.toLowerCase().includes(selectedSuppliesSearchTerm.toLowerCase())
+        );
+    }, [selectedSupplies, selectedSuppliesSearchTerm]);
 
     const summary = useMemo(() => {
         const mat = selectedSupplies.filter(s => s.typology === 'Material' || s.typology === 'Insumo').reduce((a, b) => a + b.subtotal, 0);
@@ -371,7 +381,7 @@ export default function ItemsPage() {
                         <div class="company">BIMUS</div>
                         <div class="doc-type">
                             <h2>Análisis de Precio Unitario</h2>
-                            <p>APU — Catálogo Maestro de Construcción</p>
+                            <p>APU - Catálogo Maestro de Construcción</p>
                         </div>
                     </div>
 
@@ -381,7 +391,7 @@ export default function ItemsPage() {
                             <div class="value">${item.chapter}</div>
                         </div>
                         <div class="info-cell" style="grid-column: span 2">
-                            <div class="label">Descripción del Ítem</div>
+                            <div class="label">Descripción del Item</div>
                             <div class="value">${item.description}</div>
                         </div>
                         <div class="info-cell">
@@ -476,39 +486,41 @@ export default function ItemsPage() {
         setIsDialogOpen(true);
     };
 
-    const handleCreateSupplySubmit = async (e: React.FormEvent) => {
+    const handleCreateSupplySubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        e.stopPropagation();
         if (!user?.id) return;
-        setIsCreatingSupply(true);
+
+
+        const tempId = `temp-${Date.now()}`;
+        const price = parseFloat(newSupplyData.price) || 0;
+
+        const newLocalSupply: ItemSupply = {
+            id: tempId,
+            description: newSupplyData.description,
+            unit: newSupplyData.unit,
+            price: price,
+            quantity: 1,
+            subtotal: price,
+            typology: newSupplyData.typology,
+            isNew: true
+        };
+
+        setSelectedSupplies(prev => [...prev, newLocalSupply]);
+
+        toast({
+            title: "Insumo añadido",
+            description: "Se ha añadido a la lista del ítem. Se guardará permanentemente al guardar el ítem.",
+        });
+
+        // Limpiar campos pero NO cerrar el modal (por petición del usuario)
+        setNewSupplyData({
+            typology: 'Material',
+            description: '',
+            unit: newSupplyData.unit, // Mantener la unidad anterior puede ser Ãºtil
+            price: '0'
+        });
         setSupplyCreationError(null);
-
-        try {
-            const result = await createSupply({
-                ...newSupplyData,
-                price: parseFloat(newSupplyData.price),
-                userId: user.id
-            });
-
-            if (result.success && result.supply) {
-                const newSupply = result.supply as any;
-                setDbSupplies(prev => [newSupply, ...prev]);
-                handleAddSupply(newSupply);
-                setIsCreateSupplyDialogOpen(false);
-                setNewSupplyData({
-                    typology: 'Material',
-                    description: '',
-                    unit: dbUnits.length > 0 ? dbUnits[0].abbreviation : '',
-                    price: '0'
-                });
-            } else if (result.error) {
-                setSupplyCreationError(result.error);
-            }
-        } catch (error) {
-            console.error(error);
-            setSupplyCreationError("Error inesperado al crear el insumo.");
-        } finally {
-            setIsCreatingSupply(false);
-        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -541,7 +553,7 @@ export default function ItemsPage() {
         } else {
             const result = await createConstructionItem(itemData);
             if (result.success) {
-                toast({ title: "Item creado", description: "El nuevo ítem ha sido añadido al catálogo." });
+                toast({ title: "Item creado", description: "El nuevo Ã­tem ha sido aÃ±adido al catÃ¡logo." });
                 fetchInitialData();
                 setIsDialogOpen(false);
                 resetForm();
@@ -559,6 +571,7 @@ export default function ItemsPage() {
         setIsEditMode(false);
         setEditingItemId(null);
         setSupplySearchTerm('');
+        setSelectedSuppliesSearchTerm('');
     };
 
     if (!isMounted) return null;
@@ -577,7 +590,7 @@ export default function ItemsPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card w-fit">
                 <div>
                     <h1 className="text-3xl font-bold font-headline flex items-center gap-3 text-foreground">
-                        <Box className="h-8 w-8 text-primary" /> Items de Construcción
+                        <Boxes className="h-8 w-8 text-primary" /> Items de Construcción
                     </h1>
                     <p className="text-muted-foreground mt-1">Catálogo de partidas y análisis de costos unitarios.</p>
                 </div>
@@ -598,18 +611,18 @@ export default function ItemsPage() {
                     if (!open) resetForm();
                 }}>
                     <DialogTrigger asChild>
-                        <Button className="bg-primary hover:bg-muted/50 text-background font-bold px-8 h-11  shadow-primary/20" onClick={() => {
+                        <Button className="bg-primary hover:bg-primary/40 text-background font-bold px-8 h-11  shadow-primary/20 cursor-pointer" onClick={() => {
                             resetForm();
                             setIsEditMode(false);
                         }}>
                             <Plus className="mr-2 h-4 w-4" /> Nuevo Item
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-250 w-full max-h-[95vh] overflow-hidden bg-card border-muted/50 p-0 flex flex-col shadow-2xl">
+                    <DialogContent className="sm:max-w-250 w-full max-h-[95vh] overflow-hidden bg-card border-muted/50 p-0 flex flex-col ">
                         <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
                             <div className="p-6 border-b border-accent  flex flex-row items-center gap-4 shrink-0">
                                 <div className="p-2 bg-primary/20 rounded-lg border border-primary/20">
-                                    <Box className="h-6 w-6 text-primary" />
+                                    <Boxes className="h-6 w-6 text-primary" />
                                 </div>
                                 <div className="flex-1">
                                     <DialogTitle className="text-xl font-bold uppercase tracking-tight text-primary leading-none">
@@ -622,12 +635,12 @@ export default function ItemsPage() {
                             </div>
 
                             <Tabs defaultValue="informacion" className="flex-1 flex flex-col overflow-hidden">
-                                <div className="px-6 bg-accent  border-b border-accent">
+                                <div className="px-6 border-accent">
                                     <TabsList className="h-14 bg-transparent p-0 gap-8">
-                                        <TabsTrigger value="informacion" className="h-full rounded-sm border-none border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">
+                                        <TabsTrigger value="informacion" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
                                             Análisis Costos
                                         </TabsTrigger>
-                                        <TabsTrigger value="calidad" className="h-full rounded-sm border-none border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">
+                                        <TabsTrigger value="calidad" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
                                             Control de Calidad
                                         </TabsTrigger>
                                     </TabsList>
@@ -655,7 +668,7 @@ export default function ItemsPage() {
                                                                 </Select>
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Descripción ítem</Label>
+                                                                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Descripción Ítem</Label>
                                                                 <Input
                                                                     className="bg-background/50 border-accent h-11 text-primary uppercase text-xs font-bold"
                                                                     placeholder="Nombre de la partida..."
@@ -681,7 +694,7 @@ export default function ItemsPage() {
                                                                     </Select>
                                                                 </div>
                                                                 <div className="space-y-2">
-                                                                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Rendimiento</Label>
+                                                                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Rendimiento Hr</Label>
                                                                     <Input
                                                                         className="bg-background/50 border-accent h-11 text-primary font-mono font-bold"
                                                                         type="number"
@@ -741,7 +754,7 @@ export default function ItemsPage() {
                                                 </div>
                                             </div>
 
-                                            <Separator className="border-white/10" />
+                                            <Separator className="border-accent" />
 
                                             <div className="space-y-4">
                                                 <div className="flex flex-wrap gap-4 items-center p-4 rounded-xl border ">
@@ -753,14 +766,14 @@ export default function ItemsPage() {
                                                             <Button
                                                                 type="button"
                                                                 variant="outline"
-                                                                className="h-11 text-primary font-black text-[10px] uppercase tracking-widest px-8 hover:bg-muted/50 bg-secondary"
+                                                                className="h-11 text-primary font-black text-[10px] uppercase tracking-widest px-8 hover:bg-muted/50 bg-secondary cursor-pointer"
                                                             >
                                                                 <Plus className="mr-2 h-4 w-4 text-primary" /> Crear Nuevo Insumo
                                                             </Button>
                                                         </DialogTrigger>
                                                         <DialogContent className="sm:max-w-112.5 bg-card border-muted/50 shadow-2xl p-0 overflow-hidden">
-                                                            <form onSubmit={handleCreateSupplySubmit} className="flex flex-col">
-                                                                <div className="p-6 border-b borderaccent flex flex-row items-center gap-4 shrink-0">
+                                                            <div className="flex flex-col">
+                                                                <div className="p-6 border-b border-accent flex flex-row items-center gap-4 shrink-0">
                                                                     <div className="p-2 bg-primary/20 rounded-lg border border-primary/20">
                                                                         <Package className="h-5 w-5 text-primary" />
                                                                     </div>
@@ -780,10 +793,10 @@ export default function ItemsPage() {
                                                                     <div className="space-y-2">
                                                                         <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Tipología</Label>
                                                                         <Select value={newSupplyData.typology} onValueChange={(val) => setNewSupplyData(p => ({ ...p, typology: val }))}>
-                                                                            <SelectTrigger className="bg-background/50 borderaccent h-11 text-primary text-xs w-full uppercase font-bold">
+                                                                            <SelectTrigger className="bg-background/50 border-accent h-11 text-primary text-xs w-full uppercase font-bold">
                                                                                 <SelectValue placeholder="Tipo" />
                                                                             </SelectTrigger>
-                                                                            <SelectContent className="bg-card border-white/10">
+                                                                            <SelectContent className="bg-card border-accent">
                                                                                 <SelectItem value="Material" className="uppercase text-[10px] font-bold">Material</SelectItem>
                                                                                 <SelectItem value="Mano de Obra" className="uppercase text-[10px] font-bold">Mano de Obra</SelectItem>
                                                                                 <SelectItem value="Equipo" className="uppercase text-[10px] font-bold">Equipo</SelectItem>
@@ -793,10 +806,17 @@ export default function ItemsPage() {
                                                                     <div className="space-y-2">
                                                                         <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Descripción</Label>
                                                                         <Input
-                                                                            className="bg-background/50 borderaccent h-11 text-primary text-xs uppercase font-bold"
+                                                                            className="bg-background/50 border-accent h-11 text-primary text-xs uppercase font-bold"
                                                                             placeholder="Nombre del insumo..."
                                                                             value={newSupplyData.description}
                                                                             onChange={(e) => setNewSupplyData(p => ({ ...p, description: e.target.value }))}
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === 'Enter') {
+                                                                                    e.preventDefault();
+                                                                                    e.stopPropagation();
+                                                                                    handleCreateSupplySubmit(e as any);
+                                                                                }
+                                                                            }}
                                                                             required
                                                                         />
                                                                     </div>
@@ -820,30 +840,47 @@ export default function ItemsPage() {
                                                                                 className="bg-background/50 border-accent h-11 text-primary text-xs font-mono font-bold"
                                                                                 value={newSupplyData.price}
                                                                                 onChange={(e) => setNewSupplyData(p => ({ ...p, price: e.target.value }))}
+                                                                                onKeyDown={(e) => {
+                                                                                    if (e.key === 'Enter') {
+                                                                                        e.preventDefault();
+                                                                                        e.stopPropagation();
+                                                                                        handleCreateSupplySubmit(e as any);
+                                                                                    }
+                                                                                }}
                                                                                 required
                                                                             />
                                                                         </div>
                                                                     </div>
                                                                 </div>
                                                                 <DialogFooter className="p-6 border-t border-accent gap-3 items-center">
-                                                                    <Button type="button" variant="ghost" onClick={() => setIsCreateSupplyDialogOpen(false)} disabled={isCreatingSupply} className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary">Cancelar</Button>
-                                                                    <Button type="submit" disabled={isCreatingSupply} className="bg-secondary hover:bg-muted/40 text-primary font-black text-[10px] uppercase tracking-widest h-11 px-8 ">
-                                                                        {isCreatingSupply ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-2 h-4 w-4" /> Guardar Insumo</>}
+                                                                    <Button type="button" variant="ghost" onClick={() => setIsCreateSupplyDialogOpen(false)} className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary cursor-pointer">Cancelar</Button>
+                                                                    <Button type="button" onClick={handleCreateSupplySubmit} className="bg-secondary hover:bg-muted/40 text-primary font-black text-[10px] uppercase tracking-widest h-11 px-8 cursor-pointer">
+                                                                        <Save className="mr-2 h-4 w-4" /> Añadir Insumo
                                                                     </Button>
                                                                 </DialogFooter>
-                                                            </form>
+                                                            </div>
                                                         </DialogContent>
                                                     </Dialog>
+
+                                                    <div className="relative w-full max-w-xs">
+                                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                                        <Input
+                                                            placeholder="BUSCAR INSUMO AÑADIDO..."
+                                                            className="pl-9 h-11 bg-card border-accent text-[10px] font-black uppercase tracking-widest"
+                                                            value={selectedSuppliesSearchTerm}
+                                                            onChange={(e) => setSelectedSuppliesSearchTerm(e.target.value)}
+                                                        />
+                                                    </div>
 
                                                     <div className="flex-1"></div>
 
                                                     <Dialog open={isLibraryDialogOpen} onOpenChange={setIsLibraryDialogOpen}>
                                                         <DialogTrigger asChild>
-                                                            <Button type="button" className="h-11 bg-secondary hover:bg-muted/50 text-primary font-black text-[10px] uppercase tracking-widest px-8  shadow-primary/10">
+                                                            <Button type="button" className="h-11 bg-secondary hover:bg-muted/50 text-primary font-black text-[10px] uppercase tracking-widest px-8  cursor-pointer">
                                                                 Seleccionar de la Librería
                                                             </Button>
                                                         </DialogTrigger>
-                                                        <DialogContent className="sm:max-w-175 bg-card border-accent text-primary p-0 overflow-hidden shadow-2xl flex flex-col h-[80vh]">
+                                                        <DialogContent className="sm:max-w-175 bg-card border-accent text-primary p-0 overflow-hidden  flex flex-col h-[80vh]">
                                                             <div className="p-6 border-b border-accent flex flex-row items-center gap-4 shrink-0">
                                                                 <div className="p-2 bg-primary/20 rounded-lg border border-primary/20">
                                                                     <Layers className="h-6 w-6 text-primary" />
@@ -862,13 +899,13 @@ export default function ItemsPage() {
                                                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                                                     <Input
                                                                         placeholder="BUSCAR POR DESCRIPCIÓN O TIPO..."
-                                                                        className="pl-10 h-11 bg-accent border-accent text-xs uppercase font-bold"
+                                                                        className="pl-10 h-11 bg-card border-accent text-xs uppercase font-bold"
                                                                         value={supplySearchTerm}
                                                                         onChange={(e) => setSupplySearchTerm(e.target.value)}
                                                                     />
                                                                 </div>
                                                                 <div className="border border-accent rounded-xl overflow-hidden flex-1 flex flex-col">
-                                                                    <ScrollArea className="h-100 p-0">
+                                                                    <ScrollArea className="h-100">
                                                                         <Table>
                                                                             <TableHeader className="bg-accent sticky top-0 z-10 backdrop-blur-md">
                                                                                 <TableRow className="border-accent hover:bg-transparent">
@@ -919,10 +956,10 @@ export default function ItemsPage() {
                                                                 </div>
                                                             </div>
                                                             <div className="p-6 border-t border-accent flex justify-end items-center gap-4 shrink-0">
-                                                                <Button type="button" variant="ghost" onClick={() => setIsLibraryDialogOpen(false)} className="text-muted-foreground hover:text-primary hover:bg-accent font-bold text-[10px] uppercase tracking-widest">
+                                                                <Button type="button" variant="ghost" onClick={() => setIsLibraryDialogOpen(false)} className="text-muted-foreground hover:text-primary hover:bg-accent font-bold text-[10px] uppercase tracking-widest cursor-pointer">
                                                                     Cancelar
                                                                 </Button>
-                                                                <Button type="button" onClick={() => setIsLibraryDialogOpen(false)} className="bg-secondary hover:bg-muted/40 text-primary font-black text-[10px] uppercase tracking-widest px-8 h-11 ">
+                                                                <Button type="button" onClick={() => setIsLibraryDialogOpen(false)} className="bg-secondary hover:bg-muted/40 text-primary font-black text-[10px] uppercase tracking-widest px-8 h-11 cursor-pointer ">
                                                                     Cerrar Librería
                                                                 </Button>
                                                             </div>
@@ -945,8 +982,8 @@ export default function ItemsPage() {
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
-                                                            {selectedSupplies.length > 0 ? (
-                                                                selectedSupplies.map((s) => (
+                                                            {filteredSelectedSupplies.length > 0 ? (
+                                                                filteredSelectedSupplies.map((s) => (
                                                                     <TableRow key={s.id} className="border-accent hover:bg-white/2 group transition-colors">
                                                                         <TableCell className="px-6 py-4">
                                                                             <div className="p-2 bg-accent rounded-lg border border-accent w-fit">
@@ -981,7 +1018,7 @@ export default function ItemsPage() {
                                                                 <TableRow>
                                                                     <TableCell colSpan={7} className="text-center py-24 text-muted-foreground text-xs italic">
                                                                         <div className="flex flex-col items-center gap-3">
-                                                                            <Layers className="h-10 w-10 opacity-10" />
+                                                                            <Box className="h-10 w-10 opacity-10" />
                                                                             <p className="text-[10px] font-black uppercase tracking-widest">No hay insumos añadidos.</p>
                                                                         </div>
                                                                     </TableCell>
@@ -1008,7 +1045,7 @@ export default function ItemsPage() {
                                                     <Button
                                                         type="button"
                                                         variant="outline"
-                                                        className="h-9 border-accent text-primary text-[10px] font-black uppercase tracking-widest px-4 hover:bg-accent"
+                                                        className="h-9 border-accent text-primary text-[10px] font-black uppercase tracking-widest px-4 hover:bg-accent cursor-pointer"
                                                         onClick={handlePrintQuality}
                                                     >
                                                         <Printer className="h-3.5 w-3.5 mr-2" /> Protocolo
@@ -1016,7 +1053,7 @@ export default function ItemsPage() {
                                                     <Button
                                                         type="button"
                                                         onClick={handleAddQualityMain}
-                                                        className="h-9 bg-secondary hover:bg-muted/50 text-primary font-black text-[10px] uppercase tracking-widest px-6"
+                                                        className="h-9 bg-secondary hover:bg-muted/50 text-primary font-black text-[10px] uppercase tracking-widest px-6 cursor-pointer"
                                                     >
                                                         <Plus className="mr-2 h-3.5 w-3.5" /> Añadir Punto
                                                     </Button>
@@ -1033,7 +1070,7 @@ export default function ItemsPage() {
                                                                 </div>
                                                                 <Input
                                                                     className="flex-1 bg-transparent border-accent focus:border-primary/30 h-10 text-sm font-bold text-primary placeholder:text-primary/20 uppercase"
-                                                                    placeholder="Descripción del punto de control..."
+                                                                    placeholder="DescripciÃ³n del punto de control..."
                                                                     value={qc.description}
                                                                     onChange={(e) => handleUpdateQualityMain(qc.id, e.target.value)}
                                                                 />
@@ -1053,7 +1090,7 @@ export default function ItemsPage() {
                                                                         <div className="flex-1 relative">
                                                                             <Input
                                                                                 className=" border-accent focus:border-primary/20 h-9 text-xs text-muted-foreground pr-10 uppercase"
-                                                                                placeholder="Sub-punto específico..."
+                                                                                placeholder="Sub-punto especÃ­fico..."
                                                                                 value={sp.description}
                                                                                 onChange={(e) => handleUpdateQualitySub(qc.id, sp.id, e.target.value)}
                                                                             />
@@ -1069,7 +1106,7 @@ export default function ItemsPage() {
                                                                 ))}
                                                                 <button
                                                                     type="button"
-                                                                    className="pl-12 flex items-center gap-2 text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest mt-2"
+                                                                    className="pl-12 flex items-center gap-2 text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest mt-2 cursor-pointer"
                                                                     onClick={() => handleAddQualitySub(qc.id)}
                                                                 >
                                                                     <Plus className="h-3 w-3" /> Añadir sub-punto
@@ -1093,11 +1130,11 @@ export default function ItemsPage() {
                             </Tabs>
 
                             <div className="p-6 border-t border-accent flex justify-end items-center gap-4 shrink-0">
-                                <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="text-muted-foreground hover:text-primary hover:bg-primary/5 font-bold text-[10px] uppercase tracking-widest">
+                                <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="text-muted-foreground hover:text-primary hover:bg-primary/5 font-bold text-[10px] uppercase tracking-widest cursor-pointer">
                                     Cancelar
                                 </Button>
-                                <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-muted/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 ">
-                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><Save className="mr-2 h-4 w-4" /> {isEditMode ? 'Actualizar Ítem' : 'Guardar Ítem'}</>}
+                                <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-muted/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 cursor-pointer">
+                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><Save className="mr-2 h-4 w-4" /> {isEditMode ? 'Actualizar Item' : 'Guardar Item'}</>}
                                 </Button>
                             </div>
                         </form>
@@ -1116,7 +1153,7 @@ export default function ItemsPage() {
                                             <TableHead className="py-4 px-6 text-[12px] font-black uppercase text-muted-foreground">Capítulo</TableHead>
                                             <TableHead className="text-[12px] font-black uppercase text-muted-foreground">Descripción</TableHead>
                                             <TableHead className="text-[12px] font-black uppercase text-muted-foreground">Unidad</TableHead>
-                                            <TableHead className="text-right text-[12px] font-black uppercase text-muted-foreground">Rendimiento</TableHead>
+                                            <TableHead className="text-right text-[12px] font-black uppercase text-muted-foreground">Rendimiento Hr</TableHead>
                                             <TableHead className="text-right text-[12px] font-black uppercase text-muted-foreground">Costo Directo</TableHead>
                                             <TableHead className="text-right px-6 text-[12px] font-black uppercase text-muted-foreground">Acciones</TableHead>
                                         </TableRow>
@@ -1126,7 +1163,7 @@ export default function ItemsPage() {
                                             <TableRow key={item.id} className="hover:bg-muted/20 transition-colors border-muted/50">
                                                 <TableCell>
                                                     <div className="flex items-center gap-2 px-4 py-2">
-                                                        <Layers className="h-4 w-4 text-muted-foreground" />
+
                                                         <span className="text-[14px] font-black text-muted-foreground uppercase tracking-tight">
                                                             {item.chapter?.toString().replace(
                                                                 /\(local\)/i,
@@ -1149,7 +1186,7 @@ export default function ItemsPage() {
                                                 <TableCell className="text-right px-6">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10">
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 cursor-pointer">
                                                                 <MoreVertical className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
@@ -1179,7 +1216,7 @@ export default function ItemsPage() {
                 </Card>
             ) : (
                 <div className="flex flex-col items-center justify-center py-40 border border-dashed border-white/5 rounded-3xl opacity-20">
-                    <Box className="h-16 w-16 mb-4" />
+                    <Boxes className="h-16 w-16 mb-4" />
                     <p className="text-[10px] font-black uppercase tracking-[0.3em]">No se encontraron items registrados.</p>
                 </div>
             )}

@@ -31,7 +31,9 @@ import {
     Check,
     Info,
     Star,
-    History
+    History,
+    UserStar,
+    UserPlus
 } from 'lucide-react';
 import {
     Dialog,
@@ -443,7 +445,7 @@ export default function SuppliesPage() {
                         if (!open) resetForm();
                     }}>
                         <DialogTrigger asChild>
-                            <Button className="bg-primary hover:bg-primary/50 text-background font-black text-[10px] uppercase tracking-widest px-6 h-11 ">
+                            <Button className="bg-primary hover:bg-primary/50 text-background font-black text-[10px] uppercase tracking-widest px-6 h-11 cursor-pointer ">
                                 <Plus className="mr-2 h-4 w-4" /> Nuevo Insumo
                             </Button>
                         </DialogTrigger>
@@ -506,7 +508,7 @@ export default function SuppliesPage() {
                                                 <History className="h-4 w-4 text-muted-foreground" />
                                                 <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Precios de Proveedores</Label>
                                             </div>
-                                            <Button type="button" variant="outline" size="sm" onClick={handleOpenSubModal} className="h-8 text-[9px] font-bold uppercase border-primary/20 bg-primary/5 hover:bg-primary/10">
+                                            <Button type="button" variant="outline" size="sm" onClick={handleOpenSubModal} className="h-8 text-[9px] font-bold uppercase border-primary/20 bg-primary/5 hover:bg-primary/10 cursor-pointer">
                                                 <Plus className="h-3 w-3 mr-1" /> Vincular Nuevo Precio
                                             </Button>
                                         </div>
@@ -525,7 +527,7 @@ export default function SuppliesPage() {
                                                                                     <Building2 className="h-3.5 w-3.5 text-primary" />
                                                                                 </div>
                                                                                 <div>
-                                                                                    <p className="text-[11px] font-bold text-white uppercase">{cost.supplier?.company || cost.supplier?.name}</p>
+                                                                                    <p className="text-[11px] font-bold text-primary uppercase">{cost.supplier?.company || cost.supplier?.name}</p>
                                                                                     <p className="text-[9px] text-muted-foreground uppercase flex items-center gap-1">
                                                                                         <Calendar className="h-2 w-2" /> {cost.date}
                                                                                     </p>
@@ -588,8 +590,8 @@ export default function SuppliesPage() {
                                     </div>
                                 </div>
                                 <DialogFooter className="p-6  border-t border-accent gap-3 items-center">
-                                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting} className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary">Cancelar</Button>
-                                    <Button type="submit" className="bg-primary hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 " disabled={isSubmitting}>
+                                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting} className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary cursor-pointer">Cancelar</Button>
+                                    <Button type="submit" className="bg-primary hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 cursor-pointer" disabled={isSubmitting}>
                                         {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                                         {editingSupply ? 'Guardar Cambios' : 'Guardar Insumo'}
                                     </Button>
@@ -656,7 +658,7 @@ export default function SuppliesPage() {
                                                 <TableCell className="text-right px-6">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10">
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 cursor-pointer">
                                                                 <MoreVertical className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
@@ -695,7 +697,7 @@ export default function SuppliesPage() {
                         <DialogHeader className="p-6  border-b border-accent">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-primary/20 rounded-lg border border-primary/20">
-                                    <Building2 className="h-5 w-5 text-primary" />
+                                    <UserStar className="h-5 w-5 text-primary" />
                                 </div>
                                 <div>
                                     <DialogTitle className="text-xl font-bold uppercase tracking-tight">Vincular Precio de Proveedor</DialogTitle>
@@ -711,9 +713,9 @@ export default function SuppliesPage() {
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Seleccionar Proveedor</Label>
                                     <Button
                                         type="button"
-                                        variant="link"
+                                        variant="default"
                                         size="sm"
-                                        className="h-auto p-0 text-primary text-[10px] font-bold"
+                                        className="h-8 w-fit px-4 text-background text-[10px] font-bold cursor-pointer bg-primary hover:bg-primary/40"
                                         onClick={() => setIsCreateSupplierOpen(true)}>
                                         <Plus className="h-3 w-3 mr-1" /> Nuevo Proveedor
                                     </Button>
@@ -766,10 +768,10 @@ export default function SuppliesPage() {
                             </div>
                         </div>
                         <DialogFooter className="p-6 border-t border-accent gap-3 items-center">
-                            <Button variant="ghost" onClick={() => setIsSubModalOpen(false)} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary">
+                            <Button variant="ghost" onClick={() => setIsSubModalOpen(false)} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary cursor-pointer">
                                 Cancelar
                             </Button>
-                            <Button onClick={handleSaveSubModal} className="bg-secondary hover:bg-muted/40 text-primary font-black text-[10px] uppercase tracking-widest px-8 h-11 ">
+                            <Button onClick={handleSaveSubModal} className="bg-secondary hover:bg-muted/40 text-primary font-black text-[10px] uppercase tracking-widest px-8 h-11 cursor-pointer">
                                 <Check className="mr-2 h-4 w-4" /> Confirmar Precio
                             </Button>
                         </DialogFooter>
@@ -783,7 +785,7 @@ export default function SuppliesPage() {
                         <DialogHeader className="p-6 border-b border-accent">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-primary/20 rounded-lg">
-                                    <Building2 className="h-5 w-5 text-primary" />
+                                    <UserPlus className="h-5 w-5 text-primary" />
                                 </div>
                                 <div>
                                     <DialogTitle className="text-lg font-bold uppercase tracking-tight">Nuevo Proveedor</DialogTitle>
@@ -797,7 +799,7 @@ export default function SuppliesPage() {
                                 <Input
                                     value={newSupplierData.company}
                                     onChange={(e) => setNewSupplierData(p => ({ ...p, company: e.target.value }))}
-                                    className="h-11 bg-background/50 border-muted/50 uppercase text-xs font-bold"
+                                    className="h-11 bg-card border-accent uppercase text-xs font-bold"
                                     required
                                 />
                             </div>
@@ -806,7 +808,7 @@ export default function SuppliesPage() {
                                 <Input
                                     value={newSupplierData.name}
                                     onChange={(e) => setNewSupplierData(p => ({ ...p, name: e.target.value }))}
-                                    className="h-11 bg-background/50 border-muted/50 uppercase text-xs font-bold"
+                                    className="h-11 bg-card border-accent uppercase text-xs font-bold"
                                     required
                                 />
                             </div>
@@ -816,7 +818,7 @@ export default function SuppliesPage() {
                                     <Input
                                         value={newSupplierData.nit}
                                         onChange={(e) => setNewSupplierData(p => ({ ...p, nit: e.target.value }))}
-                                        className="h-11 bg-background/50 border-muted/50 font-mono"
+                                        className="h-11 bg-card border-accent font-mono"
                                         required
                                     />
                                 </div>
@@ -825,15 +827,15 @@ export default function SuppliesPage() {
                                     <Input
                                         value={newSupplierData.phone}
                                         onChange={(e) => setNewSupplierData(p => ({ ...p, phone: e.target.value }))}
-                                        className="h-11 bg-background/50 border-muted/50 font-mono"
+                                        className="h-11 bg-card border-accent font-mono"
                                         required
                                     />
                                 </div>
                             </div>
                         </div>
                         <DialogFooter className="p-6 border-t border-accent gap-3 items-center">
-                            <Button type="button" variant="ghost" onClick={() => setIsCreateSupplierOpen(false)} disabled={isCreatingSupplier} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-white">Cancelar</Button>
-                            <Button type="submit" disabled={isCreatingSupplier} className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest px-8 h-11 shadow-xl shadow-primary/10">
+                            <Button type="button" variant="ghost" onClick={() => setIsCreateSupplierOpen(false)} disabled={isCreatingSupplier} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary cursor-pointer">Cancelar</Button>
+                            <Button type="submit" disabled={isCreatingSupplier} className="bg-primary hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11  cursor-pointer">
                                 {isCreatingSupplier ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                 Crear Proveedor
                             </Button>

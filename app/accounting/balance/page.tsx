@@ -37,7 +37,7 @@ export default function BalancesPage() {
     );
 
     if (loading) return (
-        <div className="flex flex-col min-h-screen bg-background items-center justify-center gap-4">
+        <div className="flex flex-col min-h-screen  items-center justify-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Analizando Balances...</p>
         </div>
@@ -46,7 +46,7 @@ export default function BalancesPage() {
     return (
         <div className="container mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 bg-card w-fit">
                     <Button variant="ghost" size="icon" className="hover:bg-white/5" onClick={() => router.push('/accounting')}>
                         <ChevronLeft className="h-6 w-6" />
                     </Button>
@@ -71,7 +71,7 @@ export default function BalancesPage() {
                     />
                 </div>
                 <div>
-                {/* <Button variant="outline" className="bg-primary text-background text-[10px] font-black uppercase h-10 px-6">
+                    {/* <Button variant="outline" className="bg-primary text-background text-[10px] font-black uppercase h-10 px-6">
                     <Download className="mr-2 h-4 w-4" /> Exportar Consolidado
                 </Button> */}
                 </div>

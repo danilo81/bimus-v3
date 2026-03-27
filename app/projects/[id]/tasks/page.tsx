@@ -595,6 +595,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
+import { useParams } from 'next/navigation';
 import {
     Card,
     CardContent} from '@/components/ui/card';
@@ -678,6 +679,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 export default function TasksPage() {
+    const params = useParams();
+    const projectId = params?.id as string;
     const [tasks, setTasks] = useState<(Task & { projectName?: string })[]>([]);
     const [projects, setProjects] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -702,7 +705,7 @@ export default function TasksPage() {
         title: '',
         description: '',
         priority: 'media' as TaskPriority,
-        projectId: '',
+        projectId: projectId || '',
         assignee: '',
         dueDate: new Date().toISOString().split('T')[0],
         status: 'pendiente' as TaskStatus
@@ -712,14 +715,16 @@ export default function TasksPage() {
 
     useEffect(() => {
         setIsMounted(true);
-        loadData();
-    }, []);
+        if (projectId) {
+            loadData();
+        }
+    }, [projectId]);
 
     async function loadData() {
         setLoading(true);
         try {
             const [tasksData, projectsData] = await Promise.all([
-                getTasks(),
+                getTasks(projectId),
                 getProjects()
             ]);
             setTasks(tasksData as any);
@@ -776,7 +781,7 @@ export default function TasksPage() {
             title: '',
             description: '',
             priority: 'media',
-            projectId: '',
+            projectId: projectId || '',
             assignee: '',
             dueDate: new Date().toISOString().split('T')[0],
             status: 'pendiente'

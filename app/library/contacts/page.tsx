@@ -359,15 +359,15 @@ export default function ContactsPage() {
                 <div className="flex items-center gap-4">
                     <Tabs value={activeTab} className="w-full lg:w-auto" onValueChange={setActiveTab}>
                         <TabsList className="bg-background/50 border border-muted/50 h-11">
-                            <TabsTrigger value="all" className="text-[10px] font-black uppercase px-6">Todos</TabsTrigger>
-                            <TabsTrigger value="cliente" className="text-[10px] font-black uppercase px-6">Clientes</TabsTrigger>
-                            <TabsTrigger value="proveedor" className="text-[10px] font-black uppercase px-6">Proveedores</TabsTrigger>
-                            <TabsTrigger value="personal" className="text-[10px] font-black uppercase px-6">Personal</TabsTrigger>
+                            <TabsTrigger value="all" className="text-[10px] font-black uppercase px-6 data-[state=active]:bg-card data-[state=active]:text-primary">Todos</TabsTrigger>
+                            <TabsTrigger value="cliente" className="text-[10px] font-black uppercase px-6 data-[state=active]:bg-card data-[state=active]:text-primary">Clientes</TabsTrigger>
+                            <TabsTrigger value="proveedor" className="text-[10px] font-black uppercase px-6 data-[state=active]:bg-card data-[state=active]:text-primary">Proveedores</TabsTrigger>
+                            <TabsTrigger value="personal" className="text-[10px] font-black uppercase px-6 data-[state=active]:bg-card data-[state=active]:text-primary">Personal</TabsTrigger>
                         </TabsList>
                     </Tabs>
 
                     <Button
-                        className="bg-foreground hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 "
+                        className="bg-foreground hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 cursor-pointer"
                         onClick={() => setIsCreateDialogOpen(true)}
                     >
                         <Plus className="mr-2 h-4 w-4" /> Nuevo Contacto
@@ -421,7 +421,7 @@ export default function ContactsPage() {
                                             <TableCell className="text-right px-8">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10">
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 cursor-pointer">
                                                             <MoreVertical className="h-4 w-4 text-muted-foreground" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
@@ -470,15 +470,15 @@ export default function ContactsPage() {
                         </DialogHeader>
 
                         <Tabs defaultValue="info" className="flex-1 flex flex-col overflow-hidden">
-                            <div className="px-8 bg-accent border-b border-accent shrink-0">
-                                <TabsList className="h-14 bg-transparent p-0 gap-8" >
-                                    <TabsTrigger value="info" className="h-full rounded-sm border-none border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">
+                            <div className="px-8  shrink-0">
+                                <TabsList className="h-14 bg-card p-0 gap-8" >
+                                    <TabsTrigger value="info" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
                                         Información General
                                     </TabsTrigger>
-                                    <TabsTrigger value="locked1" disabled className="flex-1 h-full rounded-none border-b-2 border-transparent px-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 border-l cursor-not-allowed">
+                                    <TabsTrigger value="locked1" disabled className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
                                         <Lock className="h-3 w-3 mr-2" /> Bancos
                                     </TabsTrigger>
-                                    <TabsTrigger value="locked2" disabled className="flex-1 h-full rounded-none border-b-2 border-transparent px-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 border-l cursor-not-allowed">
+                                    <TabsTrigger value="locked2" disabled className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
                                         <Lock className="h-3 w-3 mr-2" /> Documentos
                                     </TabsTrigger>
                                 </TabsList>
@@ -510,7 +510,7 @@ export default function ContactsPage() {
                                                 <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
                                                     <Phone className="h-3.5 w-3.5" /> Teléfono Móvil
                                                 </Label>
-                                                <Input id="phone" value={formData.phone} onChange={handleInputChange} required className="h-12 bg-white/5 border-accent font-mono font-black text-emerald-500" placeholder="+591 ..." />
+                                                <Input id="phone" value={formData.phone} onChange={handleInputChange} required className="h-12 bg-white/5 border-accent font-mono font-black" placeholder="+591 ..." />
                                             </div>
                                             <div className="space-y-3">
                                                 <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
@@ -557,14 +557,14 @@ export default function ContactsPage() {
 
                         <DialogFooter className="p-6 border-t border-white/5 bg-transparent shrink-0">
                             <div className="flex justify-end gap-3">
-                                <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)} className="w-full text-[10px] font-black uppercase tracking-widest h-12 hover:bg-primary/20 transition-all">
+                                <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)} className="w-full text-[10px] font-black uppercase tracking-widest h-12 hover:bg-primary/20 transition-all cursor-pointer">
                                     CANCELAR OPERACIÓN DE REGISTRO
                                 </Button>
                                 <Button
                                     type="button"
                                     disabled={isSubmitting}
                                     onClick={(e) => handleSubmit(e as any)}
-                                    className="bg-primary text-background font-black uppercase text-[11px] h-12 px-12 tracking-widest  transition-all active:scale-95 "
+                                    className="bg-primary text-background font-black uppercase text-[11px] h-12 px-12 tracking-widest  transition-all active:scale-95 cursor-pointer"
                                 >
                                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Finalizar Registro
                                 </Button>
@@ -593,22 +593,21 @@ export default function ContactsPage() {
                                         </span>
                                     </div>
                                 </div>
-
                             </DialogHeader>
 
                             <Tabs defaultValue="info" className="flex-1 flex flex-col overflow-hidden">
-                                <div className="px-8 bg-accent border-b border-white/5 shrink-0">
-                                    <TabsList className="h-14 bg-accent p-0 gap-0 w-full">
-                                        <TabsTrigger value="info" className="h-full rounded-sm border-none border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">
+                                <div className="px-8  shrink-0">
+                                    <TabsList className="h-14  p-0 gap-0 w-full bg-transparent">
+                                        <TabsTrigger value="info" className="  flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
                                             Información General
                                         </TabsTrigger>
-                                        <TabsTrigger value="banks" className="h-full rounded-sm border-none border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">
+                                        <TabsTrigger value="banks" className="  flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
                                             Cuentas Bancarias
                                         </TabsTrigger>
-                                        <TabsTrigger value="docs" className="h-full rounded-sm border-none border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">
+                                        <TabsTrigger value="docs" className="  flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-smy">
                                             Documentos
                                         </TabsTrigger>
-                                        <TabsTrigger value="accounting" className="h-full rounded-sm border-none border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">
+                                        <TabsTrigger value="accounting" className="  flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
                                             Contabilidad
                                         </TabsTrigger>
                                     </TabsList>
@@ -695,7 +694,7 @@ export default function ContactsPage() {
                                                     setEditingBankId(null);
                                                     setBankFormData({ bankName: '', accountNumber: '', swiftCode: '', isPreferred: false });
                                                 }}
-                                                className="bg-primary text-background font-black text-[10px] uppercase h-10 px-6 border border-accent "
+                                                className="bg-primary text-background font-black text-[10px] uppercase h-10 px-6 border border-accent cursor-pointer "
                                             >
                                                 <Plus className="mr-2 h-4 w-4" /> Añadir Cuenta
                                             </Button>
@@ -746,8 +745,8 @@ export default function ContactsPage() {
                                                         </div>
                                                     </div>
                                                     <div className="flex justify-end gap-4 pt-4 border-t border-white/5">
-                                                        <Button variant="ghost" onClick={() => setIsBankFormOpen(false)} className="text-[10px] font-black uppercase tracking-widest">Cancelar</Button>
-                                                        <Button onClick={handleBankSubmit} disabled={isSubmitting} className="bg-primary text-background font-black uppercase text-[10px] h-10 px-8">
+                                                        <Button variant="ghost" onClick={() => setIsBankFormOpen(false)} className="text-[10px] font-black uppercase tracking-widest cursor-pointer">Cancelar</Button>
+                                                        <Button onClick={handleBankSubmit} disabled={isSubmitting} className="bg-primary text-background font-black uppercase text-[10px] h-10 px-8 cursor-pointer">
                                                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
                                                             {editingBankId ? 'Actualizar Cuenta' : 'Vincular Cuenta'}
                                                         </Button>
@@ -819,7 +818,7 @@ export default function ContactsPage() {
                                                 <h3 className="text-xl font-black uppercase tracking-tight">Expediente Digital</h3>
                                                 <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mt-1">Contratos, identificaciones y certificados técnicos</p>
                                             </div>
-                                            <Button className="bg-primary text-background font-black text-[10px] uppercase h-10 px-6 border border-primary/20">
+                                            <Button className="bg-primary text-background font-black text-[10px] uppercase h-10 px-6 border border-primary/20 cursor-pointer">
                                                 <Upload className="mr-2 h-4 w-4" /> Subir Documento
                                             </Button>
                                         </div>
@@ -862,26 +861,19 @@ export default function ContactsPage() {
                                             </div>
                                         ) : accountingInfo ? (
                                             <>
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <Card className="bg-emerald-500/5 border-emerald-500/20 p-0 overflow-hidden relative">
                                                         <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
                                                         <CardContent className="p-6">
-                                                            <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest opacity-70">Total Ingresos / Facturado</span>
-                                                            <p className="text-2xl font-black text-white font-mono mt-2">${accountingInfo.totalIn.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                                            <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest opacity-70">Pagos Realizados</span>
+                                                            <p className="text-2xl font-black text-primary font-mono mt-2">${accountingInfo.totalIn.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                                                         </CardContent>
                                                     </Card>
                                                     <Card className="bg-red-500/5 border-red-500/20 p-0 overflow-hidden relative">
                                                         <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
                                                         <CardContent className="p-6">
-                                                            <span className="text-[10px] font-black uppercase text-red-500 tracking-widest opacity-70">Total Egresos / Pagado</span>
-                                                            <p className="text-2xl font-black text-white font-mono mt-2">${accountingInfo.totalOut.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                                                        </CardContent>
-                                                    </Card>
-                                                    <Card className="bg-amber-500/5 border-amber-500/20 p-0 overflow-hidden relative">
-                                                        <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
-                                                        <CardContent className="p-6 text-right">
-                                                            <span className="text-[10px] font-black uppercase text-amber-500 tracking-widest opacity-70">Saldo Contable</span>
-                                                            <p className="text-2xl font-black text-white font-mono mt-2">${accountingInfo.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                                            <span className="text-[10px] font-black uppercase text-red-500 tracking-widest opacity-70">Total Cuenta por Pagar del Contacto</span>
+                                                            <p className="text-2xl font-black text-primary font-mono mt-2">${accountingInfo.totalOut.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                                                         </CardContent>
                                                     </Card>
                                                 </div>
@@ -890,20 +882,21 @@ export default function ContactsPage() {
                                                     <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] flex items-center gap-2">
                                                         <History className="h-4 w-4 text-primary" /> Historial de Movimientos Vinculados
                                                     </h3>
-                                                    <div className="border border-white/5 rounded-2xl overflow-hidden bg-black/20 ">
+                                                    <div className="border border-accent rounded-2xl overflow-hidden bg-card ">
                                                         <Table>
                                                             <TableHeader className="bg-card">
-                                                                <TableRow className="border-white/10 hover:bg-transparent">
+                                                                <TableRow className="border-accent hover:bg-transparent">
                                                                     <TableHead className="text-[10px] font-black uppercase py-4 px-6">Fecha</TableHead>
                                                                     <TableHead className="text-[10px] font-black uppercase">Tipo</TableHead>
                                                                     <TableHead className="text-[10px] font-black uppercase">Concepto / Proyecto</TableHead>
+                                                                    <TableHead className="text-[10px] font-black uppercase text-center">Estado</TableHead>
                                                                     <TableHead className="text-[10px] font-black uppercase text-right pr-8">Importe (USD)</TableHead>
                                                                 </TableRow>
                                                             </TableHeader>
                                                             <TableBody>
                                                                 {accountingInfo.recentMovements.length > 0 ? (
                                                                     accountingInfo.recentMovements.map((tx: any, i: number) => (
-                                                                        <TableRow key={i} className="border-white/5 hover:bg-white/3 transition-all">
+                                                                        <TableRow key={i} className="border-accent hover:bg-white/3 transition-all">
                                                                             <TableCell className="px-6 py-4 font-mono text-[10px] text-muted-foreground uppercase">{tx.date}</TableCell>
                                                                             <TableCell>
                                                                                 <Badge variant="outline" className={cn("text-[8px] font-black uppercase border-none h-4 px-2", tx.type === 'ingreso' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500')}>
@@ -912,18 +905,26 @@ export default function ContactsPage() {
                                                                             </TableCell>
                                                                             <TableCell>
                                                                                 <div className="flex flex-col">
-                                                                                    <span className="text-[11px] font-bold text-white uppercase">{tx.desc}</span>
+                                                                                    <span className="text-[11px] font-bold text-primary uppercase">{tx.desc}</span>
                                                                                     <span className="text-[9px] text-muted-foreground font-black uppercase opacity-40">{tx.project}</span>
                                                                                 </div>
                                                                             </TableCell>
-                                                                            <TableCell className="text-right pr-8 font-mono text-xs font-black text-white">
+                                                                            <TableCell className="text-center">
+                                                                                <Badge className={cn(
+                                                                                    "text-[8px] font-black uppercase px-2 h-4",
+                                                                                    tx.status === 'PAGO' ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
+                                                                                )}>
+                                                                                    {tx.status}
+                                                                                </Badge>
+                                                                            </TableCell>
+                                                                            <TableCell className="text-right pr-8 font-mono text-xs font-black text-primary">
                                                                                 ${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                                                             </TableCell>
                                                                         </TableRow>
                                                                     ))
                                                                 ) : (
                                                                     <TableRow>
-                                                                        <TableCell colSpan={4} className="text-center py-20 text-[10px] font-black uppercase text-muted-foreground opacity-20">Sin movimientos registrados</TableCell>
+                                                                        <TableCell colSpan={5} className="text-center py-20 text-[10px] font-black uppercase text-muted-foreground opacity-20">Sin movimientos registrados</TableCell>
                                                                     </TableRow>
                                                                 )}
                                                             </TableBody>
@@ -943,14 +944,14 @@ export default function ContactsPage() {
 
                             <DialogFooter className="p-6 border-t border-white/5 bg-transparent shrink-0">
                                 <div className="flex justify-end gap-3">
-                                    <Button variant="ghost" onClick={() => setIsProfileDialogOpen(false)} className="w-full text-[10px]  uppercase tracking-[0.2em] h-12 hover:bg-primary/20 transition-all">
-                                        Cerrar Terminal de Contacto
+                                    <Button variant="ghost" onClick={() => setIsProfileDialogOpen(false)} className="w-full text-[10px]  uppercase tracking-[0.2em] h-12 hover:bg-primary/20 transition-all cursor-pointer">
+                                        Cerrar
                                     </Button>
                                     <Button
                                         type="button"
                                         disabled={isSubmitting}
                                         onClick={(e) => handleProfileUpdate(e as any)}
-                                        className="bg-primary text-background font-black uppercase text-[11px] h-12 px-12 tracking-widest  transition-all active:scale-95"
+                                        className="bg-primary text-background font-black uppercase text-[11px] h-12 px-12 tracking-widest  transition-all active:scale-95 cursor-pointer"
                                     >
                                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Actualizar Datos del Perfil
                                     </Button>
