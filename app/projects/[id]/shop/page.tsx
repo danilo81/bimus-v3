@@ -1,20 +1,18 @@
-
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-
 import {
     getSupplyRequests,
     getPurchaseOrders,
     createSupplyRequest,
     createPurchaseOrder,
+    deletePurchaseOrder,
     getProjectById,
     addContactToProject,
     importContactToLibrary,
     getContacts,
-    createContact,
-    deletePurchaseOrder,
+    createContact
 } from '@/actions';
 
 import {
@@ -24,19 +22,23 @@ import {
     Search,
     FileCheck,
     ClipboardList,
-    Loader2,
-    Building2,
-    CheckCircle2,
-    X,
     History,
     FileSearch,
     Check,
+    AlertTriangle,
+    TrendingUp,
+    TrendingDown,
     Save,
     Printer,
     Trash2,
     UserPlus,
     Phone,
-    UserCircle
+    UserCircle,
+    Building2,
+    CheckCircle2,
+    X,
+    Loader2,
+    Calculator
 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent } from '../../../../components/ui/card';
@@ -97,7 +99,6 @@ export default function ProjectShopPage() {
     const [isQuotationModalOpen, setIsQuotationModalOpen] = useState(false);
     const [isCreateSupplierOpen, setIsCreateSupplierOpen] = useState(false);
     const [isRequestsHistoryOpen, setIsRequestsHistoryOpen] = useState(false);
-    const [isPOHistoryOpen, setIsPOHistoryOpen] = useState(false);
 
     // Form states
     const [requestQuantities, setRequestQuantities] = useState<Record<string, string>>({});
@@ -105,6 +106,11 @@ export default function ProjectShopPage() {
     const [poSupplierId, setPOSupplierId] = useState<string>('none');
     const [poPaymentType, setPOPaymentType] = useState<'debito' | 'credito'>('debito');
     const [poDueDate, setPODueDate] = useState(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+
+    // Sub-modal Calculator States
+    const [isLevelBreakdownOpen, setIsLevelBreakdownOpen] = useState(false);
+    const [selectedSupplyForBreakdown, setSelectedSupplyForBreakdown] = useState<any>(null);
+    const [levelBreakdownInputs, setLevelBreakdownInputs] = useState<Record<string, string>>({});
 
     // Quotation state
     const [selectedRequestForQuotation, setSelectedRequestForQuotation] = useState<any>(null);
@@ -165,6 +171,39 @@ export default function ProjectShopPage() {
         fetchProjectData();
     }, [fetchProjectData]);
 
+    // Funciones de la Calculadora de Niveles
+    const getSupplyComputeForLevel = useCallback((supplyId: string, levelId: string): number => {
+        if (!project?.items || !levelId) return 0;
+        let total = 0;
+        for (const pi of project.items) {
+            const levelQty = pi.levelQuantities?.find((lq: any) => lq.levelId === levelId)?.quantity ?? 0;
+            if (levelQty === 0) continue;
+
+            const itemSupply = pi.item?.supplies?.find((is: any) => is.supply?.id === supplyId);
+            if (!itemSupply) continue;
+            total += levelQty * (itemSupply.quantity || 0);
+        }
+        return total;
+    }, [project]);
+
+    const handleOpenLevelBreakdown = (supply: any) => {
+        setSelectedSupplyForBreakdown(supply);
+        setLevelBreakdownInputs({});
+        setIsLevelBreakdownOpen(true);
+    };
+
+    const handleConfirmBreakdown = () => {
+        if (!selectedSupplyForBreakdown) return;
+        const total = Object.values(levelBreakdownInputs).reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
+
+        setRequestQuantities(prev => ({
+            ...prev,
+            [selectedSupplyForBreakdown.id]: total > 0 ? total.toFixed(2) : ''
+        }));
+
+        setIsLevelBreakdownOpen(false);
+    };
+
     const projectSupplies = useMemo(() => {
         if (!project || !project.items) return [];
         const map: Record<string, any> = {};
@@ -212,6 +251,11 @@ export default function ProjectShopPage() {
         });
     }, [requests, selectedRequestIds, poSupplierId, quotationOverrides]);
 
+    // Cálculos de Orden de Compra (Base vs Proveedor)
+    const poBaseTotal = useMemo(() => {
+        return poCompatibleItems.reduce((acc, r) => acc + (r.quantity * r.supply.price), 0);
+    }, [poCompatibleItems]);
+
     const poTotalAmount = useMemo(() => {
         return poCompatibleItems.reduce((acc, r) => {
             const override = quotationOverrides[r.id];
@@ -219,6 +263,8 @@ export default function ProjectShopPage() {
             return acc + (r.quantity * price);
         }, 0);
     }, [poCompatibleItems, quotationOverrides]);
+
+    const poVariationTotal = poTotalAmount - poBaseTotal;
 
     const handleCreateRequestBatch = async () => {
         const validRequests = Object.entries(requestQuantities)
@@ -276,13 +322,25 @@ export default function ProjectShopPage() {
                 };
             });
 
-            const result = await createPurchaseOrder({
+            // Se inyecta la advertencia en las notas para el backend (si el schema lo soporta, será útil)
+            const warningNote = poVariationTotal > 0
+                ? `ADVERTENCIA DE COSTOS: Se registró un sobrecosto total de $${poVariationTotal.toFixed(2)} respecto al presupuesto base autorizado.`
+                : undefined;
+
+            const payload: any = {
                 projectId: project.id,
                 supplierId: poSupplierId,
                 paymentType: poPaymentType,
                 dueDate: poPaymentType === 'credito' ? poDueDate : undefined,
-                items
-            });
+                items,
+            };
+
+            // Inyectamos la nota de forma segura
+            if (warningNote) {
+                payload.notes = warningNote;
+            }
+
+            const result = await createPurchaseOrder(payload);
 
             if (result.success) {
                 toast({ title: "Orden de Compra Generada", description: `Se ha creado la orden para ${poCompatibleItems.length} ítems.` });
@@ -372,7 +430,6 @@ export default function ProjectShopPage() {
             });
 
             if (result.success && result.contact) {
-                // VINCULAR AL PROYECTO
                 const linkResult = await addContactToProject(project.id, result.contact.id);
 
                 if (linkResult.success) {
@@ -420,21 +477,20 @@ export default function ProjectShopPage() {
     if (!project) return null;
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#050505] text-white p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
+        <div className="flex flex-col min-h-screen text-primary p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" className="hover:bg-white/10" onClick={() => router.back()}><ChevronLeft className="h-6 w-6" /></Button>
                 <div><h1 className="text-2xl font-bold flex items-center gap-3 font-headline uppercase tracking-tight"><ShoppingCart className="h-7 w-7 text-primary" /> Compras: {project.title}</h1><p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Gestión técnica de suministros y adquisiciones</p></div>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <TabsList className="bg-white/5 border border-white/10 h-12 p-1 rounded-xl w-fit">
-                    <TabsTrigger value="pedidos" className="text-[10px] font-black uppercase tracking-widest px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-black"><ClipboardList className="h-3.5 w-3.5 mr-2" /> Pedidos de Obra</TabsTrigger>
-                    <TabsTrigger value="ordenes" className="text-[10px] font-black uppercase tracking-widest px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-black"><FileCheck className="h-3.5 w-3.5 mr-2" /> Órdenes de Compra</TabsTrigger>
+                <TabsList className="bg-card border border-accent h-12 p-1 rounded-xl w-fit">
+                    <TabsTrigger value="pedidos" className="text-[10px] font-black uppercase tracking-widest px-8 h-full data-[state=active]:bg-card data-[state=active]:text-primary"><ClipboardList className="h-3.5 w-3.5 mr-2" /> Pedidos de Obra</TabsTrigger>
+                    <TabsTrigger value="ordenes" className="text-[10px] font-black uppercase tracking-widest px-8 h-full data-[state=active]:bg-card data-[state=active]:text-primary"><FileCheck className="h-3.5 w-3.5 mr-2" /> Órdenes de Compra</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="pedidos" className="space-y-6">
-                    <div className="flex items-center justify-between gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
-                        <div className="relative flex-1 max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="BUSCAR PEDIDO..." className="pl-10 h-11 bg-black/40 border-white/10 text-[10px] font-black uppercase" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+                    <div className="flex items-center justify-between gap-4 bg-card p-4 rounded-2xl border border-accent">
+                        <div className="relative flex-1 max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="BUSCAR PEDIDO..." className="pl-10 h-11 bg-card border-accent text-[10px] font-black uppercase" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
                         <div className="flex items-center gap-3">
                             <Button variant="outline" className="border-white/10 bg-white/5 text-muted-foreground font-black text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl hover:bg-white/10" onClick={() => setIsRequestsHistoryOpen(true)}><History className="mr-2 h-4 w-4" /> Historial</Button>
                             <Button variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-400 font-black text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl" onClick={() => setIsCotizacionesOpen(true)}><FileSearch className="mr-2 h-4 w-4" /> Directorio de Obra</Button>
@@ -443,11 +499,11 @@ export default function ProjectShopPage() {
                         </div>
                     </div>
 
-                    <Card className="bg-[#0a0a0a] border-white/10 overflow-hidden shadow-2xl">
+                    <Card className="bg-card border-accent overflow-hidden">
                         <CardContent className="p-0">
                             <Table>
-                                <TableHeader className="bg-white/5">
-                                    <TableRow className="border-white/10 hover:bg-transparent">
+                                <TableHeader className="bg-accent">
+                                    <TableRow className="border-accent hover:bg-transparent">
                                         <TableHead className="w-12 text-center" />
                                         <TableHead className="py-5 px-6 text-[10px] font-black uppercase">Material / Insumo</TableHead>
                                         <TableHead className="text-[10px] font-black uppercase text-center">Und.</TableHead>
@@ -462,7 +518,6 @@ export default function ProjectShopPage() {
                                         const override = quotationOverrides[req.id];
                                         const dbPreferredCost = req.supply.costs?.find((c: any) => c.isPreferred) || req.supply.costs?.[0];
 
-                                        // Final supplier object to display
                                         let supplier = null;
                                         if (override) {
                                             supplier = suppliers.find(s => s.id === override.supplierId);
@@ -474,15 +529,15 @@ export default function ProjectShopPage() {
                                         const alreadyInLibrary = supplier && userLibraryContacts.some(c => c.nit === supplier.nit);
 
                                         return (
-                                            <TableRow key={req.id} className="border-white/5 hover:bg-white/2 transition-colors">
+                                            <TableRow key={req.id} className="border-accent hover:bg-accent/2 transition-colors">
                                                 <TableCell className="text-center">
                                                     <Checkbox disabled={req.status !== 'pendiente'} checked={selectedRequestIds.includes(req.id)} onCheckedChange={(checked) => setSelectedRequestIds(prev => checked ? [...prev, req.id] : prev.filter(id => id !== req.id))} />
                                                 </TableCell>
                                                 <TableCell className="py-5 px-6">
-                                                    <span className="text-xs font-bold text-white uppercase">{req.supply.description}</span>
+                                                    <span className="text-xs font-bold text-primary uppercase">{req.supply.description}</span>
                                                 </TableCell>
                                                 <TableCell className="text-center text-[10px] font-black text-muted-foreground uppercase">{req.supply.unit}</TableCell>
-                                                <TableCell className="text-right font-mono text-xs font-black text-white">{req.quantity.toFixed(2)}</TableCell>
+                                                <TableCell className="text-right font-mono text-xs font-black text-primary">{req.quantity.toFixed(2)}</TableCell>
                                                 <TableCell className="px-6">
                                                     {supplier ? (
                                                         <div className="flex flex-col">
@@ -498,12 +553,12 @@ export default function ProjectShopPage() {
                                                                                     <UserPlus className="h-2.5 w-2.5" />
                                                                                 </button>
                                                                             </TooltipTrigger>
-                                                                            <TooltipContent className="text-[8px] uppercase font-black bg-black border-white/10">Importar a mi librería global</TooltipContent>
+                                                                            <TooltipContent className="text-[8px] uppercase font-black bg-card border-accent">Importar a mi librería global</TooltipContent>
                                                                         </Tooltip>
                                                                     </TooltipProvider>
                                                                 )}
                                                             </div>
-                                                            <div className="text-[9px] font-mono font-black text-white mt-1">
+                                                            <div className="text-[9px] font-mono font-black text-primary mt-1">
                                                                 ${(override ? override.price : (dbPreferredCost?.price || req.supply.price)).toFixed(2)}
                                                             </div>
                                                         </div>
@@ -675,9 +730,33 @@ export default function ProjectShopPage() {
                                                 </TableCell>
                                                 <TableCell className="text-center font-mono text-xs font-black text-amber-500">{s.balance.toFixed(2)}</TableCell>
                                                 <TableCell className="pr-6">
-                                                    <div className="flex items-center gap-3 justify-end">
-                                                        <Input type="number" step="0.01" value={requestQuantities[s.id] || ''} onChange={(e) => setRequestQuantities(prev => ({ ...prev, [s.id]: e.target.value }))} className="h-10 w-32 bg-black border-white/10 text-center font-mono text-sm" placeholder="0.00" />
-                                                        <span className="text-[10px] font-black text-muted-foreground uppercase">{s.unit}</span>
+                                                    <div className="flex items-center gap-2 justify-end">
+                                                        <Input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={requestQuantities[s.id] || ''}
+                                                            onChange={(e) => setRequestQuantities(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                                            className="h-10 w-24 bg-black border-white/10 text-center font-mono text-sm"
+                                                            placeholder="0.00"
+                                                        />
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="icon"
+                                                                        className="h-10 w-10 border-white/10 bg-white/5 hover:bg-primary/20 hover:text-primary transition-colors shrink-0"
+                                                                        onClick={() => handleOpenLevelBreakdown(s)}
+                                                                    >
+                                                                        <Calculator className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent className="text-[10px] font-black uppercase bg-black border-white/10">
+                                                                    Calcular por Niveles
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                        <span className="text-[10px] font-black text-muted-foreground uppercase w-8 text-left">{s.unit}</span>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -692,6 +771,83 @@ export default function ProjectShopPage() {
                         <Button onClick={handleCreateRequestBatch} disabled={isSaving} className="bg-primary text-black font-black text-[10px] uppercase h-12 px-12 shadow-xl">
                             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />} CONFIRMAR PEDIDO
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Sub-Modal: Calculadora por Niveles */}
+            <Dialog open={isLevelBreakdownOpen} onOpenChange={setIsLevelBreakdownOpen}>
+                <DialogContent className="sm:max-w-[600px] bg-[#0a0a0a] border-white/10 text-white p-0 overflow-hidden flex flex-col shadow-2xl">
+                    <DialogHeader className="p-6 border-b border-white/5 bg-white/2 shrink-0">
+                        <DialogTitle className="text-lg font-bold uppercase text-primary flex items-center gap-2">
+                            <Calculator className="h-5 w-5" /> Calcular Cantidad a Pedir
+                        </DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground mt-1">
+                            Distribución de <span className="text-white">{selectedSupplyForBreakdown?.description}</span> por niveles de obra
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="p-6 flex-1 overflow-y-auto max-h-[50vh]">
+                        <div className="border border-white/10 rounded-xl overflow-hidden bg-black/40">
+                            <Table>
+                                <TableHeader className="bg-white/5">
+                                    <TableRow className="border-white/10">
+                                        <TableHead className="text-[10px] font-black uppercase py-3">Nivel de Obra</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-right">Requerido Pto.</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-right w-36 pr-4">Cantidad a Pedir</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {project?.levels?.map((lvl: any) => {
+                                        const required = getSupplyComputeForLevel(selectedSupplyForBreakdown?.id, lvl.id);
+                                        if (required <= 0) return null;
+
+                                        return (
+                                            <TableRow key={lvl.id} className="border-white/5 hover:bg-white/5">
+                                                <TableCell className="text-xs font-bold uppercase py-3">{lvl.name}</TableCell>
+                                                <TableCell className="text-right font-mono text-xs text-amber-500 font-bold">
+                                                    {required.toFixed(2)}
+                                                </TableCell>
+                                                <TableCell className="text-right pr-4 py-2">
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={levelBreakdownInputs[lvl.id] || ''}
+                                                        onChange={(e) => setLevelBreakdownInputs(prev => ({ ...prev, [lvl.id]: e.target.value }))}
+                                                        className="h-9 bg-black border-white/10 text-right font-mono text-xs focus-visible:ring-primary"
+                                                        placeholder="0.00"
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+
+                                    {project?.levels?.every((lvl: any) => getSupplyComputeForLevel(selectedSupplyForBreakdown?.id, lvl.id) <= 0) && (
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="text-center py-10 text-[10px] uppercase font-black text-muted-foreground opacity-50">
+                                                Este insumo no está asignado a ningún nivel específico en el presupuesto.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="p-6 border-t border-white/5 bg-black shrink-0 flex items-center justify-between">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Total Calculado</span>
+                            <span className="text-xl font-black text-primary font-mono">
+                                {Object.values(levelBreakdownInputs).reduce((acc, val) => acc + (parseFloat(val) || 0), 0).toFixed(2)}
+                                <span className="text-[10px] ml-1 text-muted-foreground">{selectedSupplyForBreakdown?.unit}</span>
+                            </span>
+                        </div>
+                        <div className="flex gap-3">
+                            <Button variant="ghost" onClick={() => setIsLevelBreakdownOpen(false)} className="text-[10px] font-black uppercase">Cancelar</Button>
+                            <Button onClick={handleConfirmBreakdown} className="bg-primary text-black font-black text-[10px] uppercase h-10 px-8 shadow-xl">
+                                Aplicar Suma
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -790,15 +946,15 @@ export default function ProjectShopPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Modal Generar OC */}
+            {/* Modal Generar OC MODIFICADO */}
             <Dialog open={isNewPOOpen} onOpenChange={setIsNewPOOpen}>
-                <DialogContent className="sm:max-w-4xl bg-[#0a0a0a] border-white/10 text-white p-0 overflow-hidden flex flex-col h-[85vh] shadow-2xl">
+                <DialogContent className="sm:max-w-5xl bg-[#0a0a0a] border-white/10 text-white p-0 overflow-hidden flex flex-col h-[85vh] shadow-2xl">
                     <DialogHeader className="p-6 border-b border-white/5 bg-white/2 shrink-0 flex flex-row items-center justify-between space-y-0">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-primary/20 rounded-lg"><FileCheck className="h-6 w-6 text-primary" /></div>
                             <div>
                                 <DialogTitle className="text-xl font-bold uppercase tracking-tight">Generar Orden de Compra</DialogTitle>
-                                <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground mt-1">Formalice la adquisición de materiales seleccionados</DialogDescription>
+                                <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground mt-1">Formalice la adquisición de materiales seleccionados y audite variaciones</DialogDescription>
                             </div>
                         </div>
                         <Button variant="ghost" size="icon" onClick={() => setIsNewPOOpen(false)}><X className="h-5 w-5" /></Button>
@@ -831,23 +987,48 @@ export default function ProjectShopPage() {
                                     <TableHeader className="bg-white/5 sticky top-0 z-10">
                                         <TableRow className="border-white/10 hover:bg-transparent">
                                             <TableHead className="py-4 px-6 text-[10px] font-black uppercase">Insumo</TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase text-center w-24">Und.</TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase text-right w-32">Cant.</TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase text-right w-32">P. Unit.</TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase text-right w-40 pr-6">Subtotal</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase text-center w-20">Und.</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase text-right w-20">Cant.</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase text-right w-24">P. Base</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase text-right w-24">P. Prov.</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase text-center w-28">Variación</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase text-right w-32 pr-6">Subtotal</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {poCompatibleItems.map((req) => {
                                             const override = quotationOverrides[req.id];
-                                            const price = override ? override.price : req.supply.price;
+                                            const basePrice = req.supply.price;
+                                            const supplierPrice = override ? override.price : basePrice;
+                                            const variation = supplierPrice - basePrice;
+                                            const variationPercent = basePrice > 0 ? (variation / basePrice) * 100 : 0;
+
                                             return (
                                                 <TableRow key={req.id} className="border-white/5 hover:bg-white/5 transition-colors">
                                                     <TableCell className="py-4 px-6"><span className="text-xs font-bold text-white uppercase">{req.supply.description}</span></TableCell>
                                                     <TableCell className="text-center text-[10px] font-black text-muted-foreground uppercase">{req.supply.unit}</TableCell>
                                                     <TableCell className="text-right font-mono text-xs font-black">{req.quantity.toFixed(2)}</TableCell>
-                                                    <TableCell className="text-right font-mono text-xs text-primary">${price.toFixed(2)}</TableCell>
-                                                    <TableCell className="text-right pr-6 font-mono text-sm font-black text-white">${(req.quantity * price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+
+                                                    {/* Precios Base y Proveedor */}
+                                                    <TableCell className="text-right font-mono text-xs text-muted-foreground">${basePrice.toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right font-mono text-xs text-primary font-bold">${supplierPrice.toFixed(2)}</TableCell>
+
+                                                    {/* Semáforo de Variación */}
+                                                    <TableCell className="text-center">
+                                                        {variation === 0 ? (
+                                                            <Badge variant="outline" className="text-[9px] text-muted-foreground/50 border-white/10 w-full justify-center rounded-sm">0.0%</Badge>
+                                                        ) : variation > 0 ? (
+                                                            <Badge variant="outline" className="text-[9px] text-red-500 bg-red-500/10 border-none w-full justify-center gap-1 rounded-sm">
+                                                                <TrendingUp className="h-3 w-3" /> +{variationPercent.toFixed(1)}%
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge variant="outline" className="text-[9px] text-emerald-500 bg-emerald-500/10 border-none w-full justify-center gap-1 rounded-sm">
+                                                                <TrendingDown className="h-3 w-3" /> {variationPercent.toFixed(1)}%
+                                                            </Badge>
+                                                        )}
+                                                    </TableCell>
+
+                                                    <TableCell className="text-right pr-6 font-mono text-sm font-black text-white">${(req.quantity * supplierPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                                                 </TableRow>
                                             );
                                         })}
@@ -857,7 +1038,24 @@ export default function ProjectShopPage() {
                         </div>
                     </div>
                     <DialogFooter className="p-6 border-t border-white/5 bg-black shrink-0 flex items-center justify-between">
-                        <div className="flex flex-col"><span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Total de la Orden</span><span className="text-2xl font-black text-primary font-mono">${poTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Total de la Orden</span>
+                            <div className="flex items-end gap-4 mt-0.5">
+                                <span className="text-2xl font-black text-primary font-mono leading-none">${poTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+
+                                {/* Advertencia General de Sobrecosto / Ahorro */}
+                                {poVariationTotal > 0 && (
+                                    <span className="text-[10px] font-black text-red-500 flex items-center gap-1 bg-red-500/10 px-2 py-1 rounded-md animate-pulse">
+                                        <AlertTriangle className="h-3 w-3" /> +${poVariationTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} SOBRE EL PRESUPUESTO
+                                    </span>
+                                )}
+                                {poVariationTotal < 0 && (
+                                    <span className="text-[10px] font-black text-emerald-500 flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded-md">
+                                        <TrendingDown className="h-3 w-3" /> AHORRO DE ${Math.abs(poVariationTotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
                         <div className="flex gap-4">
                             <Button variant="ghost" onClick={() => setIsNewPOOpen(false)}>Cancelar</Button>
                             <Button onClick={handleCreatePO} disabled={isSaving || poSupplierId === 'none' || poCompatibleItems.length === 0} className="bg-primary text-black font-black text-[10px] uppercase h-12 px-12 shadow-xl">

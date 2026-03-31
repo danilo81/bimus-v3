@@ -26,6 +26,7 @@ model User {
   supplies             Supply[]
   tasks                Task[]
   warehouseMovements   WarehouseMovement[]
+  purchaseOrders       PurchaseOrder[]
 }
 
 model Project {
@@ -220,7 +221,9 @@ model PurchaseOrder {
   id          String              @id @default(cuid())
   number      String              @unique
   projectId   String
+  authorId    String?
   supplierId  String?
+  notes        String?
   totalAmount Float               @default(0)
   status      String              @default("pendiente")
   paymentType String              @default("contado")
@@ -229,6 +232,7 @@ model PurchaseOrder {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
   project     Project             @relation(fields: [projectId], references: [id])
+  author      User?               @relation(fields: [authorId], references: [id])
   supplier    Contact?            @relation(fields: [supplierId], references: [id])
   items       PurchaseOrderItem[]
   movements   WarehouseMovement[]

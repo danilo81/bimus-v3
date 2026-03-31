@@ -140,16 +140,28 @@ export default function ItemsPage() {
         if (!user?.id) return;
         setIsLoadingData(true);
         try {
-            const [chapters, supplies, units, constructionItems] = await Promise.all([
+            const [chaptersData, suppliesData, unitsData, constructionItemsData] = await Promise.all([
                 getChapters(user.id),
                 getSupplies(user.id),
                 getUnits(user.id),
                 getConstructionItems(user.id)
             ]);
-            setDbChapters(chapters as any);
-            setDbSupplies(supplies as any);
-            setDbUnits(units as any);
-            setItems(constructionItems as any);
+
+            setDbChapters(chaptersData as any);
+            
+            if (suppliesData.success && suppliesData.supplies) {
+                setDbSupplies(suppliesData.supplies);
+            } else {
+                setDbSupplies([]);
+            }
+
+            setDbUnits(unitsData as any);
+
+            if (constructionItemsData.success && constructionItemsData.items) {
+                setItems(constructionItemsData.items);
+            } else {
+                setItems([]);
+            }
         } catch (error) {
             console.error(error);
             toast({ title: "Error", description: "Fallo al cargar datos de la librería.", variant: "destructive" });

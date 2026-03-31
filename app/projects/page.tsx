@@ -494,7 +494,7 @@ function ProjectsPageContent() {
                     <Input placeholder="Buscar Proyectos..." className="pl-10 h-11 bg-card border-accent text-[10px] font-medium tracking-widest" />
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
                     <Tabs value={view} onValueChange={(v: any) => setView(v)} className="w-auto">
                         <TabsList className="bg-card border border-accent p-1 rounded-xl h-11">
                             <TabsTrigger value="grid" className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest px-6 data-[state=active]:bg-card h-full">

@@ -129,14 +129,20 @@ export default function SuppliesPage() {
                 getContacts(),
                 getUnits(user.id)
             ]);
-            const sData = suppliesData as unknown as Supply[];
-            setSupplies(sData);
+
+            if (suppliesData.success && suppliesData.supplies) {
+                setSupplies(suppliesData.supplies);
+            } else {
+                setSupplies([]);
+                if (suppliesData.error) throw new Error(suppliesData.error);
+            }
+
             setContacts(contactsData as unknown as Contact[]);
             setDbUnits(unitsData as UnitOfMeasure[]);
             if (unitsData.length > 0 && !formData.unit) {
                 setFormData(prev => ({ ...prev, unit: unitsData[0].abbreviation }));
             }
-            return sData;
+            return suppliesData.supplies || [];
         } catch (error) {
             console.error('Error fetching data:', error);
             toast({
@@ -319,7 +325,7 @@ export default function SuppliesPage() {
                 toast({ title: "Costo añadido", description: "Se ha registrado el nuevo precio del proveedor." });
                 const updatedSupplies = await fetchData();
                 // Actualizar el objeto que se está editando para que el modal refleje los cambios
-                const fresh = updatedSupplies.find(s => s.id === editingSupply.id);
+                const fresh = (updatedSupplies as Supply[]).find((s: Supply) => s.id === editingSupply.id);
                 if (fresh) setEditingSupply(fresh);
                 setIsSubModalOpen(false);
             } else {
@@ -344,7 +350,7 @@ export default function SuppliesPage() {
             toast({ title: "Costo eliminado" });
             const updatedSupplies = await fetchData();
             if (editingSupply) {
-                const fresh = updatedSupplies.find(s => s.id === editingSupply.id);
+                const fresh = (updatedSupplies as Supply[]).find((s: Supply) => s.id === editingSupply.id);
                 if (fresh) setEditingSupply(fresh);
             }
         } else {

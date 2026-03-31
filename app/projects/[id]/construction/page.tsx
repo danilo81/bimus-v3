@@ -462,8 +462,12 @@ export default function ConstructionPage() {
         if (!user?.id) return;
         setIsLoadingLibrary(true);
         try {
-            const items = await getConstructionItems(user.id);
-            setLibraryItems(items as unknown as ConstructionItem[]);
+            const res = await getConstructionItems(user.id);
+            if (res.success && res.items) {
+                setLibraryItems(res.items as unknown as ConstructionItem[]);
+            } else {
+                setLibraryItems([]);
+            }
         } catch (error) {
             console.error("Error loading library items:", error);
         } finally {
@@ -475,7 +479,11 @@ export default function ConstructionPage() {
         if (!user?.id) return;
         try {
             const res = await getSupplies(user.id);
-            setMasterSupplies(res as any);
+            if (res.success && res.supplies) {
+                setMasterSupplies(res.supplies as any);
+            } else {
+                setMasterSupplies([]);
+            }
         } catch (e) {
             console.error(e);
         }
@@ -1540,14 +1548,18 @@ export default function ConstructionPage() {
                                             <FileSignature className="mr-2 h-4 w-4" /> Orden de Cambio
                                         </Button>
                                     )}
-                                    <Button
-                                        onClick={handleSaveComputos}
-                                        disabled={isSaving || computations.length === 0}
-                                        className="bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-bold text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl hover:bg-emerald-500/20"
-                                    >
-                                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                        Guardar Cambios
-                                    </Button>
+                                    {!isConstruccion && (
+                                        <>
+                                            <Button
+                                                onClick={handleSaveComputos}
+                                                disabled={isSaving || computations.length === 0}
+                                                className="bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-bold text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl hover:bg-emerald-500/20"
+                                            >
+                                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                Guardar Cambios
+                                            </Button>
+                                        </>
+                                    )}
                                     {!isConstruccion && isAuthor && (
                                         <>
                                             <Button
@@ -2058,8 +2070,8 @@ export default function ConstructionPage() {
                                             </Button>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="outline" className="border-accent bg-card text-muted-foreground font-black text-[10px] uppercase tracking-widest h-11 px-6 rounded-xl hover:bg-card/10 cursor-pointer">
-                                                        <History className="mr-2 h-4 w-4 text-primary" /> Historiales
+                                                    <Button variant="outline" className="border-accent bg-card text-muted-foreground font-black text-[10px] uppercase tracking-widest h-10 px-4 rounded-xl hover:bg-card/10 cursor-pointer">
+                                                        <History className="mr-2 h-4 w-4 text-primary" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="bg-card border-accent text-primary  p-1.5 rounded-xl w-60">

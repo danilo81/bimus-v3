@@ -20,8 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Notification, Task, Contact, Project, ProjectConfig, TaskPriority, TaskStatus } from '@/types/types';
 import { getNotifications, markAsRead, deleteNotification } from '@/actions';
 import { getTasks, createTask, deleteTask, updateTask, getContacts, getUpcomingEvents } from '@/actions';
-import { getProjectById, getProjects, updateProject as updateProjectAction, addContactToProject, removeContactFromProject, inviteCollaborator, updateProjectContactPermissions, getMyProjectPermissions } from '@/actions';
-
+import { getProjectById, getProjects, updateProject as updateProjectAction, addContactToProject, removeContactFromProject, inviteCollaborator, updateProjectContactPermissions, getMyProjectPermissions, getInboxSummary } from '@/actions';
 
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { cn } from '../../lib/utils';
@@ -143,27 +142,65 @@ export function Navbar() {
         workingDays: 6
     });
 
+    const [inboxSummary, setInboxSummary] = useState({
+        notifications: 0,
+        tasks: 0,
+        events: 0,
+        hasUpdates: false,
+        totalUnread: 0
+    });
+
+    const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+    const [hasFetchedDetails, setHasFetchedDetails] = useState(false);
+
+    useEffect(() => {
+        const fetchInbox = async () => {
+            const summary = await getInboxSummary();
+            if (summary) {
+                setInboxSummary(summary);
+                // Also update individual counts to keep them in sync
+                setUnreadCount(summary.notifications);
+                setPendingTasksCount(summary.tasks);
+            }
+        };
+
+        fetchInbox();
+
+        // Opcional: Polling cada 3 minutos para mantenerlo actualizado 
+        // sin saturar el servidor si el usuario deja la pestaña abierta
+        const interval = setInterval(fetchInbox, 3 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, []);
+
     const [localLevels, setLevels] = useState<{ id?: string, name: string }[]>([]);
 
     const isAuthor = useMemo(() => user?.id === activeProject?.authorId, [user?.id, activeProject?.authorId]);
 
     const fetchData = useCallback(async () => {
-        if (user?.id) {
-            const [notifData, tasksData, eventsData] = await Promise.all([
-                getNotifications(user.id),
-                getTasks(),
-                getUpcomingEvents()
-            ]);
+        if (user?.id && !isFetchingDetails) {
+            setIsFetchingDetails(true);
+            try {
+                const [notifData, tasksData, eventsData] = await Promise.all([
+                    getNotifications(user.id),
+                    getTasks(),
+                    getUpcomingEvents()
+                ]);
 
-            setNotifications(notifData);
-            setUnreadCount(notifData.filter(n => !n.isRead).length);
+                setNotifications(notifData);
+                setUnreadCount(notifData.filter(n => !n.isRead).length);
 
-            const userTasks = tasksData.filter((t: any) => !t.userId || t.userId === user.id);
-            setTasks(userTasks as any);
-            setPendingTasksCount(userTasks.filter((t: any) => t.status !== 'completado').length);
-            setUpcomingEvents(eventsData);
+                const userTasks = tasksData.filter((t: any) => !t.userId || t.userId === user.id);
+                setTasks(userTasks as any);
+                setPendingTasksCount(userTasks.filter((t: any) => t.status !== 'completado').length);
+                setUpcomingEvents(eventsData);
+                setHasFetchedDetails(true);
+            } catch (error) {
+                console.error("Error fetching inbox details:", error);
+            } finally {
+                setIsFetchingDetails(false);
+            }
         }
-    }, [user?.id]);
+    }, [user?.id, isFetchingDetails]);
 
     const fetchProjectContext = useCallback(async () => {
         const match = pathname.match(/^\/projects\/([^\/]+)/);
@@ -214,10 +251,10 @@ export function Navbar() {
     useEffect(() => {
         setMounted(true);
         if (isAuthenticated) {
-            fetchData();
+            // Note: fetchData is now called on demand when opening the inbox
             fetchProjectContext();
         }
-    }, [isAuthenticated, fetchData, fetchProjectContext]);
+    }, [isAuthenticated, fetchProjectContext]);
 
     const fetchLibraryContacts = useCallback(async () => {
         setIsFetchingLibrary(true);
@@ -306,7 +343,7 @@ export function Navbar() {
 
     useEffect(() => {
         setIsMounted(true);
-        loadDataTasks();
+        // Note: loadDataTasks is now called on demand when opening the inbox
     }, []);
 
     async function loadDataTasks() {
@@ -598,7 +635,7 @@ export function Navbar() {
 
     const projectTools = useMemo(() => [
         { name: 'PIZARRA', icon: Presentation, url: `/projects/${activeProject?.id}/board`, permissionId: 'board' },
-        { name: 'DISEÑO', icon: Layers, url: `/projects/${activeProject?.id}/desing`, permissionId: 'design' },
+        { name: 'DISEÑO', icon: Layers, url: `/projects/${activeProject?.id}/design`, permissionId: 'design' },
         { name: 'OBRA', icon: Hammer, url: `/projects/${activeProject?.id}/construction`, permissionId: 'construction' },
         { name: 'OPERACIONES', icon: Activity, url: `/projects/${activeProject?.id}/operations`, permissionId: 'operations' },
         { name: 'BIM', icon: Box, url: `/projects/${activeProject?.id}/model`, permissionId: null },
@@ -669,9 +706,7 @@ export function Navbar() {
                         </SheetTrigger>
                         <SheetContent side="left" className="w-[85vw] max-w-[350px] bg-card border-accent p-0 flex flex-col">
                             <SheetHeader className="p-4 border-b border-accent text-left">
-                                <SheetDescription className="sr-only">
-                                    Menú de navegación principal
-                                </SheetDescription>
+                                <SheetDescription />
                                 <SheetTitle className="text-lg font-black uppercase tracking-tighter text-primary flex items-center gap-2">
                                     <Link href='/dashboard'><Logo size={24} className="grayscale" /></Link>
                                     Bimus
@@ -843,13 +878,13 @@ export function Navbar() {
                                         <div className="h-px bg-white/5 my-2"></div>
                                         <div className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2 mb-1">Diseño y Modelo</div>
                                         <NavigationMenuLink asChild>
-                                            <Link href="/library/desing/cad" className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-primary transition-all">
+                                            <Link href="/library/design/cad" className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-primary transition-all">
                                                 <PenTool className="h-4 w-4" />
                                                 <span className="text-[10px] font-black uppercase tracking-widest">Cad</span>
                                             </Link>
                                         </NavigationMenuLink>
                                         <NavigationMenuLink asChild>
-                                            <Link href="/library/desing/models" className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-primary transition-all">
+                                            <Link href="/library/design/models" className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-primary transition-all">
                                                 <LayoutGrid className="h-4 w-4" />
                                                 <span className="text-[10px] font-black uppercase tracking-widest">Modelos</span>
                                             </Link>
@@ -929,12 +964,21 @@ export function Navbar() {
 
                 <AiChatModal />
 
-                <DropdownMenu>
+                <DropdownMenu onOpenChange={(open) => {
+                    if (open && !hasFetchedDetails) {
+                        fetchData();
+                    }
+                }}>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary relative h-9 w-9 rounded-xl hover:bg-secondary transition-all cursor-pointer">
                             <Inbox className="h-4 w-4 md:h-4.5 md:w-4.5" />
-                            {(unreadCount > 0 || pendingTasksCount > 0 || upcomingEvents.length > 0) && (
+                            {/* {(unreadCount > 0 || pendingTasksCount > 0 || upcomingEvents.length > 0) && (
                                 <span className="absolute top-2 right-2 w-2.5 h-2.5 md:w-3 md:h-3 bg-amber-500 rounded-full border-2 border-background animate-pulse"></span>
+                            )} */}
+                            {inboxSummary.hasUpdates && (
+                                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                                    {inboxSummary.totalUnread}
+                                </span>
                             )}
                         </Button>
                     </DropdownMenuTrigger>
@@ -966,7 +1010,12 @@ export function Navbar() {
 
                                 {/* TAB NOTIFICACIONES */}
                                 <TabsContent value="notifications" className="m-0 border-none outline-none">
-                                    {notifications.length > 0 ? (
+                                    {isFetchingDetails && !hasFetchedDetails ? (
+                                        <div className="flex flex-col items-center justify-center h-full py-20 text-muted-foreground gap-3 opacity-20">
+                                            <Loader2 className="h-10 w-10 animate-spin" />
+                                            <p className="text-[10px] font-black uppercase">Cargando...</p>
+                                        </div>
+                                    ) : notifications.length > 0 ? (
                                         <div className="flex flex-col">
                                             {notifications.map((n) => (
                                                 <div key={n.id} className={cn("p-4 border-b border-white/5 last:border-0 hover:bg-white/3 transition-colors relative group", !n.isRead && "bg-primary/5")}>
@@ -990,7 +1039,12 @@ export function Navbar() {
 
                                 {/* TAB TAREAS */}
                                 <TabsContent value="tasks" className="m-0 border-none outline-none">
-                                    {tasks.filter(t => t.status !== 'completado').length > 0 ? (
+                                    {isFetchingDetails && !hasFetchedDetails ? (
+                                        <div className="flex flex-col items-center justify-center h-full py-20 text-muted-foreground gap-3 opacity-20">
+                                            <Loader2 className="h-10 w-10 animate-spin" />
+                                            <p className="text-[10px] font-black uppercase">Cargando...</p>
+                                        </div>
+                                    ) : tasks.filter(t => t.status !== 'completado').length > 0 ? (
                                         <div className="flex flex-col p-0 m-0 gap-0">
                                             {tasks.filter(t => t.status !== 'completado').map((t) => (
                                                 <div key={t.id} className={cn("p-4 border-b border-accent last:border-0 hover:bg-muted/40 transition-colors relative group")}>
@@ -1015,7 +1069,12 @@ export function Navbar() {
 
                                 {/* TAB EVENTOS */}
                                 <TabsContent value="events" className="m-0 border-none outline-none">
-                                    {upcomingEvents.length > 0 ? (
+                                    {isFetchingDetails && !hasFetchedDetails ? (
+                                        <div className="flex flex-col items-center justify-center h-full py-20 text-muted-foreground gap-3 opacity-20">
+                                            <Loader2 className="h-10 w-10 animate-spin" />
+                                            <p className="text-[10px] font-black uppercase">Cargando...</p>
+                                        </div>
+                                    ) : upcomingEvents.length > 0 ? (
                                         <div className="flex flex-col">
                                             {upcomingEvents.map((e) => (
                                                 <div key={e.id} className="p-4 border-b border-white/5 last:border-0 hover:bg-white/3 transition-colors relative group">

@@ -156,3 +156,5 @@ export * from "@/actions/tasks/createTask";
 export * from "@/actions/tasks/updateTask";
 export * from "@/actions/tasks/deleteTask";
 
+//// GENERAL ACTIONS ////
+export * from "@/actions/general/getInboxSummary";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -43,6 +43,8 @@ export function AiChatModal() {
                     <div>
                         <DialogTitle className="text-xs font-black uppercase tracking-widest text-primary">Asistente IA</DialogTitle>
                     </div>
+                    <DialogDescription />
+
                 </DialogHeader>
 
                 <ScrollArea className="flex-1 p-4">

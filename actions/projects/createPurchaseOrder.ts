@@ -25,11 +25,22 @@ export async function createPurchaseOrder(data: {
         const { projectId, supplierId, items, paymentType, dueDate, notes } = data;
 
         return await prisma.$transaction(async (tx: any) => {
+            const count = await tx.purchaseOrder.count({
+                where: { projectId }
+            });
+            const project = await tx.project.findUnique({
+                where: { id: projectId },
+                select: { title: true }
+            });
+            const projectPrefix = project?.title?.slice(0, 3).toUpperCase() || 'ORD';
+            const poNumber = `${projectPrefix}-${(count + 1).toString().padStart(4, '0')}`;
+
             const newOrder = await tx.purchaseOrder.create({
                 data: {
+                    number: poNumber,
                     projectId,
                     supplierId: supplierId === 'none' ? null : supplierId,
-                    authorId: userId,
+                    author: userId ? { connect: { id: userId } } : undefined,
                     paymentType: paymentType || 'contado',
                     dueDate: dueDate ? new Date(dueDate) : null,
                     notes,
