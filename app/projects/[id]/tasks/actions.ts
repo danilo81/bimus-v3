@@ -2,7 +2,7 @@
 
 import prisma from '../../../../lib/prisma';
 import { revalidatePath } from 'next/cache';
-import { TaskStatus, TaskPriority } from '../../../../lib/types';
+import { TaskStatus, TaskPriority } from '../../../../types/types';
 import { cookies } from 'next/headers';
 
 async function getAuthUserId() {

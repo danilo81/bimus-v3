@@ -33,8 +33,7 @@ import {
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '../../lib/utils';
-import { getTasks } from '../tasks/actions';
-import { getProjects } from '../projects/actions';
+import { getTasks, getProjects, getCalendarEventsDb, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from '@/actions';
 import { Badge } from '../../components/ui/badge';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { Label } from '../../components/ui/label';
@@ -61,12 +60,6 @@ import {
 } from "../../components/ui/dialog";
 import { Textarea } from "../../components/ui/textarea";
 import { useToast } from '../../hooks/use-toast';
-import {
-    getCalendarEventsDb,
-    createCalendarEvent,
-    updateCalendarEvent,
-    deleteCalendarEvent,
-} from './actions';
 
 function parseLocalDate(isoString: string | Date): Date {
     if (!isoString) return new Date();

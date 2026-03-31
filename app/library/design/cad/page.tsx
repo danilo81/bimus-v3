@@ -56,7 +56,7 @@ export default function CadLibraryPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Buscar bloque o detalle..."
-                        className="pl-10 h-10 bg-card border-accent text-[12px]   tracking-widest"
+                        className="pl-10 h-10 bg-card border-accent text-[12px] tracking-widest"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -83,7 +83,7 @@ export default function CadLibraryPage() {
                         </TableHeader>
                         <TableBody>
                             {MOCK_CAD_ASSETS.filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase())).map((asset) => (
-                                <TableRow key={asset.id} className="border-white/5 hover:bg-white/3 transition-colors group">
+                                <TableRow key={asset.id} className="border-accent hover:bg-accent/3 transition-colors group">
                                     <TableCell className="py-6 px-8">
                                         <div className="flex items-center gap-4">
                                             <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20">

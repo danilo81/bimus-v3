@@ -3,17 +3,18 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { FixedAsset, BimBranch, BimVersion } from '@/lib/types';
-import { 
-    getProjectById, 
-    getProjectAssets, 
-    assignAssetToProject, 
+import { FixedAsset, BimBranch, BimVersion } from '@/types/types';
+import {
+    getProjectById,
+    getProjectAssets,
+    assignAssetToProject,
     unassignAssetFromProject,
     getProjectBimData,
     createBimBranch,
-    createBimVersion
-} from '../../actions';
-import { getAssets as getLibraryAssets } from '@/app/library/construction/assets/actions';
+    createBimVersion,
+    getAssets as getLibraryAssets
+} from '@/actions';
+
 import {
     Box,
     ChevronLeft,
@@ -37,7 +38,8 @@ import {
     UserCircle,
     Terminal,
     CheckCircle2,
-    LayoutGrid} from 'lucide-react';
+    LayoutGrid
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -104,7 +106,7 @@ export default function ModelPage() {
     const fetchProject = useCallback(async () => {
         const id = params?.id;
         const cleanId = Array.isArray(id) ? id[0] : id;
-        
+
         if (cleanId) {
             setIsLoading(true);
             try {
@@ -113,9 +115,9 @@ export default function ModelPage() {
                     getProjectAssets(cleanId as string),
                     getProjectBimData(cleanId as string)
                 ]);
-                
+
                 if (found) setProject(found);
-                
+
                 if (assetsResponse && 'assets' in assetsResponse) {
                     setProjectAssets(assetsResponse.assets as FixedAsset[]);
                 } else {
@@ -145,9 +147,9 @@ export default function ModelPage() {
         fetchProject();
     }, [fetchProject]);
 
-    const activeBranch = useMemo(() => 
-        branches.find(b => b.id === selectedBranchId), 
-    [branches, selectedBranchId]);
+    const activeBranch = useMemo(() =>
+        branches.find(b => b.id === selectedBranchId),
+        [branches, selectedBranchId]);
 
     const handleCreateBranch = async () => {
         if (!project || !newBranchName.trim()) return;
@@ -292,7 +294,7 @@ export default function ModelPage() {
         const it = (directCost + adm + utility) * (Number(config.it || 0) / 100);
 
         const totalUnit = directCost + adm + utility + it;
-        
+
         return {
             matSub, labSub, cSociales, ivaMO, equSub, toolWear, directCost, adm, utility, it, totalUnit,
             supplies: supplies.map((s: any) => ({
@@ -327,7 +329,7 @@ export default function ModelPage() {
                     </Button>
                     <div>
                         <h1 className="text-2xl font-bold flex items-center gap-3 font-headline uppercase tracking-tight">
-                            <Box className="h-7 w-7 text-primary" /> Modelo: 
+                            <Box className="h-7 w-7 text-primary" /> Modelo:
                         </h1>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Gestión de activos digitales y control de versiones BIM</p>
                     </div>
@@ -394,7 +396,7 @@ export default function ModelPage() {
                                         </SelectContent>
                                     </Select>
                                 </CardHeader>
-                                
+
                                 <CardHeader className="p-4 bg-white/2 border-b border-white/5 py-3">
                                     <div className="flex items-center gap-2">
                                         <Clock className="h-3.5 w-3.5 text-muted-foreground" />
@@ -430,7 +432,7 @@ export default function ModelPage() {
                                 </ScrollArea>
 
                                 <div className="p-4 bg-white/2 border-t border-white/5">
-                                    <Button 
+                                    <Button
                                         className="w-full bg-primary text-black font-black text-[10px] uppercase h-10 tracking-widest shadow-xl"
                                         onClick={() => setIsNewCommitOpen(true)}
                                     >
@@ -457,7 +459,7 @@ export default function ModelPage() {
                                 </CardHeader>
                                 <CardContent className="flex-1 p-0 relative group">
                                     <BimViewer branchName={activeBranch?.name} />
-                                    
+
                                     <div className="absolute bottom-6 right-6 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <div className="bg-black/80 backdrop-blur-md border border-white/10 p-2 rounded-xl flex gap-1 shadow-2xl">
                                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/20 hover:text-primary"><LayoutGrid className="h-4 w-4" /></Button>
@@ -522,7 +524,7 @@ export default function ModelPage() {
                     {hasItems ? (
                         <Card className="bg-[#0a0a0a] border-white/10 text-white shadow-2xl">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7 bg-white/2 border-b border-white/5">
-                               <div>
+                                <div>
                                     <CardTitle className="text-lg font-bold uppercase tracking-tight">Items Vinculados al Modelo</CardTitle>
                                     <CardDescription className="text-muted-foreground text-[10px] uppercase font-black tracking-widest mt-1">Partidas detectadas en el modelo con sus metrados reales.</CardDescription>
                                 </div>
@@ -712,8 +714,8 @@ export default function ModelPage() {
                     <div className="p-6 space-y-4">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-muted-foreground">Nombre de la Rama (Branch)</Label>
-                            <Input 
-                                value={newBranchName} 
+                            <Input
+                                value={newBranchName}
                                 onChange={(e) => setNewBranchName(e.target.value)}
                                 className="h-11 bg-white/5 border-white/10 uppercase font-bold text-sm"
                                 placeholder="Ej: propuesta-estructural-v2"
@@ -744,8 +746,8 @@ export default function ModelPage() {
                     <div className="p-6 space-y-4">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-muted-foreground">Mensaje de Versión</Label>
-                            <Input 
-                                value={commitMessage} 
+                            <Input
+                                value={commitMessage}
                                 onChange={(e) => setCommitMessage(e.target.value)}
                                 className="h-11 bg-white/5 border-white/10 uppercase font-bold text-sm"
                                 placeholder="Ej: Ajuste de espesor de losa..."
@@ -817,8 +819,8 @@ export default function ModelPage() {
                                                         <TableCell className="text-xs font-bold text-white uppercase group-hover:text-primary transition-colors">{asset.name}</TableCell>
                                                         <TableCell className="text-[10px] text-muted-foreground uppercase font-bold">{asset.brand}</TableCell>
                                                         <TableCell className="text-right pr-6">
-                                                            <Button 
-                                                                size="sm" 
+                                                            <Button
+                                                                size="sm"
                                                                 className="h-8 w-8 p-0 bg-primary hover:bg-primary/90 text-black rounded-lg active:scale-90 transition-all"
                                                                 onClick={() => handleAssignAsset(asset.id)}
                                                                 disabled={isSaving}

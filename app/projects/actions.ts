@@ -5,7 +5,7 @@
 import prisma from "../../lib/prisma";
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from 'next/headers';
-import { ProjectConfig, CreateProjectData, FixedAsset } from "../../lib/types";
+import { ProjectConfig, CreateProjectData, FixedAsset } from "../../types/types";
 import { getSession } from "../../lib/auth";
 
 async function getAuthUserId() {
@@ -514,7 +514,36 @@ export async function updateProject(id: string, data: {
 
             if (levels) {
                 const newLevelIds = levels.map(l => l.id).filter(Boolean) as string[];
-                await tx.level.deleteMany({ where: { projectId: id, id: { notIn: newLevelIds } } });
+
+                // Identify levels to be deleted to handle children references
+                const levelsToDelete = await tx.level.findMany({
+                    where: { projectId: id, id: { notIn: newLevelIds } },
+                    select: { id: true }
+                });
+                const levelIdsToDelete = levelsToDelete.map(l => l.id);
+
+                if (levelIdsToDelete.length > 0) {
+                    // Delete quantities associated with these levels
+                    await tx.projectItemLevelQuantity.deleteMany({
+                        where: { levelId: { in: levelIdsToDelete } }
+                    });
+
+                    // Nullify levelId in WarehouseMovement
+                    await tx.warehouseMovement.updateMany({
+                        where: { levelId: { in: levelIdsToDelete } },
+                        data: { levelId: null }
+                    });
+
+                    // Nullify levelId in InspectionRecord
+                    await tx.inspectionRecord.updateMany({
+                        where: { levelId: { in: levelIdsToDelete } },
+                        data: { levelId: null }
+                    });
+
+                    // Now safely delete the levels
+                    await tx.level.deleteMany({ where: { id: { in: levelIdsToDelete } } });
+                }
+
                 for (const level of levels) {
                     if (level.id) await tx.level.update({ where: { id: level.id }, data: { name: level.name } });
                     else await tx.level.create({ data: { name: level.name, projectId: id } });
@@ -531,16 +560,16 @@ export async function updateProject(id: string, data: {
 }
 
 export async function updateProjectItem(
-    projectId: string, 
-    itemId: string, 
-    data: { 
-        quantity?: number, 
-        performance?: number, 
-        extraDays?: number, 
+    projectId: string,
+    itemId: string,
+    data: {
+        quantity?: number,
+        performance?: number,
+        extraDays?: number,
         ganttStatus?: string,
         startDate?: Date | null,
         predecessorId?: string | null,
-        levelQuantities?: { levelId: string, quantity: number }[] 
+        levelQuantities?: { levelId: string, quantity: number }[]
     }
 ) {
     try {
@@ -551,7 +580,7 @@ export async function updateProjectItem(
             if (data.extraDays !== undefined) updateData.extraDays = Number(data.extraDays);
             if (data.ganttStatus !== undefined) updateData.ganttStatus = data.ganttStatus;
             if (data.startDate !== undefined) updateData.startDate = data.startDate;
-            
+
             if (data.predecessorId !== undefined) {
                 if (data.predecessorId === "" || data.predecessorId === null) {
                     updateData.predecessorId = null;
@@ -583,8 +612,8 @@ export async function updateProjectItem(
         revalidatePath(`/projects/${projectId}`);
         revalidatePath(`/projects/${projectId}/construction`);
         return { success: true };
-    } catch (error: any) { 
-        return { success: false, error: error.message || "Error al actualizar partida" }; 
+    } catch (error: any) {
+        return { success: false, error: error.message || "Error al actualizar partida" };
     }
 }
 
@@ -933,33 +962,6 @@ export async function getGlobalSiteLogs() {
             content: log.content,
             projectName: log.project.title,
             author: log.author.name || 'Usuario'
-        }));
-    } catch (error) { return []; }
-}
-
-export async function getGlobalPurchaseOrders() {
-    try {
-        const access = await getAccessibleProjectIds();
-        if (!access) return [];
-        const orders = await prisma.purchaseOrder.findMany({
-            where: {
-                project: {
-                    status: 'activo',
-                    OR: [{ authorId: access.userId }, { id: { in: access.collabIds } }]
-                }
-            },
-            include: { project: { select: { title: true } }, supplier: { select: { company: true, name: true } } },
-            orderBy: { createdAt: 'desc' },
-            take: 5
-        });
-        return orders.map(o => ({
-            id: o.number,
-            supplier: o.supplier?.company || o.supplier?.name || 'Proveedor',
-            project: o.project.title,
-            amount: o.totalAmount,
-            status: o.status === 'pendiente' ? 'pending' : o.status === 'procesado' ? 'processed' : 'completed',
-            label: o.status.toUpperCase(),
-            date: o.createdAt.toISOString()
         }));
     } catch (error) { return []; }
 }

@@ -11,7 +11,7 @@ import {
     createPurchaseOrder,
     deletePurchaseOrder
 } from '../operations/actions';
-import { importContactToLibrary, getContacts, createContact } from '../../../library/contacts/actions';
+import { importContactToLibrary, getContacts, createContact } from '@/actions';
 import {
     ShoppingCart,
     ChevronLeft,

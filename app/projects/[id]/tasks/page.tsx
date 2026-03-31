@@ -598,7 +598,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import {
     Card,
-    CardContent} from '@/components/ui/card';
+    CardContent
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
     CheckSquare,
@@ -653,7 +654,7 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select';
-import { Task, TaskStatus, TaskPriority } from '@/lib/types';
+import { Task, TaskStatus, TaskPriority } from '@/types/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getTasks, createTask, updateTask, deleteTask } from './actions';

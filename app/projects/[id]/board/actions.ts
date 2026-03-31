@@ -2,7 +2,7 @@
 
 import prisma from "../../../../lib/prisma";
 import { revalidatePath } from "next/cache";
-import { BimTopicStatus } from "../../../../lib/types";
+import { BimTopicStatus } from "../../../../types/types";
 
 /**
  * Obtiene el documento BIM de un proyecto y construye la estructura jerárquica de tópicos.

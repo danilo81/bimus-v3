@@ -29,7 +29,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from '../../../components/ui/dropdown-menu';
-import { getGlobalPayables } from '../actions';
+import { getGlobalPayables } from '@/actions';
 
 export default function PayablesPage() {
     const router = useRouter();

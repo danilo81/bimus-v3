@@ -73,11 +73,11 @@ import {
     SelectTrigger,
     SelectValue
 } from '../../../components/ui/select';
-import { Contact, ContactType } from '../../../lib/types';
+import { Contact, ContactType } from '../../../types/types';
 import { useToast } from '../../../hooks/use-toast';
 import { Separator } from '../../../components/ui/separator';
-import { getContacts, createContact, updateContact, deleteContact, createBankAccount, updateBankAccount, deleteBankAccount, getContactAccountingInfo } from './actions';
-import { ScrollArea } from '../../../components/ui/scroll-area';
+import { getContacts, createContact, updateContact, deleteContact, createBankAccount, updateBankAccount, deleteBankAccount, getContactAccountingInfo } from '@/actions';
+import { ScrollArea, ScrollBar } from '../../../components/ui/scroll-area';
 import { Textarea } from '../../../components/ui/textarea';
 import { cn } from '../../../lib/utils';
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar';
@@ -336,7 +336,7 @@ export default function ContactsPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 space-y-6 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card w-fit">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card">
                 <div>
                     <h1 className="text-3xl font-bold font-headline flex items-center gap-3">
                         <Users className="h-8 w-8 text-primary" /> Contactos
@@ -357,7 +357,7 @@ export default function ContactsPage() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <Tabs value={activeTab} className="w-full lg:w-auto" onValueChange={setActiveTab}>
+                    <Tabs value={activeTab} className="hidden lg:block" onValueChange={setActiveTab}>
                         <TabsList className="bg-background/50 border border-muted/50 h-11">
                             <TabsTrigger value="all" className="text-[10px] font-black uppercase px-6 data-[state=active]:bg-card data-[state=active]:text-primary">Todos</TabsTrigger>
                             <TabsTrigger value="cliente" className="text-[10px] font-black uppercase px-6 data-[state=active]:bg-card data-[state=active]:text-primary">Clientes</TabsTrigger>
@@ -366,6 +366,8 @@ export default function ContactsPage() {
                         </TabsList>
                     </Tabs>
 
+                </div>
+                <div className="flex items-center gap-4">
                     <Button
                         className="bg-foreground hover:bg-primary/40 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 cursor-pointer"
                         onClick={() => setIsCreateDialogOpen(true)}
@@ -381,10 +383,10 @@ export default function ContactsPage() {
                     <p className="text-[10px] font-black uppercase tracking-widest">Sincronizando Directorio...</p>
                 </div>
             ) : filteredContacts.length > 0 ? (
-                <Card className="border-accent overflow-hidden bg-card p-0 min-h-[60vh]">
+                <Card className="border-accent overflow-hidden bg-card p-0 min-h-[60vh] w-full">
                     <ScrollArea className="h-150">
                         <CardContent className="p-0">
-                            <Table>
+                            <Table className="tracking-widest">
                                 <TableHeader className="bg-muted/50">
                                     <TableRow className="hover:bg-transparent">
                                         <TableHead className="py-5 px-8 text-[12px] font-black uppercase tracking-widest text-muted-foreground">Contacto / Empresa</TableHead>
@@ -397,7 +399,7 @@ export default function ContactsPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {filteredContacts.map((contact) => (
-                                        <TableRow key={contact.id} className="hover:bg-muted/20 transition-colors border-accent group">
+                                        <TableRow key={contact.id} className="hover:bg-muted/20 transition-colors border-accent group ">
                                             <TableCell className="py-5 px-8">
                                                 <div className="flex items-center gap-4">
                                                     <div className={cn("h-2.5 w-2.5 rounded-full", contact.status === 'active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-destructive')} />
@@ -440,6 +442,8 @@ export default function ContactsPage() {
                                 </TableBody>
                             </Table>
                         </CardContent>
+                        <ScrollBar orientation="horizontal" />
+                        <ScrollBar orientation="vertical" />
                     </ScrollArea>
                 </Card>
             ) : (

@@ -42,7 +42,7 @@ import {
 } from '../../../../components/ui/dropdown-menu';
 import { Label } from '../../../../components/ui/label';
 import { useToast } from '../../../../hooks/use-toast';
-import { Chapter } from '../../../../lib/types';
+import { Chapter } from '../../../../types/types';
 import { useAuth } from '../../../../hooks/use-auth';
 import {
     getChapters,

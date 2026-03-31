@@ -59,22 +59,22 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from '../../../../components/ui/dropdown-menu';
-import { ConstructionItem, Supply, Chapter, UnitOfMeasure } from '../../../../lib/types';
+import { ConstructionItem, Supply, Chapter, UnitOfMeasure } from '../../../../types/types';
 import { useToast } from '../../../../hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../components/ui/tabs';
 import { Separator } from '../../../../components/ui/separator';
-import { ScrollArea } from '../../../../components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '../../../../components/ui/scroll-area';
 import { useAuth } from '../../../../hooks/use-auth';
 import { cn } from '../../../../lib/utils';
-import { getChapters } from '../../parameters/chapters/actions';
-import { getSupplies, createSupply } from '../supplies/actions';
-import { getUnits } from '../../parameters/units/actions';
 import {
     getConstructionItems,
+    getChapters,
+    getUnits,
     createConstructionItem,
+    getSupplies,
     updateConstructionItem,
     deleteConstructionItem
-} from './actions';
+} from '@/actions';
 import { Textarea } from '../../../../components/ui/textarea';
 
 interface ItemSupply {
@@ -1212,6 +1212,8 @@ export default function ItemsPage() {
                                 </Table>
                             </div>
                         </CardContent>
+                        <ScrollBar orientation="vertical" />
+                        <ScrollBar orientation="horizontal" />
                     </ScrollArea>
                 </Card>
             ) : (

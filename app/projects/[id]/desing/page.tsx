@@ -16,13 +16,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import dynamic from 'next/dynamic';
 
-// Dynamically import the BIM viewer with SSR disabled to prevent internal Three.js errors
-const BimViewer = dynamic(() => import('@/components/bim/BimViewer').then(mod => mod.BimViewer), {
+// 1. Importamos el nuevo visor de That Open desactivando SSR
+const ThatOpenViewer = dynamic(() => import('@/components/bim/ThatOpenViwer').then(mod => mod.ThatOpenViewer), {
     ssr: false,
     loading: () => (
         <div className="flex flex-col items-center justify-center h-full w-full bg-[#050505] gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Inicializando Motor Gráfico...</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Inicializando Motor That Open...</p>
         </div>
     )
 });
@@ -36,7 +36,7 @@ export default function ProjectDesignPage() {
     const fetchProject = useCallback(async () => {
         const id = params?.id;
         const cleanId = Array.isArray(id) ? id[0] : id;
-        
+
         if (cleanId) {
             setIsLoading(true);
             try {
@@ -89,10 +89,10 @@ export default function ProjectDesignPage() {
             </header>
 
             <div className="flex-1 flex overflow-hidden">
-                {/* Área del Visor 3D - Ahora ocupa el ancho total */}
                 <main className="flex-1 flex flex-col relative bg-[#050505]">
                     <div className="absolute inset-0 p-4">
-                        <BimViewer showControls={true} />
+                        {/* 2. Reemplazamos el BimViewer por el ThatOpenViewer */}
+                        <ThatOpenViewer />
                     </div>
 
                     {/* Overlay de Herramientas Rápidas */}

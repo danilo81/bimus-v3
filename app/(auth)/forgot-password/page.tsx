@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Mail } from 'lucide-react';
 import { useToast } from '../../../hooks/use-toast';
 import Image from 'next/image';
+import Logo from '@/components/logo';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
@@ -30,16 +31,16 @@ export default function ForgotPasswordPage() {
                 <CardHeader className="space-y-4 text-center">
                     <div className="flex justify-center">
                         <div>
-                            <Image src="/Grupo.svg" alt="Logo" width={100} height={100} />
+                            <Logo size={150} className="grayscale" />
                         </div>
                     </div>
                     <div className='flex flex-col items-center justify-center'>
-                    <div className='flex flex-col items-center justify-center  bg-card w-fit'>
-                    <CardTitle className="text-2xl text-center font-headline font-bold bg-card">Recuperar Contraseña</CardTitle>
-                    <CardDescription className="text-center bg-card w-fit">
-                        Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
-                    </CardDescription>
-                    </div>
+                        <div className='flex flex-col items-center justify-center  bg-card w-fit'>
+                            <CardTitle className="text-2xl text-center font-headline font-bold bg-card">Recuperar Contraseña</CardTitle>
+                            <CardDescription className="text-center bg-card w-fit">
+                                Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
+                            </CardDescription>
+                        </div>
                     </div>
                 </CardHeader>
                 <form onSubmit={handleResetRequest}>

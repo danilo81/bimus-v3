@@ -6,23 +6,18 @@ import {
     Landmark,
     ArrowUpRight,
     ArrowDownLeft,
-    TrendingUp,
     Wallet,
-    Receipt,
     PieChart,
     Calendar,
     ArrowRight,
     Loader2,
-    Plus,
-    Building2,
     History
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { getAccountingOverview } from './actions';
+import { getAccountingOverview } from '@/actions';
 import { cn } from '../../lib/utils';
 import Link from 'next/link';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 

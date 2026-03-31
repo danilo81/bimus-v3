@@ -58,17 +58,16 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from '../../../../components/ui/dropdown-menu';
-import { Supply, Contact, UnitOfMeasure } from '../../../../lib/types';
+import { Supply, Contact, UnitOfMeasure } from '../../../../types/types';
 import { useToast } from '../../../../hooks/use-toast';
 import { useAuth } from '../../../../hooks/use-auth';
-import { getSupplies, createSupply, updateSupply, deleteSupply, addSupplyCost, deleteSupplyCost } from './actions';
-import { getContacts, createContact } from '../../contacts/actions';
-import { getUnits } from '../../../../app/library/parameters/units/actions';
+import { getSupplies, createSupply, updateSupply, deleteSupply, addSupplyCost, deleteSupplyCost, getContacts, createContact, getUnits } from '@/actions';
 import { Badge } from '../../../../components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '../../../../components/ui/tabs';
 import { Separator } from '../../../../components/ui/separator';
 import { cn } from '../../../../lib/utils';
-import { ScrollArea } from '../../../../components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '../../../../components/ui/scroll-area';
+import { ImportExportSupplies } from '@/components/layout/modals/ImportSuppliesModal';
 
 const typologies = ["Material", "Mano de Obra", "Equipo"];
 
@@ -440,6 +439,7 @@ export default function SuppliesPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <ImportExportSupplies currentData={[]} />
                     <Dialog open={isDialogOpen} onOpenChange={(open) => {
                         setIsDialogOpen(open);
                         if (!open) resetForm();
@@ -681,6 +681,8 @@ export default function SuppliesPage() {
                                 </TableBody>
                             </Table>
                         </CardContent>
+                        <ScrollBar orientation="vertical" />
+                        <ScrollBar orientation="horizontal" />
                     </ScrollArea>
                 </Card>
             ) : (

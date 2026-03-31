@@ -4,7 +4,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Contact } from '../../../../lib/types';
+import { Contact } from '../../../../types/types';
 import { getProjectById } from '../../actions';
 import {
     getSupplyRequests,
@@ -23,7 +23,10 @@ import {
     Activity,
     Info,
     AlertCircle,
-    ClipboardList
+    ClipboardList,
+    Calculator,
+    Coins,
+    CalendarDays
 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import {
@@ -47,8 +50,9 @@ import { useToast } from '../../../../hooks/use-toast';
 import { useAuth } from '../../../../hooks/use-auth';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../../components/ui/table';
 import { Checkbox } from '../../../../components/ui/checkbox';
-import { getContacts } from '../../../library/contacts/actions';
+import { getContacts } from '@/actions';
 import { cn } from '../../../../lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/tabs"
 
 export default function OperationsPage() {
     const params = useParams();
@@ -62,7 +66,7 @@ export default function OperationsPage() {
     const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
     const [warehouseStock, setWarehouseStock] = useState<Record<string, { totalIn: number; totalOut: number; currentStock: number }>>({});
 
-    // Modals state
+    //  Modals state
     const [isPedidosOpen, setIsPedidosOpen] = useState(false);
     const [isCotizacionesOpen, setIsCotizacionesOpen] = useState(false);
     const [isPOOpen, setIsPOOpen] = useState(false);
@@ -74,7 +78,7 @@ export default function OperationsPage() {
     const [isWarehouseExitOpen, setIsWarehouseExitOpen] = useState(false);
     const [isSelectStockForExitOpen, setIsSelectStockForExitOpen] = useState(false);
 
-    // Search and Overrides
+    //  Search and Overrides
     const [pedidosSearchTerm, setPedidosSearchTerm] = useState('');
     const [cotizacionesSearchTerm, setCotizacionesSearchTerm] = useState('');
     const [stockSearchTerm, setStockSearchTerm] = useState('');
@@ -204,12 +208,12 @@ export default function OperationsPage() {
     const handleConfirmWarehouseExit = async () => {
         if (!project || currentExitItems.length === 0) return;
 
-        // Validaciones de negocio
+        //  Validaciones de negocio
         for (const item of currentExitItems) {
             const assignment = exitAssignments[item.id];
             if (!assignment || assignment.quantity <= 0) continue;
 
-            // Validar contra cómputo de nivel
+            //  Validar contra cómputo de nivel
             if (assignment.levelId !== 'none') {
                 const computeLimit = getSupplyComputeForLevel(item.id, assignment.levelId);
                 if (assignment.quantity > (computeLimit + 0.001)) {
@@ -222,7 +226,7 @@ export default function OperationsPage() {
                 }
             }
 
-            // Validar contra stock físico
+            //  Validar contra stock físico
             if (assignment.quantity > item.mockStock) {
                 toast({
                     title: "Stock Insuficiente",
@@ -285,202 +289,223 @@ export default function OperationsPage() {
     }
 
     return (
-        <div className="flex flex-col min-h-screen  text-primary p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" className="hover:bg-white/10" onClick={() => router.back()}>
-                    <ChevronLeft className="h-6 w-6" />
-                </Button>
-                <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-3 font-headline">
-                        <Activity className="h-7 w-7 text-primary" /> Operaciones: {project?.title}
-                    </h1>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Gestión administrativa y logística de obra</p>
-                </div>
-                <div className="ml-auto">
-                    <Button
-                        onClick={() => setIsInspectionOpen(true)}
-                        className="bg-primary hover:bg-primary/80 text-background border border-primary font-black text-[10px] uppercase tracking-widest h-10 px-5"
-                    >
-                        <ClipboardList className="mr-2 h-4 w-4" /> Nueva Inspección
-                    </Button>
-                </div>
-            </div>
+        <div className="flex flex-col min-h-screen text-primary p-4 md:p-8 space-y-6">
+            <Tabs defaultValue="ordendecambio" className="w-full">
+                <TabsList className="bg-card border border-accent h-12 p-0 rounded-xl overflow-hidden mb-6 flex flex-wrap md:flex-nowrap">
+                    <TabsTrigger value="ordendecambio" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r border-accent text-xs md:text-sm">
+                        <Calculator className="mr-2 h-4 w-4" /> ORDEN DE CAMBIO
+                    </TabsTrigger>
+                    <TabsTrigger value="inspecciones" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r border-accent text-xs md:text-sm">
+                        <Coins className="mr-2 h-4 w-4" /> INSPECCIONES
+                    </TabsTrigger>
+                    <TabsTrigger value="librodeobra" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r border-accent text-xs md:text-sm">
+                        <CalendarDays className="mr-2 h-4 w-4" /> LIBRO DE OBRA
+                    </TabsTrigger>
+                </TabsList>
+                <TabsContent value="ordendecambio">
 
-            <div className="flex flex-col items-center justify-center py-40 border border-dashed border-white/5 rounded-3xl opacity-20 bg-white/1">
-                <Activity className="h-16 w-16 mb-4 text-primary" />
-                <p className="text-[10px] font-black uppercase tracking-[0.3em]">Terminal de operaciones listo. Use los menús superiores para gestionar la obra.</p>
-            </div>
-
-            {/* Salida de Almacén Dialog
-            <Dialog open={isWarehouseExitOpen} onOpenChange={setIsWarehouseExitOpen}>
-                <DialogContent className="max-w-[95vw] bg-[#0a0a0a] border-white/10 text-white p-0 overflow-hidden h-[95vh] flex flex-col shadow-2xl">
-                    <DialogHeader className="p-6 border-b border-white/5 bg-white/2 flex flex-row items-center justify-between shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-emerald-500/20 rounded-lg border border-emerald-500/20">
-                                <ArrowUpCircle className="h-6 w-6 text-emerald-500" />
-                            </div>
+                </TabsContent>
+                <TabsContent value="inspecciones">
+                    <div className="flex flex-col min-h-screen  text-primary p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
+                        <div className="flex items-center gap-4">
+                            <Button variant="ghost" size="icon" className="hover:bg-white/10" onClick={() => router.back()}>
+                                <ChevronLeft className="h-6 w-6" />
+                            </Button>
                             <div>
-                                <DialogTitle className="text-xl font-bold uppercase tracking-tight">Salida de Materiales de Almacén</DialogTitle>
-                                <DialogDescription className="text-muted-foreground text-[10px] uppercase tracking-widest font-black mt-1">Despacho de insumos y asignación a frentes de obra</DialogDescription>
+                                <h1 className="text-2xl font-bold flex items-center gap-3 font-headline">
+                                    <Activity className="h-7 w-7 text-primary" /> Operaciones: {project?.title}
+                                </h1>
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Gestión administrativa y logística de obra</p>
+                            </div>
+                            <div className="ml-auto">
+                                <Button
+                                    onClick={() => setIsInspectionOpen(true)}
+                                    className="bg-primary hover:bg-primary/80 text-background border border-primary font-black text-[10px] uppercase tracking-widest h-10 px-5"
+                                >
+                                    <ClipboardList className="mr-2 h-4 w-4" /> Nueva Inspección
+                                </Button>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <Button onClick={() => setIsSelectStockForExitOpen(true)} className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest px-6 h-10 shadow-lg">
-                                <PlusCircle className="mr-2 h-4 w-4" /> Seleccionar del Stock
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setIsWarehouseExitOpen(false)} className="text-muted-foreground hover:text-white">
-                                <X className="h-5 w-5" />
-                            </Button>
+
+                        <div className="flex flex-col items-center justify-center py-40 border border-dashed border-white/5 rounded-3xl opacity-20 bg-white/1">
+                            <Activity className="h-16 w-16 mb-4 text-primary" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em]">Terminal de operaciones listo. Use los menús superiores para gestionar la obra.</p>
                         </div>
-                    </DialogHeader>
 
-                    <div className="flex-1 overflow-hidden">
-                        <ScrollArea className="h-full">
-                            <Table>
-                                <TableHeader className="bg-white/5 sticky top-0 z-10 backdrop-blur-md">
-                                    <TableRow className="border-white/5 hover:bg-transparent">
-                                        <TableHead className="text-[10px] font-black uppercase py-4 px-6">Insumo</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-center">Und.</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-right">Stock</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase w-64">Asignar a Partida (Item)</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase w-48">Nivel de Obra</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-right w-32 pr-4 text-amber-400/80">Cómputo Requerido</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-center w-40">Cant. Salida</TableHead>
-                                        <TableHead className="w-10"></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {currentExitItems.length > 0 ? (
-                                        currentExitItems.map((item) => {
-                                            const assignment = exitAssignments[item.id] || { itemId: 'none', levelId: 'none', quantity: 0 };
-                                            const availableItems = (project?.items || []).filter((pi: any) => pi.item?.supplies?.some((is: any) => is.supplyId === item.id));
-                                            const selectedPI = availableItems.find((pi: any) => pi.item.id === assignment.itemId);
-                                            const availableLevels = project?.levels?.filter((lvl: any) => {
-                                                if (!selectedPI) return false;
-                                                const lq = selectedPI.levelQuantities?.find((q: any) => q.levelId === lvl.id);
-                                                return lq && lq.quantity > 0;
-                                            }) || [];
+                        {/* Salida de Almacén Dialog*/}
+                        <Dialog open={isWarehouseExitOpen} onOpenChange={setIsWarehouseExitOpen}>
+                            <DialogContent className="max-w-[95vw] bg-[#0a0a0a] border-white/10 text-white p-0 overflow-hidden h-[95vh] flex flex-col shadow-2xl">
+                                <DialogHeader className="p-6 border-b border-white/5 bg-white/2 flex flex-row items-center justify-between shrink-0">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-emerald-500/20 rounded-lg border border-emerald-500/20">
+                                            <ArrowUpCircle className="h-6 w-6 text-emerald-500" />
+                                        </div>
+                                        <div>
+                                            <DialogTitle className="text-xl font-bold uppercase tracking-tight">Salida de Materiales de Almacén</DialogTitle>
+                                            <DialogDescription className="text-muted-foreground text-[10px] uppercase tracking-widest font-black mt-1">Despacho de insumos y asignación a frentes de obra</DialogDescription>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <Button onClick={() => setIsSelectStockForExitOpen(true)} className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest px-6 h-10 shadow-lg">
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Seleccionar del Stock
+                                        </Button>
+                                        <Button variant="ghost" size="icon" onClick={() => setIsWarehouseExitOpen(false)} className="text-muted-foreground hover:text-white">
+                                            <X className="h-5 w-5" />
+                                        </Button>
+                                    </div>
+                                </DialogHeader>
 
-                                            const computeLimit = getSupplyComputeForLevel(item.id, assignment.levelId);
-                                            const isExceeded = assignment.levelId !== 'none' && assignment.quantity > (computeLimit + 0.001);
-                                            const isStockExceeded = assignment.quantity > item.mockStock;
-
-                                            return (
-                                                <TableRow key={item.id} className={cn("border-white/5 hover:bg-white/3 transition-colors", (isExceeded || isStockExceeded) && "bg-red-500/5")}>
-                                                    <TableCell className="px-6 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <Package className={cn("h-3.5 w-3.5", isExceeded || isStockExceeded ? "text-red-500" : "text-primary")} />
-                                                            <span className="text-xs font-bold text-white uppercase">{item.description}</span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-[10px] font-bold text-muted-foreground uppercase text-center">{item.unit}</TableCell>
-                                                    <TableCell className="text-xs font-mono text-right text-emerald-500 font-bold">{item.mockStock.toFixed(2)}</TableCell>
-                                                    <TableCell className="px-4">
-                                                        <Select value={assignment.itemId} onValueChange={(val) => handleExitAssignmentChange(item.id, 'itemId', val)}>
-                                                            <SelectTrigger className="h-9 bg-black border-white/10 text-[10px] font-bold uppercase w-full">
-                                                                <SelectValue placeholder="Partida..." />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="bg-[#0a0a0a] text-white border-white/10">
-                                                                <SelectItem value="none" className="text-[10px] font-bold uppercase">Sin asignar</SelectItem>
-                                                                {availableItems.map((pi: any) => (
-                                                                    <SelectItem key={pi.item.id} value={pi.item.id} className="text-[10px] font-bold uppercase">{pi.item.description}</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </TableCell>
-                                                    <TableCell className="px-4">
-                                                        <Select value={assignment.levelId} onValueChange={(val) => handleExitAssignmentChange(item.id, 'levelId', val)} disabled={assignment.itemId === 'none'}>
-                                                            <SelectTrigger className="h-9 bg-black border-white/10 text-[10px] font-bold uppercase w-full">
-                                                                <SelectValue placeholder={assignment.itemId === 'none' ? "Primero asigne partida" : "Nivel..."} />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="bg-[#0a0a0a] text-white border-white/10">
-                                                                <SelectItem value="none" className="text-[10px] font-bold uppercase">Sin asignar</SelectItem>
-                                                                {availableLevels.map((lvl: any) => (
-                                                                    <SelectItem key={lvl.id} value={lvl.id} className="text-[10px] font-bold uppercase">{lvl.name}</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </TableCell>
-                                                    <TableCell className="text-right px-4">
-                                                        {assignment.levelId !== 'none' ? (
-                                                            <div className="flex flex-col items-end">
-                                                                <span className="font-mono text-xs font-black text-amber-400">{computeLimit.toFixed(2)}</span>
-                                                                <span className="text-[9px] font-bold text-muted-foreground">{item.unit}</span>
-                                                            </div>
-                                                        ) : <span className="text-muted-foreground/30 text-[10px]">—</span>}
-                                                    </TableCell>
-                                                    <TableCell className="px-4">
-                                                        <div className="flex flex-col items-center gap-1">
-                                                            <Input
-                                                                type="number"
-                                                                step="0.01"
-                                                                value={assignment.quantity === 0 ? '' : assignment.quantity}
-                                                                onChange={(e) => handleExitAssignmentChange(item.id, 'quantity', e.target.value)}
-                                                                className={cn("h-9 w-24 bg-black border-white/10 text-center font-mono text-xs",
-                                                                    isExceeded || isStockExceeded ? "text-red-500 border-red-500 focus-visible:ring-red-500 bg-red-500/10" : "text-white"
-                                                                )}
-                                                                placeholder="0.00"
-                                                            />
-                                                            {isExceeded && <span className="text-[7px] font-black text-red-500 uppercase animate-pulse flex items-center gap-1"><AlertCircle className="h-2 w-2" /> Exceso Nivel</span>}
-                                                            {isStockExceeded && <span className="text-[7px] font-black text-red-500 uppercase animate-pulse flex items-center gap-1"><AlertCircle className="h-2 w-2" /> Sin Stock</span>}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="pr-4">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setCurrentExitItems(prev => prev.filter(i => i.id !== item.id))}>
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    </TableCell>
+                                <div className="flex-1 overflow-hidden">
+                                    <ScrollArea className="h-full">
+                                        <Table>
+                                            <TableHeader className="bg-white/5 sticky top-0 z-10 backdrop-blur-md">
+                                                <TableRow className="border-white/5 hover:bg-transparent">
+                                                    <TableHead className="text-[10px] font-black uppercase py-4 px-6">Insumo</TableHead>
+                                                    <TableHead className="text-[10px] font-black uppercase text-center">Und.</TableHead>
+                                                    <TableHead className="text-[10px] font-black uppercase text-right">Stock</TableHead>
+                                                    <TableHead className="text-[10px] font-black uppercase w-64">Asignar a Partida (Item)</TableHead>
+                                                    <TableHead className="text-[10px] font-black uppercase w-48">Nivel de Obra</TableHead>
+                                                    <TableHead className="text-[10px] font-black uppercase text-right w-32 pr-4 text-amber-400/80">Cómputo Requerido</TableHead>
+                                                    <TableHead className="text-[10px] font-black uppercase text-center w-40">Cant. Salida</TableHead>
+                                                    <TableHead className="w-10"></TableHead>
                                                 </TableRow>
-                                            );
-                                        })
-                                    ) : (
-                                        <TableRow><TableCell colSpan={8} className="text-center py-32 text-muted-foreground opacity-20 uppercase text-[10px] font-black">No hay insumos seleccionados para la salida.</TableCell></TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </ScrollArea>
-                    </div>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {currentExitItems.length > 0 ? (
+                                                    currentExitItems.map((item) => {
+                                                        const assignment = exitAssignments[item.id] || { itemId: 'none', levelId: 'none', quantity: 0 };
+                                                        const availableItems = (project?.items || []).filter((pi: any) => pi.item?.supplies?.some((is: any) => is.supplyId === item.id));
+                                                        const selectedPI = availableItems.find((pi: any) => pi.item.id === assignment.itemId);
+                                                        const availableLevels = project?.levels?.filter((lvl: any) => {
+                                                            if (!selectedPI) return false;
+                                                            const lq = selectedPI.levelQuantities?.find((q: any) => q.levelId === lvl.id);
+                                                            return lq && lq.quantity > 0;
+                                                        }) || [];
 
-                    <DialogFooter className="p-6 border-t border-white/5 bg-black/20 shrink-0">
-                        <Button variant="ghost" onClick={() => setIsWarehouseExitOpen(false)} className="text-[10px] font-black uppercase tracking-widest">Cancelar</Button>
-                        <Button onClick={handleConfirmWarehouseExit} disabled={currentExitItems.length === 0} className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest px-12 h-11 shadow-xl shadow-primary/10">
-                            <ArrowUpCircle className="mr-2 h-4 w-4" /> Confirmar Despacho de Materiales
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                                                        const computeLimit = getSupplyComputeForLevel(item.id, assignment.levelId);
+                                                        const isExceeded = assignment.levelId !== 'none' && assignment.quantity > (computeLimit + 0.001);
+                                                        const isStockExceeded = assignment.quantity > item.mockStock;
 
-             Sub-Dialog: Seleccionar del Stock 
-            <Dialog open={isSelectStockForExitOpen} onOpenChange={setIsSelectStockForExitOpen}>
-                <DialogContent className="max-w-3xl bg-[#0a0a0a] border-white/10 text-white p-0 overflow-hidden h-[80vh] flex flex-col shadow-2xl">
-                    <DialogHeader className="p-6 border-b border-white/5 bg-white/2">
-                        <div className="flex items-center gap-3">
-                            <Package className="h-5 w-5 text-emerald-500" />
-                            <DialogTitle className="text-lg font-bold uppercase tracking-tight">Inventario Disponible</DialogTitle>
-                        </div>
-                    </DialogHeader>
-                    <div className="p-6 flex-1 overflow-hidden">
-                        <ScrollArea className="h-full border border-white/10 rounded-xl bg-black/40">
-                            <Table>
-                                <TableHeader className="bg-white/5"><TableRow><TableHead className="w-12 text-center" /><TableHead className="text-[10px] font-black uppercase py-4">Insumo</TableHead><TableHead className="text-[10px] font-black uppercase text-center">Und.</TableHead><TableHead className="text-[10px] font-black uppercase text-right pr-6">Stock Actual</TableHead></TableRow></TableHeader>
-                                <TableBody>
-                                    {projectSupplies.filter(s => s.mockStock > 0).map((s) => (
-                                        <TableRow key={s.id} className="border-white/5 hover:bg-white/5 transition-colors">
-                                            <TableCell className="text-center"><Checkbox checked={selectedStockExitIds.includes(s.id)} onCheckedChange={() => handleToggleStockExitItem(s.id)} /></TableCell>
-                                            <TableCell className="text-xs font-bold text-white uppercase">{s.description}</TableCell>
-                                            <TableCell className="text-[10px] font-bold text-muted-foreground uppercase text-center">{s.unit}</TableCell>
-                                            <TableCell className="text-xs font-mono text-right text-emerald-500 font-bold pr-6">{s.mockStock.toFixed(2)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </ScrollArea>
+                                                        return (
+                                                            <TableRow key={item.id} className={cn("border-white/5 hover:bg-white/3 transition-colors", (isExceeded || isStockExceeded) && "bg-red-500/5")}>
+                                                                <TableCell className="px-6 py-4">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <Package className={cn("h-3.5 w-3.5", isExceeded || isStockExceeded ? "text-red-500" : "text-primary")} />
+                                                                        <span className="text-xs font-bold text-white uppercase">{item.description}</span>
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="text-[10px] font-bold text-muted-foreground uppercase text-center">{item.unit}</TableCell>
+                                                                <TableCell className="text-xs font-mono text-right text-emerald-500 font-bold">{item.mockStock.toFixed(2)}</TableCell>
+                                                                <TableCell className="px-4">
+                                                                    <Select value={assignment.itemId} onValueChange={(val) => handleExitAssignmentChange(item.id, 'itemId', val)}>
+                                                                        <SelectTrigger className="h-9 bg-black border-white/10 text-[10px] font-bold uppercase w-full">
+                                                                            <SelectValue placeholder="Partida..." />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="bg-[#0a0a0a] text-white border-white/10">
+                                                                            <SelectItem value="none" className="text-[10px] font-bold uppercase">Sin asignar</SelectItem>
+                                                                            {availableItems.map((pi: any) => (
+                                                                                <SelectItem key={pi.item.id} value={pi.item.id} className="text-[10px] font-bold uppercase">{pi.item.description}</SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </TableCell>
+                                                                <TableCell className="px-4">
+                                                                    <Select value={assignment.levelId} onValueChange={(val) => handleExitAssignmentChange(item.id, 'levelId', val)} disabled={assignment.itemId === 'none'}>
+                                                                        <SelectTrigger className="h-9 bg-black border-white/10 text-[10px] font-bold uppercase w-full">
+                                                                            <SelectValue placeholder={assignment.itemId === 'none' ? "Primero asigne partida" : "Nivel..."} />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="bg-[#0a0a0a] text-white border-white/10">
+                                                                            <SelectItem value="none" className="text-[10px] font-bold uppercase">Sin asignar</SelectItem>
+                                                                            {availableLevels.map((lvl: any) => (
+                                                                                <SelectItem key={lvl.id} value={lvl.id} className="text-[10px] font-bold uppercase">{lvl.name}</SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </TableCell>
+                                                                <TableCell className="text-right px-4">
+                                                                    {assignment.levelId !== 'none' ? (
+                                                                        <div className="flex flex-col items-end">
+                                                                            <span className="font-mono text-xs font-black text-amber-400">{computeLimit.toFixed(2)}</span>
+                                                                            <span className="text-[9px] font-bold text-muted-foreground">{item.unit}</span>
+                                                                        </div>
+                                                                    ) : <span className="text-muted-foreground/30 text-[10px]">—</span>}
+                                                                </TableCell>
+                                                                <TableCell className="px-4">
+                                                                    <div className="flex flex-col items-center gap-1">
+                                                                        <Input
+                                                                            type="number"
+                                                                            step="0.01"
+                                                                            value={assignment.quantity === 0 ? '' : assignment.quantity}
+                                                                            onChange={(e) => handleExitAssignmentChange(item.id, 'quantity', e.target.value)}
+                                                                            className={cn("h-9 w-24 bg-black border-white/10 text-center font-mono text-xs",
+                                                                                isExceeded || isStockExceeded ? "text-red-500 border-red-500 focus-visible:ring-red-500 bg-red-500/10" : "text-white"
+                                                                            )}
+                                                                            placeholder="0.00"
+                                                                        />
+                                                                        {isExceeded && <span className="text-[7px] font-black text-red-500 uppercase animate-pulse flex items-center gap-1"><AlertCircle className="h-2 w-2" /> Exceso Nivel</span>}
+                                                                        {isStockExceeded && <span className="text-[7px] font-black text-red-500 uppercase animate-pulse flex items-center gap-1"><AlertCircle className="h-2 w-2" /> Sin Stock</span>}
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="pr-4">
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setCurrentExitItems(prev => prev.filter(i => i.id !== item.id))}>
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <TableRow><TableCell colSpan={8} className="text-center py-32 text-muted-foreground opacity-20 uppercase text-[10px] font-black">No hay insumos seleccionados para la salida.</TableCell></TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
+                                </div>
+
+                                <DialogFooter className="p-6 border-t border-white/5 bg-black/20 shrink-0">
+                                    <Button variant="ghost" onClick={() => setIsWarehouseExitOpen(false)} className="text-[10px] font-black uppercase tracking-widest">Cancelar</Button>
+                                    <Button onClick={handleConfirmWarehouseExit} disabled={currentExitItems.length === 0} className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest px-12 h-11 shadow-xl shadow-primary/10">
+                                        <ArrowUpCircle className="mr-2 h-4 w-4" /> Confirmar Despacho de Materiales
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+
+                        {/* Sub-Dialog: Seleccionar del Stock */}
+                        <Dialog open={isSelectStockForExitOpen} onOpenChange={setIsSelectStockForExitOpen}>
+                            <DialogContent className="max-w-3xl bg-[#0a0a0a] border-white/10 text-white p-0 overflow-hidden h-[80vh] flex flex-col shadow-2xl">
+                                <DialogHeader className="p-6 border-b border-white/5 bg-white/2">
+                                    <div className="flex items-center gap-3">
+                                        <Package className="h-5 w-5 text-emerald-500" />
+                                        <DialogTitle className="text-lg font-bold uppercase tracking-tight">Inventario Disponible</DialogTitle>
+                                    </div>
+                                </DialogHeader>
+                                <div className="p-6 flex-1 overflow-hidden">
+                                    <ScrollArea className="h-full border border-white/10 rounded-xl bg-black/40">
+                                        <Table>
+                                            <TableHeader className="bg-white/5"><TableRow><TableHead className="w-12 text-center" /><TableHead className="text-[10px] font-black uppercase py-4">Insumo</TableHead><TableHead className="text-[10px] font-black uppercase text-center">Und.</TableHead><TableHead className="text-[10px] font-black uppercase text-right pr-6">Stock Actual</TableHead></TableRow></TableHeader>
+                                            <TableBody>
+                                                {projectSupplies.filter(s => s.mockStock > 0).map((s) => (
+                                                    <TableRow key={s.id} className="border-white/5 hover:bg-white/5 transition-colors">
+                                                        <TableCell className="text-center"><Checkbox checked={selectedStockExitIds.includes(s.id)} onCheckedChange={() => handleToggleStockExitItem(s.id)} /></TableCell>
+                                                        <TableCell className="text-xs font-bold text-white uppercase">{s.description}</TableCell>
+                                                        <TableCell className="text-[10px] font-bold text-muted-foreground uppercase text-center">{s.unit}</TableCell>
+                                                        <TableCell className="text-xs font-mono text-right text-emerald-500 font-bold pr-6">{s.mockStock.toFixed(2)}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
+                                </div>
+                                <DialogFooter className="p-6 border-t border-white/5 bg-black/20">
+                                    <Button onClick={confirmSelectedStockForExit} className="bg-primary text-black font-black text-[10px] uppercase px-8 h-10">Vincular para Salida</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </div>
-                    <DialogFooter className="p-6 border-t border-white/5 bg-black/20">
-                        <Button onClick={confirmSelectedStockForExit} className="bg-primary text-black font-black text-[10px] uppercase px-8 h-10">Vincular para Salida</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog> */}
+                </TabsContent>
+                <TabsContent value="librodeobra"></TabsContent>
+            </Tabs>
         </div>
     );
 }

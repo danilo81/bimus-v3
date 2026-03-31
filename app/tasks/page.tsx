@@ -4,7 +4,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
     Card,
-    CardContent} from '../../components/ui/card';
+    CardContent
+} from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import {
     CheckSquare,
@@ -59,11 +60,10 @@ import {
     SelectTrigger,
     SelectValue
 } from '../../components/ui/select';
-import { Task, TaskStatus, TaskPriority } from '../../lib/types';
+import { Task, TaskStatus, TaskPriority } from '../../types/types';
 import { cn } from '../../lib/utils';
 import { useToast } from '../../hooks/use-toast';
-import { getTasks, createTask, updateTask, deleteTask } from './actions';
-import { getProjects } from '../projects/actions';
+import { getTasks, createTask, updateTask, deleteTask, getProjects } from '@/actions';
 
 // DnD Kit Imports
 import {
@@ -119,10 +119,10 @@ export default function TasksPage() {
 
     useEffect(() => {
         setIsMounted(true);
-        loadData();
+        loadDataTasks();
     }, []);
 
-    async function loadData() {
+    async function loadDataTasks() {
         setLoading(true);
         try {
             const [tasksData, projectsData] = await Promise.all([
@@ -202,7 +202,7 @@ export default function TasksPage() {
         const result = await createTask(formData as any);
         if (result.success) {
             toast({ title: "Tarea creada", description: "La nueva tarea ha sido añadida exitosamente." });
-            loadData();
+            loadDataTasks();
             setIsCreateOpen(false);
             resetForm();
         } else {
@@ -233,7 +233,7 @@ export default function TasksPage() {
         const result = await updateTask(editingTaskId, formData as any);
         if (result.success) {
             toast({ title: "Tarea actualizada", description: "Los cambios han sido guardados correctamente." });
-            loadData();
+            loadDataTasks();
             setIsEditOpen(false);
             resetForm();
         } else {
@@ -248,7 +248,7 @@ export default function TasksPage() {
         const result = await deleteTask(id);
         if (result.success) {
             toast({ title: "Tarea eliminada", description: "La tarea ha sido removida del sistema.", variant: "destructive" });
-            loadData();
+            loadDataTasks();
         } else {
             toast({ title: "Error", description: result.error, variant: "destructive" });
         }
@@ -287,7 +287,7 @@ export default function TasksPage() {
             if (!result.success) throw new Error(result.error);
         } catch (error) {
             toast({ title: "Error al mover tarea", variant: "destructive" });
-            loadData();
+            loadDataTasks();
         }
     };
 

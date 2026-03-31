@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import DotsOnDa from '@/components/ui/dotsdonda';
+import Logo from '@/components/logo';
 
 export default function Home() {
   const { theme, setTheme } = useTheme();
@@ -34,7 +35,7 @@ export default function Home() {
         {/* Central Logo Section */}
         <div className=" absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-60 flex flex-col items-center gap-6">
           <div>
-            <Image src="/Grupo.svg" alt="Logo" width={100} height={100} />
+            <Logo size={150} className="grayscale" />
           </div>
           <div className="text-center space-y-2">
             <h1 className="text-5xl md:text-6xl font-black tracking-tighter font-headline text-prymary">

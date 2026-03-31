@@ -21,8 +21,8 @@ import { Badge } from '../../components/ui/badge';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { useAuth } from '../../hooks/use-auth';
 import { useToast } from '../../hooks/use-toast';
-import { getNotifications, markAsRead, markAllAsRead, deleteNotification } from './actions';
-import { Notification } from '../../lib/types';
+import { getNotifications, markAsRead, markAllAsRead, deleteNotification } from '@/actions';
+import { Notification } from '../../types/types';
 import { cn } from '../../lib/utils';
 
 export default function NotificationsPage() {

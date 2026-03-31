@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { User, UserRole } from '../lib/types';
+import { User, UserRole } from '../types/types';
 import { useRouter } from 'next/navigation';
 import { logout as serverLogout } from '@/actions';
 

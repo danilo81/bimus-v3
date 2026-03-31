@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { CreateProjectData, Project } from '../../lib/types';
+import { CreateProjectData, Project } from '../../types/types';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Plus, LayoutGrid, List, Search, MoreVertical, Loader2, Building2, ChevronRight, MapPin, Ruler, Trash2, ArrowRight, UserPlus, Calendar, Mail, Send } from 'lucide-react';

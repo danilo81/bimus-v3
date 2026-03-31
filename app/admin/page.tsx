@@ -6,10 +6,10 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import type { User } from '@prisma/client';
-import { UserRole } from '../../lib/types';
+import { UserRole } from '../../types/types';
 import { useToast } from '../../hooks/use-toast';
 import { ShieldCheck, Loader2, UserPlus, MoreHorizontal, Search, ExternalLink, Mail, User as UserIcon, X, Briefcase, LayoutGrid, Save, Wrench, Hammer, Users } from 'lucide-react';
-import { getUsers, updateUserRole, createUser, getUserProjects } from './actions';
+import { getUsers, updateUserRole, createUser, getUserProjects } from '@/actions';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -247,7 +247,7 @@ export default function AdminPage() {
                 </div>
             </div>
 
-            <Card className="border-card overflow-hidden bg-card  p-0">
+            <Card className="border-accent overflow-hidden bg-card  p-0">
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader className="bg-card">
@@ -458,7 +458,7 @@ export default function AdminPage() {
                                                             <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-blue-400 transition-colors" />
                                                         </Link>
                                                     )) : (
-                                                        <div className="py-8 text-center border border-dashed border-white/5 rounded-2xl bg-white/1 opacity-20">
+                                                        <div className="py-8 text-center border border-dashed border-accent rounded-2xl bg-accent opacity-20">
                                                             <p className="text-[9px] font-black uppercase tracking-widest">Sin colaboraciones externas registradas</p>
                                                         </div>
                                                     )}
@@ -470,7 +470,7 @@ export default function AdminPage() {
                             </div>
 
                             <DialogFooter className="p-6 bg-card border-t border-accent">
-                                <Button variant="ghost" onClick={() => setIsModalOpen(false)} className="text-[10px] uppercase tracking-widest w-full h-11 hover:bg-white/5 font-bold bg-primary text-background">
+                                <Button variant="ghost" onClick={() => setIsModalOpen(false)} className="text-[10px] uppercase tracking-widest w-full h-11 hover:bg-primary/20 font-bold bg-primary text-background">
                                     Cerrar Terminal de Usuario
                                 </Button>
                             </DialogFooter>

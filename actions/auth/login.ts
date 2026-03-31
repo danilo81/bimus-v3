@@ -15,6 +15,7 @@ type LoginResult = {
 
 export async function login(credentials: Pick<User, 'email' | 'password'>): Promise<LoginResult> {
     try {
+
         const user = await prisma.user.findUnique({
             where: { email: credentials.email },
             select: {

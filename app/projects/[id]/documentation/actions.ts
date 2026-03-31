@@ -3,7 +3,7 @@
 import prisma from "../../../../lib/prisma";
 import { revalidatePath } from "next/cache";
 import { cookies } from 'next/headers';
-import { ProjectDocument } from "@/lib/types";
+import { ProjectDocument } from "@/types/types";
 
 async function getAuthUserId() {
     const cookieStore = await cookies();

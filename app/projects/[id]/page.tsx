@@ -2,9 +2,9 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Project, ProjectConfig, Contact, Level } from '../../../lib/types';
+import { Project, ProjectConfig, Contact, Level } from '../../../types/types';
 import { getProjectById, updateProject as updateProjectAction, addContactToProject, removeContactFromProject, inviteCollaborator } from '../actions';
-import { getContacts, importContactToLibrary } from '../../library/contacts/actions';
+import { getContacts, importContactToLibrary } from '@/actions';
 import {
     Settings,
     Hammer,

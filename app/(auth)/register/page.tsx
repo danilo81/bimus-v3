@@ -10,8 +10,9 @@ import Link from 'next/link';
 import { UserPlus, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '../../../hooks/use-toast';
 import { register as registerAction } from '@/actions';
-import { User } from '../../../lib/types';
+import { User } from '../../../types/types';
 import Image from 'next/image';
+import Logo from '@/components/logo';
 
 export default function RegisterPage() {
     const [name, setName] = useState('');
@@ -26,7 +27,6 @@ export default function RegisterPage() {
         e.preventDefault();
         setIsLoading(true);
 
-        // Validación básica de complejidad de contraseña en el cliente
         const hasLowercase = /[a-z]/.test(password);
         const hasUppercase = /[A-Z]/.test(password);
         const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
@@ -66,7 +66,7 @@ export default function RegisterPage() {
                 <CardHeader className="space-y-4 text-center">
                     <div className="flex justify-center">
                         <div>
-                            <Image src="/Grupo.svg" alt="Logo" width={100} height={100} />
+                            <Logo size={150} className="grayscale" />
                         </div>
                     </div>
                     <div className='flex flex-col items-center justify-center'>

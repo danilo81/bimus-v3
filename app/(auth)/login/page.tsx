@@ -10,8 +10,9 @@ import Link from 'next/link';
 import { LogIn, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '../../../hooks/use-toast';
 import { login as loginAction } from '@/actions';
-import { User } from '../../../lib/types';
+import { User } from '../../../types/types';
 import Image from 'next/image';
+import Logo from '@/components/logo';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -50,7 +51,7 @@ export default function LoginPage() {
                 <CardHeader className="space-y-4 text-center">
                     <div className="flex justify-center">
                         <div>
-                            <Image src="/Grupo.svg" alt="Logo" width={100} height={100} />
+                            <Logo size={150} className="grayscale" />
                         </div>
                     </div>
                     <div className='flex flex-col items-center justify-center'>
@@ -107,7 +108,7 @@ export default function LoginPage() {
                         <div className="w-full  h-px bg-linear-to-r from-transparent via-accent to-transparent"></div>
                     </CardContent>
                     <CardFooter className="flex flex-col gap-4 p-6">
-                        <Button className="w-full bg-primary cursor-pointer" type="submit" disabled={isLoading}>
+                        <Button variant="default" className="w-full bg-primary cursor-pointer" type="submit" disabled={isLoading}>
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
                             Iniciar Sesión
                         </Button>

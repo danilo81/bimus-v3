@@ -53,14 +53,14 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from '../../../../components/ui/dropdown-menu';
-import { FixedAsset, AssetStatus } from '../../../../lib/types';
+import { FixedAsset, AssetStatus } from '../../../../types/types';
 import { useToast } from '../../../../hooks/use-toast';
 import { useAuth } from '../../../../hooks/use-auth';
-import { getAssets, createAsset, updateAsset, deleteAsset } from './actions';
+import { getAssets, createAsset, updateAsset, deleteAsset } from '@/actions';
 import { Badge } from '../../../../components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '../../../../components/ui/tabs';
 import { cn } from '../../../../lib/utils';
-import { ScrollArea } from '../../../../components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '../../../../components/ui/scroll-area';
 
 export default function AssetsPage() {
     const { user } = useAuth();
@@ -357,7 +357,7 @@ export default function AssetsPage() {
                                         <div className="space-y-2">
                                             <Label htmlFor="status" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Estado Operativo</Label>
                                             <Select value={formData.status} onValueChange={(val: any) => handleSelectChange('status', val)}>
-                                                <SelectTrigger className="h-11 text-[10px] font-black uppercase w-full">
+                                                <SelectTrigger className="h-11 text-[10px] font-black uppercase w-full ">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-card border-white/10 text-primary">
@@ -455,6 +455,8 @@ export default function AssetsPage() {
                                 </TableBody>
                             </Table>
                         </CardContent>
+                        <ScrollBar orientation="horizontal" />
+                        <ScrollBar orientation="vertical" />
                     </ScrollArea>
                 </Card>
             ) : (

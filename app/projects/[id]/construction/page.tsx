@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Project, ConstructionItem, ProjectConfig, Supply, Contact, Level } from '../../../../lib/types';
+import { Project, ConstructionItem, ProjectConfig, Supply, Contact, Level } from '../../../../types/types';
 import {
     getProjectById,
     updateProjectItem,
@@ -2064,8 +2064,8 @@ export default function ConstructionPage() {
                                         <div className="relative w-100">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                             <Input
-                                                placeholder="Buscar por descripción..."
-                                                className="pl-9 bg-card border-accent h-9 text-[10px] uppercase"
+                                                placeholder="Buscar por items..."
+                                                className="pl-9 bg-card border-accent h-9 text-[10px]"
                                                 value={searchTermEjecucion}
                                                 onChange={(e) => setSearchTermEjecucion(e.target.value)}
                                             />

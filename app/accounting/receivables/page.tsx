@@ -29,7 +29,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from '../../../components/ui/dropdown-menu';
-import { getGlobalReceivables } from '../actions';
+import { getGlobalReceivables } from '@/actions';
 
 export default function ReceivablesPage() {
     const router = useRouter();

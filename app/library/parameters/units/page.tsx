@@ -42,7 +42,7 @@ import {
 } from '../../../../components/ui/dropdown-menu';
 import { Label } from '../../../../components/ui/label';
 import { useToast } from '../../../../hooks/use-toast';
-import { UnitOfMeasure } from '../../../../lib/types';
+import { UnitOfMeasure } from '../../../../types/types';
 import { useAuth } from '../../../../hooks/use-auth';
 import {
     getUnits,
@@ -303,7 +303,7 @@ export default function UnitsPage() {
                                             <TableCell className="font-semibold text-primary px-8 py-4 uppercase text-xs tracking-tight">
                                                 {unit.name}
                                             </TableCell>
-                                            <TableCell className="font-mono text-primary font-bold uppercase text-xs">
+                                            <TableCell className="font-mono text-primary font-bold text-xs">
                                                 {unit.abbreviation}
                                             </TableCell>
                                             <TableCell>

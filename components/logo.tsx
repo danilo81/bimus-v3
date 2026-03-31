@@ -1,0 +1,69 @@
+import React from "react";
+import { IconSvgProps } from "@/types/types";
+
+export const Logo = ({ size = 48, ...props }: IconSvgProps) => (
+    <svg
+        id="Grupo"
+        xmlns="http://www.w3.org/2000/svg"
+        xmlnsXlink="http://www.w3.org/1999/xlink"
+        width={size}
+        height={size}
+        viewBox="0 0 140.906 213.316"
+        {...props}
+    >
+        <defs>
+            <linearGradient
+                id="linear-gradient"
+                x1="-0.194"
+                y1="0.401"
+                x2="0.972"
+                y2="0.977"
+                gradientUnits="objectBoundingBox"
+            >
+                <stop offset="0.247" stopColor="#01a9f2" />
+                <stop offset="0.753" stopColor="#2e6fe8" />
+            </linearGradient>
+            <linearGradient
+                id="linear-gradient-2"
+                x1="0.5"
+                x2="0.486"
+                y2="1.072"
+                gradientUnits="objectBoundingBox"
+            >
+                <stop offset="0" stopColor="#00dbf4" />
+                <stop offset="1" stopColor="#2e6fe8" />
+            </linearGradient>
+        </defs>
+        <path
+            id="Sendero"
+            d="M93.937,131.773V79.586l-46.974-28.7L46.969,0,0,27.276V80.768Z"
+            fill="#01a9f2"
+            fillRule="evenodd"
+        />
+        <path
+            id="Sendero-2"
+            data-name="Sendero"
+            d="M46.969,50.883V0L0,27.557Z"
+            fillRule="evenodd"
+            fill="url(#linear-gradient)"
+        />
+        <path
+            id="Sendero-3"
+            data-name="Sendero"
+            d="M140.906,129.273,45.664,188.636,0,162.543V107.094L45.664,81v53.492l48.274-27.4Z"
+            transform="translate(0 24.679)"
+            fill="#2e6fe8"
+            fillRule="evenodd"
+        />
+        <path
+            id="Sendero-4"
+            data-name="Sendero"
+            d="M.112,162.543V107.094L45.777,81v53.492Z"
+            transform="translate(0.034 24.679)"
+            fillRule="evenodd"
+            fill="url(#linear-gradient-2)"
+        />
+    </svg>
+);
+
+export default Logo;
