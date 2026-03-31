@@ -1,17 +1,16 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 "use client";
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { getProjectById } from '../../actions';
 import {
     getWarehouseStock,
     getProjectWarehouseMovements,
     getPurchaseOrders,
     createWarehouseEntry,
-    createWarehouseExit
-} from '../operations/actions';
+    createWarehouseExit,
+    getProjectById
+} from '@/actions';
 import {
     Package,
     ArrowUpCircle,
@@ -103,7 +102,9 @@ export default function ProjectWarehousePage() {
             setProject(proj);
             setStock(stockData);
             setMovements(movs);
-            setPurchaseOrders(pos);
+            if (pos.success) {
+                setPurchaseOrders(pos.orders);
+            }
         } catch (error) {
             console.error(error);
         } finally {

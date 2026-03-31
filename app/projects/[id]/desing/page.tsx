@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
-import { getProjectById } from '../../actions';
+import { getProjectById } from '@/actions';
 import {
     ChevronLeft,
     Loader2,
@@ -16,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import dynamic from 'next/dynamic';
 
-// 1. Importamos el nuevo visor de That Open desactivando SSR
 const ThatOpenViewer = dynamic(() => import('@/components/bim/ThatOpenViwer').then(mod => mod.ThatOpenViewer), {
     ssr: false,
     loading: () => (

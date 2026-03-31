@@ -1,9 +1,7 @@
 
 "use client";
 
-import { DotPattern } from '@/components/ui/dot-pattern';
 import { Navbar } from '../../components/layout/Navbar';
-import { cn } from '@/lib/utils';
 
 export default function ProjectLayout({
     children,

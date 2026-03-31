@@ -223,6 +223,8 @@ model PurchaseOrder {
   supplierId  String?
   totalAmount Float               @default(0)
   status      String              @default("pendiente")
+  paymentType String              @default("contado")
+  dueDate     DateTime?
   date        DateTime            @default(now())
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt

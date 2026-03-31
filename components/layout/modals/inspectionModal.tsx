@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { ClipboardList, CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { createInspectionRecord } from '@/app/projects/[id]/operations/actions';
+import { createInspectionRecord } from '@/actions';
 import { useToast } from '@/hooks/use-toast';
 
 interface InspectionDialogProps {

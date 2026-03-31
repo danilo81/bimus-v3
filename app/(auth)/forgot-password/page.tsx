@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import Link from 'next/link';
 import { Mail } from 'lucide-react';
 import { useToast } from '../../../hooks/use-toast';
-import Image from 'next/image';
 import Logo from '@/components/logo';
 
 export default function ForgotPasswordPage() {
@@ -17,7 +16,6 @@ export default function ForgotPasswordPage() {
 
     const handleResetRequest = (e: React.FormEvent) => {
         e.preventDefault();
-        // In a real app, this would trigger a Firebase Auth password reset email
         console.log('Password reset requested for:', email);
         toast({
             title: "Enlace de recuperación enviado",

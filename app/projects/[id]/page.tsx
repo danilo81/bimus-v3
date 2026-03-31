@@ -2,80 +2,15 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Project, ProjectConfig, Contact, Level } from '../../../types/types';
-import { getProjectById, updateProject as updateProjectAction, addContactToProject, removeContactFromProject, inviteCollaborator } from '../actions';
-import { getContacts, importContactToLibrary } from '@/actions';
+import { ProjectConfig, Contact } from '@/types/types';
+import { getProjectById } from '@/actions';
+import { getContacts } from '@/actions';
 import {
-    Settings,
-    Hammer,
-    Activity,
-    Users,
-    Box,
-    Layers,
-    Save,
     Loader2,
-    Calendar,
-    MapPin,
-    Plus,
-    X,
-    ChevronLeft,
-    Building2,
-    Edit,
-    Folder,
-    Info,
-    User as UserIcon,
-    Ruler,
-    Coins,
-    Trash2,
-    PlusCircle,
-    CheckSquare,
-    FileText,
-    TrendingUp,
-    ShoppingCart,
-    Package,
-    Banknote,
-    Presentation,
-    Search,
-    Check,
-    Clock,
-    Shield,
-    ShieldCheck,
-    Palette,
-    Globe,
-    LifeBuoy,
-    FileCode,
-    Mail,
-    UserPlus,
-    Send,
-    Download,
-    UsersIcon
+    Info
 } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "../../../components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { useToast } from '../../../hooks/use-toast';
-import { Badge } from '../../../components/ui/badge';
-import { Label } from '../../../components/ui/label';
-import { Input } from '../../../components/ui/input';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from '../../../components/ui/select';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../components/ui/tooltip';
-import { ScrollArea } from '../../../components/ui/scroll-area';
-import { Separator } from '../../../components/ui/separator';
-import { Avatar, AvatarFallback } from '../../../components/ui/avatar';
-import { cn } from '../../../lib/utils';
 import { useAuth } from '../../../hooks/use-auth';
 
 export default function ProjectDetailPage() {

@@ -33,12 +33,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>
-
             <main className="flex-1 min-h-screen">
               <div className="relative w-100vh h-100vh">
-
                 <div className="relative">
-
                   {children}
                 </div>
               </div>

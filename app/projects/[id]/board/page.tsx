@@ -4,8 +4,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { BimTopic, BimTopicStatus } from '../../../../types/types';
-import { getProjectById } from '../../actions';
-import { getBimDocument, upsertBimTopic, deleteBimTopic, applyBimTemplate, createTopicWithChildren } from './actions';
+import { getBimDocument, upsertBimTopic, deleteBimTopic, applyBimTemplate, createTopicWithChildren, getProjectById } from '@/actions';
 import {
     Plus,
     Search,

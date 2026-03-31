@@ -11,7 +11,6 @@ import { LogIn, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '../../../hooks/use-toast';
 import { login as loginAction } from '@/actions';
 import { User } from '../../../types/types';
-import Image from 'next/image';
 import Logo from '@/components/logo';
 
 export default function LoginPage() {

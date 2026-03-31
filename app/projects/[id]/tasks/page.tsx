@@ -657,8 +657,7 @@ import {
 import { Task, TaskStatus, TaskPriority } from '@/types/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { getTasks, createTask, updateTask, deleteTask } from './actions';
-import { getProjects } from '@/app/projects/actions';
+import { getTasks, createTask, updateTask, deleteTask, getProjects } from '@/actions';
 
 // DnD Kit Imports
 import {

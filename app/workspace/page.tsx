@@ -12,15 +12,12 @@ import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, 
 import { es } from 'date-fns/locale';
 import { Notification } from '../../types/types';
 
-// Componentes UI
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
 import { Badge } from '../../components/ui/badge';
 import { KanbanBoard, KanbanProvider, KanbanHeader, KanbanCards, KanbanCard, KanbanItemProps } from '../../components/kibo-ui/kanban';
 import { useToast } from '../../hooks/use-toast';
-
-// Acciones unificadas
 
 import { cn } from '../../lib/utils';
 
@@ -33,7 +30,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-// --- Tipos ---
 type EventType = 'hitos' | 'obra' | 'reunion' | 'tarea';
 
 const COLUMNS = [
@@ -86,18 +82,16 @@ export default function WorkspacePage() {
     const [tasks, setTasks] = useState<any[]>([]);
     const [projects, setProjects] = useState<any[]>([]);
 
-    // DB events
+
     const [dbEvents, setDbEvents] = useState<CalendarEvent[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [editingEventId, setEditingEventId] = useState<string | null>(null);
     const [form, setForm] = useState(defaultForm);
     const [formError, setFormError] = useState<string | null>(null);
 
-    // Estados globales unificados
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState({
         events: [] as any[],
@@ -106,7 +100,6 @@ export default function WorkspacePage() {
         projects: [] as any[]
     });
 
-    // Estados de Calendario
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [projectFilter, setProjectFilter] = useState('all');
@@ -116,7 +109,6 @@ export default function WorkspacePage() {
             setLoading(true);
             const res = await getUnifiedWorkspaceData();
             if (res.success && res.data) {
-                // Parseamos las fechas
                 setData({
                     events: res.data.events.map((e: any) => ({ ...e, date: new Date(e.date), isDb: true })),
                     tasks: res.data.tasks,
@@ -128,10 +120,6 @@ export default function WorkspacePage() {
         }
         loadWorkspace();
     }, []);
-
-    // ─────────────────────────────────────────────────────────────────
-    // 1. LÓGICA DE CALENDARIO
-    // ─────────────────────────────────────────────────────────────────
 
     useEffect(() => {
         async function loadData() {
@@ -145,7 +133,6 @@ export default function WorkspacePage() {
                 setTasks(tData);
                 setProjects(pData);
                 if (evData.success) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     setDbEvents(evData.events.map((e: any) => ({
                         ...e,
                         date: parseLocalDate(e.date),
@@ -161,7 +148,6 @@ export default function WorkspacePage() {
         loadData();
     }, []);
 
-    // Combine all events
     const allEvents = useMemo(() => {
         const taskEvents: CalendarEvent[] = tasks
             .filter(t => t.dueDate)
@@ -182,8 +168,6 @@ export default function WorkspacePage() {
     }, [tasks, dbEvents, projectFilter]);
 
     const selectedDayEvents = allEvents.filter(e => isSameDay(e.date, selectedDate));
-
-    // ─── Handlers ─────────────────────────────────────────────────────────────
 
     const openCreateModal = (date?: Date) => {
         setIsEditMode(false);
@@ -260,9 +244,6 @@ export default function WorkspacePage() {
             toast({ title: 'Error', description: res.error, variant: 'destructive' });
         }
     };
-
-    // ─── Calendar Render ──────────────────────────────────────────────────────
-
 
     const renderDays = () => {
         const days = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
@@ -343,8 +324,6 @@ export default function WorkspacePage() {
 
         return <div className="border-t border-l border-accent rounded-2xl overflow-hidden">{rows}</div>;
     };
-
-    // ─── Edit/Create Modal ────────────────────────────────────────────────────
 
     const renderModal = () => (
         <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) setIsModalOpen(false); }}>
@@ -456,9 +435,6 @@ export default function WorkspacePage() {
         </Dialog>
     );
 
-    // ─────────────────────────────────────────────────────────────────
-    // 2. LÓGICA DE KANBAN (Tareas)
-    // ─────────────────────────────────────────────────────────────────
     const kanbanTasks = useMemo(() => {
         return data.tasks.map(t => ({
             id: t.id,
@@ -469,11 +445,9 @@ export default function WorkspacePage() {
     }, [data.tasks]);
 
     const handleKanbanChange = async (newData: KanbanItemProps[]) => {
-        // Encontramos qué tarea cambió de columna
         const updatedTasks = data.tasks.map(task => {
             const kTask = newData.find(k => k.id === task.id);
             if (kTask && kTask.column !== task.status) {
-                // Actualizar en BD en segundo plano
                 updateTaskStatusKanban(task.id, kTask.column as string);
                 return { ...task, status: kTask.column };
             }
@@ -509,10 +483,6 @@ export default function WorkspacePage() {
             )}
         </KanbanProvider>
     );
-
-    // ─────────────────────────────────────────────────────────────────
-    // 3. LÓGICA DE NOTIFICACIONES
-    // ─────────────────────────────────────────────────────────────────
 
     const NotificationIcon = ({ type }: { type: Notification['type'] }) => {
         switch (type) {
@@ -567,9 +537,6 @@ export default function WorkspacePage() {
         );
     };
 
-    // ─────────────────────────────────────────────────────────────────
-    // RENDER PRINCIPAL
-    // ─────────────────────────────────────────────────────────────────
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -581,7 +548,6 @@ export default function WorkspacePage() {
 
     return (
         <div className="container mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-500 h-screen">
-            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card w-fit">
                 <div className="flex items-center gap-4">
                     <LayoutDashboard className="h-8 w-8 text-primary" />
@@ -592,7 +558,6 @@ export default function WorkspacePage() {
                 </div>
             </div>
 
-            {/* Unificación mediante Tabs */}
             <Tabs defaultValue="calendar" className="w-full space-y-6">
                 <TabsList className="bg-card border border-accent h-12 p-1 rounded-xl">
                     <TabsTrigger value="calendar" className="text-[10px] font-black uppercase tracking-widest px-6 h-full data-[state=active]:bg-primary data-[state=active]:text-background">
@@ -609,14 +574,11 @@ export default function WorkspacePage() {
                     </TabsTrigger>
                 </TabsList>
 
-                {/* Contenido Calendario */}
                 <div className="container mx-auto px-4 space-y-8 animate-in fade-in duration-500">
                     {renderModal()}
                     <TabsContent value="calendar" className='h-[60vh]'>
                         <div className="grid grid-cols-1 lg:grid-cols-12 h-screen gap-6">
-                            {/* Lateral Panel */}
                             <div className="lg:col-span-3 h-screen">
-                                {/* Selected Day Events */}
                                 <Card className="bg-card border-accent flex flex-col">
                                     <CardHeader className="bg-card border-b border-accent p-6 shrink-0 gap-6">
                                         <div className="flex items-center gap-3 flex-col">
@@ -726,7 +688,6 @@ export default function WorkspacePage() {
                                 </Card>
                             </div>
 
-                            {/* Main Calendar View */}
                             <div className="lg:col-span-9 space-y-6">
                                 {loading ? (
                                     <div className="h-200 flex flex-col items-center justify-center bg-card rounded-3xl border border-accent gap-4">
@@ -743,12 +704,9 @@ export default function WorkspacePage() {
                         </div>
                     </TabsContent>
                 </div>
-                {/* Contenido Kanban */}
                 <TabsContent value="kanban" className="mt-0 focus-visible:ring-0 h-[70vh]">
                     {renderKanban()}
                 </TabsContent>
-
-                {/* Contenido Notificaciones */}
                 <TabsContent value="notifications" className="mt-0 focus-visible:ring-0">
                     {renderNotifications()}
                 </TabsContent>

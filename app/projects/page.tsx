@@ -43,7 +43,7 @@ import {
     DropdownMenuTrigger
 } from '../../components/ui/dropdown-menu';
 import { useToast } from '../../hooks/use-toast';
-import { createProject, deleteProject, getProjects, inviteCollaborator, leaveProject } from './actions';
+import { createProject, deleteProject, getProjects, inviteCollaborator, leaveProject } from '@/actions';
 import { useAuth } from '../../hooks/use-auth';
 import { cn } from '../../lib/utils';
 

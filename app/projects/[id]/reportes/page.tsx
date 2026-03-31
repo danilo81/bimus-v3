@@ -4,7 +4,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-import { getProjectById } from "../../actions";
+import { getProjectById } from "@/actions";
 import {
     FileText,
     Download,

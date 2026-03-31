@@ -3,15 +3,20 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { getProjectById, addContactToProject } from '../../actions';
+
 import {
     getSupplyRequests,
     getPurchaseOrders,
     createSupplyRequest,
     createPurchaseOrder,
-    deletePurchaseOrder
-} from '../operations/actions';
-import { importContactToLibrary, getContacts, createContact } from '@/actions';
+    getProjectById,
+    addContactToProject,
+    importContactToLibrary,
+    getContacts,
+    createContact,
+    deletePurchaseOrder,
+} from '@/actions';
+
 import {
     ShoppingCart,
     ChevronLeft,
@@ -19,35 +24,22 @@ import {
     Search,
     FileCheck,
     ClipboardList,
-    Clock,
-    DollarSign,
-    Package,
     Loader2,
     Building2,
     CheckCircle2,
     X,
-    Filter,
-    ArrowRight,
-    MoreVertical,
     History,
     FileSearch,
-    PlusCircle,
     Check,
-    Star,
-    AlertCircle,
-    Calendar,
-    ArrowUpRight,
     Save,
-    Download,
     Printer,
-    Edit,
     Trash2,
     UserPlus,
     Phone,
     UserCircle
 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../../components/ui/card';
+import { Card, CardContent } from '../../../../components/ui/card';
 import { Input } from '../../../../components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../../components/ui/table';
 import { Badge } from '../../../../components/ui/badge';
@@ -69,12 +61,6 @@ import {
     SelectValue,
 } from "../../../../components/ui/select";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger
-} from '../../../../components/ui/dropdown-menu';
-import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
@@ -85,7 +71,6 @@ import { Checkbox } from '../../../../components/ui/checkbox';
 import { useToast } from '../../../../hooks/use-toast';
 import { useAuth } from '../../../../hooks/use-auth';
 import { cn } from '../../../../lib/utils';
-import { Separator } from '../../../../components/ui/separator';
 
 export default function ProjectShopPage() {
     const params = useParams();
@@ -154,7 +139,9 @@ export default function ProjectShopPage() {
             ]);
             setProject(proj);
             setRequests(reqs);
-            setPurchaseOrders(pos);
+            if (pos.success) {
+                setPurchaseOrders(pos.orders);
+            }
             setUserLibraryContacts(libConts);
 
             // Consolidar proveedores: Mi librería + Proveedores vinculados por otros al proyecto

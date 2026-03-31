@@ -130,8 +130,8 @@ export interface Supply {
     description: string;
     unit: string;
     price: number;
-    updatedAt: string;
-    userId: string;
+    updatedAt?: string;
+    userId?: string;
     tag?: string;
     costs?: SupplyCost[];
 }
@@ -305,6 +305,8 @@ export interface PurchaseOrder {
     authorId: string;
     status: string;
     totalAmount: number;
+    paymentType?: string;
+    dueDate?: string;
     notes?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -322,3 +324,17 @@ export interface WarehouseMovement {
     updatedAt?: string;
 }
 
+
+export interface WarehouseItem {
+    supplyId: string;
+    quantity: number;
+    itemId?: string;
+    levelId?: string;
+}
+
+export interface CreateWarehouseMovementData {
+    projectId: string;
+    purchaseOrderId?: string;
+    items: WarehouseItem[];
+    notes?: string;
+}

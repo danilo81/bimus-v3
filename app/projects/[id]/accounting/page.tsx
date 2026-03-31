@@ -3,12 +3,12 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { getProjectById } from '../../actions';
 import {
     getProjectTransactions,
     createProjectTransaction,
-    deleteProjectTransaction
-} from '../operations/actions';
+    deleteProjectTransaction,
+    getProjectById
+} from '@/actions';
 import {
     Banknote,
     ChevronLeft,

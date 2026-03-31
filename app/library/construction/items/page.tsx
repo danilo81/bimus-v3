@@ -41,7 +41,6 @@ import {
     DialogContent,
     DialogDescription,
     DialogFooter,
-    DialogHeader,
     DialogTitle,
     DialogTrigger
 } from '../../../../components/ui/dialog';
@@ -70,10 +69,10 @@ import {
     getConstructionItems,
     getChapters,
     getUnits,
-    createConstructionItem,
     getSupplies,
-    updateConstructionItem,
-    deleteConstructionItem
+    deleteConstructionItem,
+    updateConstructionItemLibrary,
+    createConstructionItemLibrary
 } from '@/actions';
 import { Textarea } from '../../../../components/ui/textarea';
 
@@ -541,7 +540,7 @@ export default function ItemsPage() {
         };
 
         if (isEditMode && editingItemId) {
-            const result = await updateConstructionItem(editingItemId, itemData);
+            const result = await updateConstructionItemLibrary(editingItemId, itemData);
             if (result.success) {
                 toast({ title: "Item actualizado", description: "Los cambios han sido guardados." });
                 fetchInitialData();
@@ -551,7 +550,7 @@ export default function ItemsPage() {
                 toast({ title: "Error", description: result.error, variant: "destructive" });
             }
         } else {
-            const result = await createConstructionItem(itemData);
+            const result = await createConstructionItemLibrary(itemData);
             if (result.success) {
                 toast({ title: "Item creado", description: "El nuevo Ã­tem ha sido aÃ±adido al catÃ¡logo." });
                 fetchInitialData();

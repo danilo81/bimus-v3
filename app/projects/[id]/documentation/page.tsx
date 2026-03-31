@@ -396,8 +396,8 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { getProjectById } from '../../actions';
-import { getProjectDocuments, registerDocument, deleteDocument } from './actions';
+
+import { getProjectDocuments, registerDocument, deleteDocument, getProjectById } from '@/actions';
 import {
     ChevronLeft,
     Cloud,
@@ -504,7 +504,7 @@ export default function ProjectDocumentsPage() {
                 name: file.name.toUpperCase(),
                 type: 'PDF',
                 size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
-                url: '#', 
+                url: '#',
                 source: 'local'
             });
 
@@ -529,7 +529,7 @@ export default function ProjectDocumentsPage() {
                 name: name.toUpperCase(),
                 type: 'PDF',
                 size,
-                url: '#', 
+                url: '#',
                 source: 'google_drive'
             });
 
@@ -557,7 +557,7 @@ export default function ProjectDocumentsPage() {
         }
     };
 
-    const filteredDocs = documents.filter(d => 
+    const filteredDocs = documents.filter(d =>
         d.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -578,14 +578,14 @@ export default function ProjectDocumentsPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button 
-                        variant="outline" 
+                    <Button
+                        variant="outline"
                         onClick={() => setIsDriveModalOpen(true)}
                         className="bg-white/5 border-white/10 text-[10px] font-black uppercase h-11 px-6 rounded-xl hover:bg-white/10"
                     >
                         <Globe className="mr-2 h-4 w-4 text-[#4285F4]" /> Google Drive
                     </Button>
-                    <Button 
+                    <Button
                         onClick={() => setIsUploadModalOpen(true)}
                         className="bg-primary text-black font-black text-[10px] uppercase h-11 px-8 rounded-xl shadow-xl shadow-primary/10"
                     >
@@ -643,15 +643,15 @@ export default function ProjectDocumentsPage() {
                         <CardHeader className="p-6 bg-white/2 border-b border-white/5 flex flex-row items-center justify-between shrink-0">
                             <div className="relative flex-1 max-w-md">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input 
-                                    placeholder="BUSCAR EN EXPEDIENTE..." 
+                                <Input
+                                    placeholder="BUSCAR EN EXPEDIENTE..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-10 h-10 bg-black/40 border-white/10 text-[10px] font-black uppercase"
                                 />
                             </div>
                         </CardHeader>
-                        
+
                         <div className="flex-1">
                             {isLoading ? (
                                 <div className="flex flex-col items-center justify-center h-full py-40 opacity-20">
@@ -736,9 +736,9 @@ export default function ProjectDocumentsPage() {
                     </DialogHeader>
                     <div className="p-8">
                         <div className="relative group">
-                            <input 
-                                type="file" 
-                                accept=".pdf" 
+                            <input
+                                type="file"
+                                accept=".pdf"
                                 onChange={handleUploadLocal}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             />
@@ -783,7 +783,7 @@ export default function ProjectDocumentsPage() {
                                 <h3 className="text-lg font-bold uppercase">Vincular cuenta de Google</h3>
                                 <p className="text-xs text-muted-foreground max-w-sm mx-auto uppercase font-bold leading-relaxed">Conecta tu Google Drive para importar planos y memorias técnicas directamente al expediente del proyecto.</p>
                             </div>
-                            <Button 
+                            <Button
                                 onClick={() => setIsDriveConnected(true)}
                                 className="bg-[#4285F4] hover:bg-[#3b78e7] text-white font-black text-[10px] uppercase h-12 px-12 tracking-widest shadow-xl shadow-[#4285F4]/20"
                             >
@@ -799,7 +799,7 @@ export default function ProjectDocumentsPage() {
                                 </div>
                                 <Button variant="ghost" size="xs" onClick={() => setIsDriveConnected(false)} className="text-red-500 text-[8px] font-black uppercase">Desconectar</Button>
                             </div>
-                            
+
                             <ScrollArea className="flex-1">
                                 <div className="p-4 space-y-2">
                                     <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest mb-4">Seleccionar archivos de la Nube:</p>
@@ -817,9 +817,9 @@ export default function ProjectDocumentsPage() {
                                                     <span className="text-[8px] font-mono text-muted-foreground">{file.size}</span>
                                                 </div>
                                             </div>
-                                            <Button 
-                                                size="sm" 
-                                                variant="ghost" 
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
                                                 className="h-8 px-4 bg-[#4285F4]/10 text-[#4285F4] font-black text-[9px] uppercase hover:bg-[#4285F4] hover:text-white"
                                                 onClick={() => handleLinkDriveFile(file.name, file.size)}
                                             >

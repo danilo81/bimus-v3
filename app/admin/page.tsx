@@ -84,7 +84,7 @@ export default function AdminPage() {
     useEffect(() => {
         if (selectedUser && isModalOpen) {
             setIsLoadingProjects(true);
-            setProjects([]); // Reset projects before loading
+            setProjects([]);
             getUserProjects(selectedUser.id)
                 .then(data => {
                     setProjects(data);

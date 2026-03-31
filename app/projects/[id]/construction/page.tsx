@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Project, ConstructionItem, ProjectConfig, Supply, Contact, Level } from '../../../../types/types';
+import { ConstructionItem, Supply, Level } from '../../../../types/types';
 import {
     getProjectById,
     updateProjectItem,
@@ -11,15 +11,12 @@ import {
     updateProject as updateProjectAction,
     customizeProjectItem,
     createProjectChangeOrder,
-    updateProjectItemProgress,
-    createSiteLogEntry,
-    createProjectPayroll,
-    batchUpdateProjectItemProgress
-} from '../../actions';
+    batchUpdateProjectItemProgress,
+    getConstructionItems,
+    getSupplies
+} from '@/actions';
 import { useAuth } from '../../../../hooks/use-auth';
 import {
-    Hammer,
-    ChevronLeft,
     Calculator,
     Coins,
     Activity,
@@ -31,42 +28,26 @@ import {
     Info,
     Loader2,
     Save,
-    DollarSign,
-    Download,
     CalendarDays,
     Trash2,
     X,
     Package,
-    ArrowRight,
     Users as UsersIcon,
     ClipboardCheck,
     Wrench,
     FileText,
     PlusCircle,
-    Edit,
     CheckCircle2,
     FileSignature,
-    ListChecks,
-    BarChart3,
-    BookOpen,
-    Send,
-    Users,
     Layers,
-    MapPin,
     Calendar,
-    Building2,
-    Ruler,
     Printer,
-    UserPlus,
     Clock,
     Check,
     AlertTriangle,
-    ArrowUpCircle,
     History,
-    Banknote,
     ZoomIn,
     ZoomOut,
-    Box,
     Boxes
 } from 'lucide-react';
 import {
@@ -106,19 +87,16 @@ import { Separator } from '../../../../components/ui/separator';
 import { Label } from '../../../../components/ui/label';
 import { Checkbox } from '../../../../components/ui/checkbox';
 import { useToast } from '../../../../hooks/use-toast';
-import { getConstructionItems } from '../../../../app/library/construction/items/actions';
-import { getSupplies } from '../../../../app/library/construction/supplies/actions';
 import { ScrollArea, ScrollBar } from '../../../../components/ui/scroll-area';
 import { cn } from '../../../../lib/utils';
 import { Textarea } from '../../../../components/ui/textarea';
 import { Progress } from '../../../../components/ui/progress';
-import { eachDayOfInterval, format, isSameDay, addDays, differenceInDays } from 'date-fns';
+import { eachDayOfInterval, format, addDays, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
     GanttProvider,
     GanttSidebar,
     GanttSidebarGroup,
-    GanttSidebarItem,
     GanttTimeline,
     GanttHeader,
     GanttFeatureList,

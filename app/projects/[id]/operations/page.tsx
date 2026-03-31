@@ -1,18 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Contact } from '../../../../types/types';
-import { getProjectById } from '../../actions';
+import { Contact } from '@/types/types';
+
 import {
     getSupplyRequests,
     getProjectTransactions,
     getPurchaseOrders,
     createWarehouseExit,
-    getWarehouseStock
-} from './actions';
+    getWarehouseStock,
+    getProjectById
+} from '@/actions';
 import {
     ChevronLeft,
     Package,
@@ -122,7 +121,9 @@ export default function OperationsPage() {
             }
             setSupplyRequests(requests || []);
             setTransactions(txs || []);
-            setPurchaseOrders(pos || []);
+            if (pos.success) {
+                setPurchaseOrders(pos.orders);
+            }
             setWarehouseStock(stock || {});
         } catch (error) {
             console.error("Error loading project data:", error);

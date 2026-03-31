@@ -3,7 +3,6 @@
 import { LogIn, Sun, Moon } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import DotsOnDa from '@/components/ui/dotsdonda';
@@ -14,7 +13,7 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setMounted(true);
   }, []);
 
@@ -29,10 +28,7 @@ export default function Home() {
           <DotsOnDa />
         </div>
         <div className=" flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] gap-10 p-6 animate-in fade-in duration-1000">
-
         </div>
-
-        {/* Central Logo Section */}
         <div className=" absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-60 flex flex-col items-center gap-6">
           <div>
             <Logo size={150} className="grayscale" />
@@ -45,9 +41,6 @@ export default function Home() {
               Arquitectura y construcción
             </p>
           </div>
-          {/* <div className="w-full max-w-62.5 h-px bg-linear-to-r from-transparent via-white/10 to-transparent"></div> */}
-
-          {/* Primary Action */}
           <div className="flex flex-col items-center gap-4 bg-sto">
             <Link href="/login">
               <Button
@@ -66,7 +59,6 @@ export default function Home() {
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
           </div>
-
         </div>
       </div>
     </div>

@@ -11,7 +11,6 @@ import { UserPlus, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '../../../hooks/use-toast';
 import { register as registerAction } from '@/actions';
 import { User } from '../../../types/types';
-import Image from 'next/image';
 import Logo from '@/components/logo';
 
 export default function RegisterPage() {
