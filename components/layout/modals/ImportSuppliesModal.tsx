@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { SheetDescription } from '@/components/ui/sheet';
 
 // NUEVO: Añadimos dbUnits a los props
 export function ImportExportSupplies({ currentData, dbUnits = [] }: { currentData?: any[], dbUnits?: any[] }) {
@@ -24,7 +25,7 @@ export function ImportExportSupplies({ currentData, dbUnits = [] }: { currentDat
     const { toast } = useToast();
 
     // Extraemos las abreviaciones válidas en mayúsculas para comparar
-    const validUnitAbbreviations = dbUnits.map(u => u.abbreviation());
+    const validUnitAbbreviations = dbUnits.map(u => u.abbreviation.toUpperCase());
 
     const handleExport = () => {
         if (!currentData || currentData.length === 0) {
@@ -74,7 +75,9 @@ export function ImportExportSupplies({ currentData, dbUnits = [] }: { currentDat
             // NUEVO: Validación de cada fila
             const validatedData = data.map((row: any) => {
                 // 1. Validar Unidad
-                const unit = (row.Unidad || '').toString().trim();
+                const unit = (row.Unidad || '').toString().trim().toUpperCase();
+
+                const validUnitAbbreviations = dbUnits.map(u => u.abbreviation.toUpperCase());
                 const isValidUnit = validUnitAbbreviations.includes(unit);
 
                 // 2. Validar Costo (Convertir comas a puntos si viene como string)
@@ -128,6 +131,7 @@ export function ImportExportSupplies({ currentData, dbUnits = [] }: { currentDat
                 setIsOpen(false);
                 setStep(1);
                 setPreviewData([]);
+
             } else {
                 throw new Error(res.error);
             }
@@ -165,6 +169,7 @@ export function ImportExportSupplies({ currentData, dbUnits = [] }: { currentDat
                         <DialogDescription className="text-[10px] font-black uppercase tracking-widest">
                             Paso {step} de 3
                         </DialogDescription>
+                        <SheetDescription />
                     </DialogHeader>
 
                     {step === 1 && (

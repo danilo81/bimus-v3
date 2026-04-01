@@ -54,7 +54,7 @@ export async function createConstructionItemLibrary(data: {
                 let supplyId = s.id;
 
 
-                if (s.isNew) {
+                if (s.isNew || s.id?.startsWith('temp-')) {
 
                     const existingSupply = await prisma.supply.findFirst({
                         where: {

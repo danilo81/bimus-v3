@@ -1,131 +1,235 @@
-"use client";
+'use client'
 
-import React, { useCallback, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
-import { getUploadUrl, saveFileRecordToDB } from '@/actions/upload';
-import { CloudUpload, File, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/hooks/use-toast';
+import React, {
+    useState,
+    useEffect,
+    ChangeEvent,
+    FormEvent,
+    useRef
+} from 'react'
+import { FileObject } from '@/lib/r2Client'
 
-interface FileUploadProps {
-    projectId: string;
-    onUploadComplete?: () => void;
-}
+export default function FileManager() {
+    const [files, setFiles] = useState<FileObject[]>([])
+    const [file, setFile] = useState<File | null>(null)
+    const [uploadProgress, setUploadProgress] = useState<number>(0)
+    const [isUploading, setIsUploading] = useState<boolean>(false)
+    const abortControllerRef = useRef<AbortController | null>(null)
 
-export function FileUpload({ projectId, onUploadComplete }: FileUploadProps) {
-    const [isUploading, setIsUploading] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const [fileName, setFileName] = useState('');
-    const { toast } = useToast();
+    useEffect(() => {
+        fetchFiles()
+    }, [])
 
-    const onDrop = useCallback(async (acceptedFiles: File[]) => {
-        const file = acceptedFiles[0];
-        if (!file) return;
+    const fetchFiles = async () => {
+        try {
+            const response = await fetch('/api/files')
+            const data = await response.json()
+            setFiles(Array.isArray(data) ? data : [])
+        } catch (error) {
+            console.error('Error fetching files:', error)
+            setFiles([])
+        }
+    }
 
-        setIsUploading(true);
-        setProgress(0);
-        setFileName(file.name);
+    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            setFile(e.target.files[0])
+        }
+    }
+
+    const handleUpload = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        if (!file) return
+
+        setIsUploading(true)
+        setUploadProgress(0)
+        abortControllerRef.current = new AbortController()
 
         try {
-            // 1. Pedir a nuestro Server Action la URL temporal de Cloudflare R2
-            const urlResponse = await getUploadUrl(file.name, file.type, file.size);
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileName: file.name, fileType: file.type })
+            })
+            const { signedUrl } = await response.json()
 
-            if (!urlResponse.success) {
-                throw new Error(urlResponse.error);
-            }
+            await uploadFileWithProgress(
+                file,
+                signedUrl,
+                abortControllerRef.current.signal
+            )
 
-            // 2. Subir el archivo DIRECTAMENTE a Cloudflare R2 usando XMLHttpRequest 
-            // (Usamos XHR en lugar de fetch para poder ver el % de progreso)
-            await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open('PUT', urlResponse.uploadUrl!, true);
-                xhr.setRequestHeader('Content-Type', file.type);
-
-                xhr.upload.onprogress = (event) => {
-                    if (event.lengthComputable) {
-                        const percentComplete = Math.round((event.loaded / event.total) * 100);
-                        setProgress(percentComplete);
-                    }
-                };
-
-                xhr.onload = () => {
-                    if (xhr.status === 200) {
-                        resolve(true);
-                    } else {
-                        reject(new Error('Error al subir a R2'));
-                    }
-                };
-
-                xhr.onerror = () => reject(new Error('Error de red durante la subida'));
-                xhr.send(file);
-            });
-
-            // 3. El archivo ya está en R2. Ahora guardamos el registro en nuestra BD (Prisma)
-            const dbResponse = await saveFileRecordToDB({
-                name: file.name,
-                key: urlResponse.fileKey!,
-                url: urlResponse.publicUrl!,
-                size: file.size,
-                mimeType: file.type || 'application/octet-stream', // Fallback para archivos raros como .ifc
-                projectId: projectId
-            });
-
-            if (dbResponse.success) {
-                toast({ title: "Archivo Subido", description: `${file.name} guardado correctamente.` });
-                if (onUploadComplete) onUploadComplete();
+            alert('File uploaded successfully!')
+            setFile(null) // Clear the file input
+            fetchFiles()
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+                console.log('Upload cancelled')
             } else {
-                throw new Error("No se pudo registrar en la base de datos");
+                console.error('Error uploading file:', error)
+                alert('Error uploading file')
+            }
+        } finally {
+            setIsUploading(false)
+            setUploadProgress(0)
+            abortControllerRef.current = null
+        }
+    }
+
+    const uploadFileWithProgress = (
+        file: File,
+        signedUrl: string,
+        signal: AbortSignal
+    ): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest()
+
+            xhr.open('PUT', signedUrl)
+            xhr.setRequestHeader('Content-Type', file.type)
+
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    const percentComplete = (event.loaded / event.total) * 100
+                    setUploadProgress(percentComplete)
+                }
             }
 
-        } catch (error: any) {
-            toast({ title: "Error en la subida", description: error.message, variant: "destructive" });
-        } finally {
-            setIsUploading(false);
-            setTimeout(() => setProgress(0), 1000);
-        }
-    }, [projectId, onUploadComplete, toast]);
+            xhr.onload = () => {
+                if (xhr.status === 200) {
+                    resolve()
+                } else {
+                    reject(new Error(`Upload failed with status ${xhr.status}`))
+                }
+            }
 
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        onDrop,
-        multiple: false, // Cámbialo a true si quieres permitir subidas múltiples en el futuro
-        disabled: isUploading
-    });
+            xhr.onerror = () => {
+                reject(new Error('Upload failed'))
+            }
+
+            xhr.send(file)
+
+            signal.addEventListener('abort', () => {
+                xhr.abort()
+                reject(new Error('Upload cancelled'))
+            })
+        })
+    }
+
+    const handleCancelUpload = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort()
+        }
+    }
+
+    const handleDownload = async (key: string) => {
+        try {
+            const response = await fetch('/api/files', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key })
+            })
+            const { signedUrl } = await response.json()
+            window.open(signedUrl, '_blank')
+        } catch (error) {
+            console.error('Error downloading file:', error)
+            alert('Error downloading file')
+        }
+    }
+
+    const handleDelete = async (key: string) => {
+        try {
+            await fetch('/api/files', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key })
+            })
+            alert('File deleted successfully!')
+            fetchFiles()
+        } catch (error) {
+            console.error('Error deleting file:', error)
+            alert('Error deleting file')
+        }
+    }
 
     return (
-        <div className="w-full">
-            <div
-                {...getRootProps()}
-                className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all cursor-pointer bg-[#0a0a0a]
-          ${isDragActive ? 'border-primary bg-primary/5' : 'border-white/10 hover:border-white/20 hover:bg-white/5'}
-          ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}
-        `}
-            >
-                <input {...getInputProps()} />
+        <div className="max-w-2xl mx-auto mt-24 p-6 bg-white rounded-lg shadow-lg">
+            <h1 className="text-3xl font-semibold mb-6 text-gray-600 text-center">Cloudflare R2 with Next.js: Upload, Download, Delete</h1>
+            <h2 className="text-2xl font-semibold mb-6 text-gray-800">Upload File</h2>
+            <form onSubmit={handleUpload} className="mb-8">
+                <div className="flex items-center space-x-4">
+                    <label className="flex-1">
+                        <input
+                            type="file"
+                            onChange={handleFileChange}
+                            disabled={isUploading}
+                            className="hidden"
+                            id="file-upload"
+                        />
+                        <div className="cursor-pointer bg-blue-50 text-blue-500 rounded-lg px-4 py-2 border border-blue-300 hover:bg-blue-100 transition duration-300">
+                            {file ? file.name : 'Choose a file'}
+                        </div>
+                    </label>
+                    <button
+                        type="submit"
+                        disabled={!file || isUploading}
+                        className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isUploading ? 'Uploading...' : 'Upload'}
+                    </button>
+                </div>
+            </form>
 
-                {isUploading ? (
-                    <div className="flex flex-col items-center space-y-4 w-full max-w-xs">
-                        <Loader2 className="h-10 w-10 text-primary animate-spin" />
-                        <p className="text-xs font-black uppercase text-white">Subiendo {fileName}...</p>
-                        <div className="w-full space-y-1">
-                            <Progress value={progress} className="h-2" />
-                            <p className="text-[10px] text-primary text-right font-mono font-bold">{progress}%</p>
-                        </div>
+            {isUploading && (
+                <div className="mb-8">
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+                        <div
+                            className="bg-blue-600 h-2.5 rounded-full"
+                            style={{ width: `${uploadProgress}%` }}
+                        ></div>
                     </div>
-                ) : (
-                    <>
-                        <div className="p-4 bg-white/5 rounded-full mb-4">
-                            <CloudUpload className="h-8 w-8 text-primary" />
-                        </div>
-                        <p className="text-sm font-bold uppercase text-white mb-1">
-                            {isDragActive ? "Suelta el archivo aquí" : "Arrastra un archivo o haz clic"}
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-600">
+                            {uploadProgress.toFixed(2)}% uploaded
                         </p>
-                        <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">
-                            Soporta PDF, DWG, IFC, JPG, XLS (Máx 200MB)
-                        </p>
-                    </>
-                )}
-            </div>
+                        <button
+                            onClick={handleCancelUpload}
+                            className="text-red-500 hover:text-red-600 transition duration-300"
+                        >
+                            Cancel Upload
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <h2 className="text-2xl font-semibold mb-4 text-gray-800">Files</h2>
+            {files.length === 0 ? (
+                <p className="text-gray-500 italic">No files found.</p>
+            ) : (
+                <ul className="space-y-4">
+                    {files.map((file) => (
+                        <li
+                            key={file.Key}
+                            className="flex items-center justify-between bg-gray-50 p-4 rounded-lg"
+                        >
+                            <span className="text-gray-700 truncate flex-1">{file.Key}</span>
+                            <div className="flex space-x-2">
+                                <button
+                                    onClick={() => file.Key && handleDownload(file.Key)}
+                                    className="text-blue-500 hover:text-blue-600 transition duration-300"
+                                >
+                                    Download
+                                </button>
+                                <button
+                                    onClick={() => file.Key && handleDelete(file.Key)}
+                                    className="text-red-500 hover:text-red-600 transition duration-300"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
-    );
+    )
 }

@@ -91,7 +91,7 @@ import { ScrollArea, ScrollBar } from '../../../../components/ui/scroll-area';
 import { cn } from '../../../../lib/utils';
 import { Textarea } from '../../../../components/ui/textarea';
 import { Progress } from '../../../../components/ui/progress';
-import { eachDayOfInterval, format, addDays, differenceInDays } from 'date-fns';
+import { eachDayOfInterval, format, addDays, differenceInDays, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
     GanttProvider,
@@ -178,7 +178,7 @@ export default function ConstructionPage() {
     const [project, setProject] = useState<any | null>(null);
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
-
+    type ConstructionItemWithLocalProject = ConstructionItem & { localProjectTitle?: string | null };
     // Execution Technical Detail Modal
     const [isExecutionItemDetailOpen, setIsExecutionItemDetailOpen] = useState(false);
     const [selectedExecutionItem, setSelectedExecutionItem] = useState<any>(null);
@@ -372,6 +372,7 @@ export default function ConstructionPage() {
                 name: row.desc,
                 startAt,
                 endAt,
+                progress: row.total > 0 ? ((row.progress || 0) / row.total) * 100 : 0,
                 dependencies: deps,
                 status: {
                     id: statusKey,
@@ -766,6 +767,61 @@ export default function ConstructionPage() {
         }
     };
 
+    const handlePrintQuality = () => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        const html = `
+            <html>
+                <head>
+                    <title>Protocolo de Calidad - ${selectedItem.description}</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 40px; color: #333; }
+                        .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 30px; }
+                        .title { font-size: 24px; font-weight: bold; text-transform: uppercase; }
+                        .info { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+                        .section { margin-bottom: 20px; }
+                        .main-point { font-weight: bold; background: #f0f0f0; padding: 8px; margin-top: 15px; border: 1px solid #ccc; }
+                        .sub-point { padding: 8px 8px 8px 40px; border-bottom: 1px solid #eee; display: flex; align-items: center; }
+                        .checkbox { width: 15px; height: 15px; border: 1px solid #000; margin-right: 10px; }
+                        .footer { margin-top: 50px; display: grid; grid-template-columns: 1fr 1fr; gap: 100px; text-align: center; }
+                        .signature { border-top: 1px solid #000; padding-top: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="title">Protocolo de Control de Calidad</div>
+                        <p>Documento de verificación y liberación de partida</p>
+                    </div>
+                    <div class="info">
+                        <div><strong>Item:</strong> ${selectedItem.description}</div>
+                        <div><strong>Capítulo:</strong> ${selectedItem.chapter}</div>
+                        <div><strong>Unidad:</strong> ${selectedItem.unit}</div>
+                        <div><strong>Fecha:</strong> _________________</div>
+                    </div>
+                    <div class="section">
+                        ${selectedItem.qualityControls.map((qc: { description: any; subPoints: any[]; }) => `
+                            <div class="main-point">${qc.description}</div>
+                            ${qc.subPoints.map((sp: any) => `
+                                <div class="sub-point">
+                                    <div class="checkbox"></div>
+                                    <div>${sp.description}</div>
+                                </div>
+                            `).join('')}
+                        `).join('')}
+                    </div>
+                    <div class="footer">
+                        <div class="signature">Firma Responsable de Obra</div>
+                        <div class="signature">Firma Supervisión / Cliente</div>
+                    </div>
+                    <script>window.print();</script>
+                </body>
+            </html>
+        `;
+        printWindow.document.write(html);
+        printWindow.document.close();
+    };
+
     const handlePrintComputos = () => {
         if (!project) return;
 
@@ -993,6 +1049,275 @@ export default function ConstructionPage() {
         document.body.removeChild(link);
 
         toast({ title: "Exportación completada", description: "El presupuesto se ha descargado en formato CSV compatible con Excel." });
+    };
+
+    const handlePrintItem = (item: ConstructionItemWithLocalProject) => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        const supplies = (item.supplies as any[] || []).map(s => ({
+            id: s.supplyId,
+            description: s.supply?.description || '',
+            unit: s.supply?.unit || '',
+            price: s.supply?.price || 0,
+            quantity: s.quantity || 0,
+            subtotal: (s.quantity || 0) * (s.supply?.price || 0),
+            typology: s.supply?.typology || 'Material'
+        }));
+
+        // Clasificación de Insumos
+        const matList = supplies.filter(s => s.typology === 'Material' || s.typology === 'Insumo');
+        const labList = supplies.filter(s => s.typology === 'Mano de Obra' || s.typology === 'Honorario');
+        const equList = supplies.filter(s => s.typology === 'Equipo' || s.typology === 'Herramienta');
+
+        // Totales Base
+        const matSubtotal = matList.reduce((a, b) => a + b.subtotal, 0);
+        const labSubtotal = labList.reduce((a, b) => a + b.subtotal, 0);
+        const equSubtotal = equList.reduce((a, b) => a + b.subtotal, 0);
+
+        // Cálculos Mano de Obra
+        const SOCIAL_CHARGES_PCT = 0.10;
+        const IVA_PCT = 0.1494;
+        const socialCharges = labSubtotal * SOCIAL_CHARGES_PCT;
+        const iva = (labSubtotal + socialCharges) * IVA_PCT;
+        const totalLabor = labSubtotal + socialCharges + iva;
+
+        // Cálculos Equipo
+        const WEAR_PCT = 0.05;
+        const wear = equSubtotal * WEAR_PCT;
+        const totalEqu = equSubtotal + wear;
+
+        // Costo Directo Total (Suma de bloques)
+        const directCostTotal = matSubtotal + totalLabor + totalEqu;
+
+        // Cálculos Indirectos
+        const ADMIN_PCT = 0.10;
+        const UTILITY_PCT = 0.07;
+        const IT_PCT = 0.03;
+
+        const adminCosts = directCostTotal * ADMIN_PCT;
+        const utility = (directCostTotal + adminCosts) * UTILITY_PCT;
+        const totalBeforeTaxes = directCostTotal + adminCosts + utility;
+        const itTax = totalBeforeTaxes * IT_PCT;
+        const totalApuValue = totalBeforeTaxes + itTax;
+
+        const html = `
+            <html>
+                <head>
+                    <title>APU - ${item.description}</title>
+                    <style>
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        body { font-family: 'Arial', sans-serif; padding: 32px; color: #1a1a1a; font-size: 11px; }
+                        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1a1a1a; padding-bottom: 12px; margin-bottom: 20px; }
+                        .company { font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; }
+                        .doc-type { text-align: right; }
+                        .doc-type h2 { font-size: 14px; font-weight: 900; text-transform: uppercase; }
+                        .doc-type p { font-size: 10px; color: #555; margin-top: 2px; }
+                        .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0; border: 1px solid #ccc; margin-bottom: 20px; }
+                        .info-cell { padding: 10px 12px; border-right: 1px solid #ccc; }
+                        .info-cell:last-child { border-right: none; }
+                        .info-encabezado { font-size: 14px; font-weight: 900; text-transform: uppercase; color: #666; letter-spacing: 1px; font-bold}
+                        .info-encabezado2 { font-size: 12px; font-weight: 900; text-transform: uppercase; color: #666; letter-spacing: 1px; font-bold}
+                        .info-cell .label { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #666; letter-spacing: 1px; }
+                        .info-cell .value { font-size: 14px; font-weight: 700; margin-top: 2px; text-transform: uppercase; }
+                        .section-title { font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #555; background: #f5f5f5; padding: 6px 12px; border: 1px solid #ccc; border-bottom: none; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                        th { background: #1a1a1a; color: #fff; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; padding: 7px 10px; text-align: left; }
+                        th.right { text-align: right; }
+                        th.center { text-align: center; }
+                        td { padding: 7px 10px; border-bottom: 1px solid #eee; font-size: 10px; }
+                        td.right { text-align: right; font-family: monospace; }
+                        td.center { text-align: center; }
+                        tr:nth-child(even) { background: #fafafa; }
+                        .type-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 900; text-transform: uppercase; }
+                        .mat { background: #dbeafe; color: #1e40af; }
+                        .lab { background: #d1fae5; color: #065f46; }
+                        .equ { background: #fef3c7; color: #92400e; }
+                        .summary-table { border: 2px solid #1a1a1a; margin-top: 4px; }
+                        .summary-table td { border-bottom: 1px solid #ddd; font-weight: 700; }
+                        .summary-total td { background: #1a1a1a; color: #fff; font-size: 13px; font-weight: 900; }
+                        .footer { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 60px; }
+                        .signature { text-align: center; padding-top: 40px; border-top: 1px solid #1a1a1a; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #555; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="company">BIMUS</div>
+                        <div class="doc-type">
+                            <h2>Análisis de Precio Unitario</h2>
+                            <p>APU - Catálogo Maestro de Construcción</p>
+                        </div>
+                    </div>
+                    <!-- DATOS GENERALES -->
+                    <div class="info-encabezado" class="font-bold">DATOS GENERALES</div>
+                    <table>
+                        <tr><td class="info-encabezado left">PROYECTO:</td><td colspan="5" class="font-bold left">${project?.title || 'GENERAL'}</td></tr>
+                        <tr><td class="info-encabezado left">CODIGO:</td><td colspan="5" class="font-bold left">${project?.id?.slice(-6).toUpperCase() || 'N/A'}</td></tr>
+                        <tr><td class="info-encabezado left">CAPITULO:</td><td colspan="5" class="font-bold left">${item.chapter || 'N/A'}</td></tr>
+                        <tr><td class="info-encabezado left">ACTIVIDAD:</td><td colspan="5" class="font-bold left">${item.description}</td></tr>
+                        <tr><td class="info-encabezado left">CANTIDAD:</td><td colspan="5" class="font-bold left">${(item.total || 0).toFixed(2)}</td></tr>
+                        <tr><td class="info-encabezado left">UNIDAD:</td><td colspan="5" class="font-bold left">${item.unit}</td></tr>
+                        <tr><td class="info-encabezado left">MONEDA:</td><td colspan="5" class="font-bold left">BOLIVIANOS</td></tr>
+                    </table>
+
+                    <!-- MATERIALES -->
+                    <div class="section-title">MATERIALES</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 30px" class="center">N</th>
+                                <th>DESCRIPCION</th>
+                                <th class="center" style="width: 70px">UNIDAD</th>
+                                <th class="center" style="width: 70px">CANTIDAD</th>
+                                <th class="center" style="width: 80px">PRECIO</th>
+                                <th class="center" style="width: 90px">COSTO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${matList.length > 0 ? matList.map((s, idx) => `
+                                <tr>
+                                    <td class="center info-encabezado2">${idx + 1}</td>
+                                    <td class="left info-encabezado2">${s.description}</td>
+                                    <td class="center info-encabezado2">${s.unit}</td>
+                                    <td class="center info-encabezado2">${(s.quantity || 0).toFixed(4)}</td>
+                                    <td class="right info-encabezado2">${(s.price || 0).toFixed(2)}</td>
+                                    <td class="right info-encabezado2">${(s.subtotal || 0).toFixed(2)}</td>
+                                </tr>
+                            `).join('') : Array(5).fill('<tr><td style="height: 18px"></td><td></td><td></td><td></td><td></td><td></td></tr>').join('')}
+                            <tr class="summary-row">
+                                <td colspan="5" class="right font-bold text-[14px]">TOTAL PARCIAL:</td>
+                                <td class="right font-bold text-[14px]">${matSubtotal.toFixed(2)}<span class="currency"> Bs.</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- MANO DE OBRA -->
+                    <div class="section-title">MANO DE OBRA</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 30px" class="center">N</th>
+                                <th>DESCRIPCION</th>
+                                <th class="center" style="width: 70px">UNIDAD</th>
+                                <th class="center" style="width: 70px">CANTIDAD</th>
+                                <th class="center" style="width: 80px">PRECIO</th>
+                                <th class="center" style="width: 90px">COSTO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${labList.length > 0 ? labList.map((s, idx) => `
+                                <tr>
+                                    <td class="center info-encabezado2">${idx + 1}</td>
+                                    <td class="left info-encabezado2">${s.description}</td>
+                                    <td class="center info-encabezado2">${s.unit}</td>
+                                    <td class="center info-encabezado2">${(s.quantity || 0).toFixed(4)}</td>
+                                    <td class="right info-encabezado2">${(s.price || 0).toFixed(2)}</td>
+                                    <td class="right info-encabezado2">${(s.subtotal || 0).toFixed(2)}</td>
+                                </tr>
+                            `).join('') : Array(3).fill('<tr><td style="height: 18px"></td><td></td><td></td><td></td><td></td><td></td></tr>').join('')}
+                            <tr class="bg-light">
+                                <td colspan="5" class="right font-bold">SUBTOTAL PARCIAL:</td>
+                                <td class="right font-bold">${labSubtotal.toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4"></td>
+                                <td class="right font-bold bg-light">${(SOCIAL_CHARGES_PCT * 100).toFixed(2)}% CARGAS SOCIALES:</td>
+                                <td class="right">${socialCharges.toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4"></td>
+                                <td class="right font-bold bg-light">${(IVA_PCT * 100).toFixed(2)}% I.V.A.:</td>
+                                <td class="right">${iva.toFixed(2)}</td>
+                            </tr>
+                            <tr class="summary-row">
+                                <td colspan="5" class="right font-bold">TOTAL PARCIAL:</td>
+                                <td class="right font-bold">${totalLabor.toFixed(2)}<span class="currency">Bs.</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- EQUIPO -->
+                    <div class="section-title">EQUIPO, MAQUINARIA, HERRAMIENTAS</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 30px" class="center">N</th>
+                                <th>DESCRIPCION</th>
+                                <th class="center" style="width: 70px">UNIDAD</th>
+                                <th class="center" style="width: 70px">CANTIDAD</th>
+                                <th class="center" style="width: 80px">PRECIO</th>
+                                <th class="center" style="width: 90px">COSTO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${equList.length > 0 ? equList.map((s, idx) => `
+                                <tr>
+                                    <td class="center">${idx + 1}</td>
+                                    <td>${s.description}</td>
+                                    <td class="center">${s.unit}</td>
+                                    <td class="center">${(s.quantity || 0).toFixed(4)}</td>
+                                    <td class="right">${(s.price || 0).toFixed(2)}</td>
+                                    <td class="right">${(s.subtotal || 0).toFixed(2)}</td>
+                                </tr>
+                            `).join('') : Array(2).fill('<tr><td style="height: 18px"></td><td></td><td></td><td></td><td></td><td></td></tr>').join('')}
+                            <tr class="bg-light">
+                                <td colspan="5" class="right font-bold">SUBTOTAL PARCIAL:</td>
+                                <td class="right font-bold">${equSubtotal.toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4"></td>
+                                <td class="right font-bold bg-light">${(WEAR_PCT * 100).toFixed(2)}% % DESGASTE:</td>
+                                <td class="right">${wear.toFixed(2)}</td>
+                            </tr>
+                            <tr class="summary-row">
+                                <td colspan="5" class="right font-bold">TOTAL PARCIAL:</td>
+                                <td class="right font-bold">${totalEqu.toFixed(2)}<span class="currency">Bs.</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- GASTOS GENERALES -->
+                    <div class="section-title">GASTOS GENERALES Y ADMINISTRATIVOS</div>
+                    <table>
+                        <tr class="summary-row">
+                            <td colspan="5" class="right font-bold" style="width: 80%">${(ADMIN_PCT * 100).toFixed(2)}% TOTAL PARCIAL:</td>
+                            <td class="right font-bold">${adminCosts.toFixed(2)}<span class="currency">Bs.</span></td>
+                        </tr>
+                    </table>
+
+                    <!-- UTILIDAD -->
+                    <div class="section-title">UTILIDAD</div>
+                    <table>
+                        <tr class="summary-row">
+                            <td colspan="5" class="right font-bold" style="width: 80%">${(UTILITY_PCT * 100).toFixed(2)}% TOTAL PARCIAL:</td>
+                            <td class="right font-bold">${utility.toFixed(2)}<span class="currency">Bs.</span></td>
+                        </tr>
+                    </table>
+
+                    <!-- IMPUESTOS -->
+                    <div class="section-title">IMPUESTOS</div>
+                    <table>
+                        <tr>
+                            <td colspan="4"></td>
+                            <td class="right font-bold bg-light" style="width: 300px">${(IT_PCT * 100).toFixed(2)}% I.T. TOTAL PARCIAL:</td>
+                            <td class="right">${itTax.toFixed(2)}<span class="currency">Bs.</span></td>
+                        </tr>
+                        <tr class="main-total">
+                            <td colspan="5" class="right font-bold">TOTAL P.U.:</td>
+                            <td class="right font-bold">${totalApuValue.toFixed(2)}<span class="currency">Bs.</span></td>
+                        </tr>
+                        <tr class="main-total">
+                            <td colspan="5" class="right font-bold">TOTAL ADOPTADO:</td>
+                            <td class="right font-bold">${totalApuValue.toFixed(2)}<span class="currency">Bs.</span></td>
+                        </tr>
+                    </table>
+
+                    <script>window.print();</script>
+                </body>
+            </html>
+        `;
+        printWindow.document.write(html);
+        printWindow.document.close();
     };
 
     const handlePrintEjecucion = () => {
@@ -1543,7 +1868,7 @@ export default function ConstructionPage() {
                                     {isConstruccion && isAuthor && (
                                         <Button
                                             onClick={() => setIsChangeOrderOpen(true)}
-                                            className="bg-amber-500 hover:bg-amber-600 text-black font-black text-[10px] uppercase tracking-widest px-8 h-11 rounded-xl"
+                                            className="bg-amber-500 hover:bg-amber-600 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 rounded-xl"
                                         >
                                             <FileSignature className="mr-2 h-4 w-4" /> Orden de Cambio
                                         </Button>
@@ -1553,7 +1878,7 @@ export default function ConstructionPage() {
                                             <Button
                                                 onClick={handleSaveComputos}
                                                 disabled={isSaving || computations.length === 0}
-                                                className="bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-bold text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl hover:bg-emerald-500/20"
+                                                className="bg-emerald-500 border-emerald-500 text-background font-bold text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl hover:bg-emerald-600"
                                             >
                                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                 Guardar Cambios
@@ -1625,6 +1950,9 @@ export default function ConstructionPage() {
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end" className="bg-card border-accent text-primary  p-1.5 rounded-xl">
+                                                                    <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg">
+                                                                        <Calculator className="h-3.5 w-3.5" /> Computar del Modelo
+                                                                    </DropdownMenuItem>
                                                                     <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg" onClick={() => handleViewDetail(row)}>
                                                                         <Calculator className="h-3.5 w-3.5" /> Ver Análisis APU
                                                                     </DropdownMenuItem>
@@ -2347,14 +2675,16 @@ export default function ConstructionPage() {
                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Programación Temporal</h3>
                                             </div>
                                             <div className="space-y-4 bg-card border-accent p-6 rounded-3xl">
-                                                <div className="flex justify-between items-center">
+                                                <div className="flex flex-row justify-between items-center">
                                                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Fecha Inicio</span>
                                                     <span className="text-xs font-mono font-black text-primary uppercase">{format(selectedExecutionItem.gantt.startAt, 'dd MMM yyyy', { locale: es })}</span>
+                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Fecha Final</span>
+                                                    <span className="text-xs font-mono font-black text-primary uppercase">{format(subDays(selectedExecutionItem.gantt.endAt, 1), 'dd MMM yyyy', { locale: es })}</span>
                                                 </div>
                                                 <Separator className="bg-accent" />
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="space-y-2">
-                                                        <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Rendimiento (Hrs)</Label>
+                                                        <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Rendimiento ({selectedExecutionItem.unit}/Hr)</Label>
                                                         <Input
                                                             type="number"
                                                             value={editPerformance}
@@ -2989,9 +3319,9 @@ export default function ConstructionPage() {
                                                                             </div>
                                                                         </div>
                                                                         <div className="space-y-2">
-                                                                            <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Cómputo Total</Label>
+                                                                            <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Rendimiento {selectedItem.unit} / hr</Label>
                                                                             <div className="bg-card border border-accent rounded-md h-11 px-3 flex items-center text-primary font-mono font-bold">
-                                                                                {selectedItem.total.toFixed(2)}
+                                                                                {selectedItem.performance.toFixed(2)}
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -3087,6 +3417,28 @@ export default function ConstructionPage() {
                                                 </TabsContent>
 
                                                 <TabsContent value="calidad" className="m-0 p-6 space-y-6 outline-none">
+                                                    <div className="flex items-center justify-between mb-4 p-4 rounded-xl border border-accent">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-primary/20 rounded-lg">
+                                                                <ClipboardCheck className="h-5 w-5 text-primary" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs font-black uppercase tracking-widest text-primary leading-none">Verificación Técnica</p>
+                                                                <p className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">Defina los criterios de aceptación para esta partida.</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className='flex items-center gap-3'>
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                className="h-9 border-accent text-primary text-[10px] font-black uppercase tracking-widest px-4 hover:bg-accent cursor-pointer"
+                                                                onClick={handlePrintQuality}
+                                                            >
+                                                                <Printer className="h-3.5 w-3.5 mr-2" /> Protocolo
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
                                                     {selectedItem.qualityControls?.length > 0 ? (
                                                         <div className="space-y-6">
                                                             {selectedItem.qualityControls.map((qc: any, idx: number) => (
@@ -3129,8 +3481,8 @@ export default function ConstructionPage() {
                                 >
                                     CERRAR DETALLE
                                 </Button>
-                                <Button className="bg-primary hover:bg-primary/90 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 cursor-pointer">
-                                    <Printer className="mr-2 h-4 w-4" /> IMPRIMIR ANÁLISIS
+                                <Button className="bg-primary hover:bg-primary/90 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 cursor-pointer" onClick={() => handlePrintItem(selectedItem)}>
+                                    <Printer className="mr-2 h-4 w-4" /> IMPRIMIR APU
                                 </Button>
                             </div>
                         </div>

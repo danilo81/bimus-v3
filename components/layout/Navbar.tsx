@@ -1416,6 +1416,332 @@ export function Navbar() {
                     </DialogContent>
                 </Dialog>
             </div>
+            {activeProject && isAuthor && (
+                <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+                    <DialogContent className="min-w-300  bg-card border-accent text-primary p-0 overflow-hidden  flex flex-col h-[90vh]">
+                        <DialogHeader className="p-8 bg-card border-b border-accent shrink-0 flex flex-row items-center justify-between space-y-0">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-card rounded-2xl border border-accent"><Settings className="h-6 w-6 text-muted-foreground" /></div>
+                                <div>
+                                    <DialogTitle className="text-2xl font-black uppercase tracking-tight">CONFIGURACIÓN DEL PROYECTO</DialogTitle>
+                                    <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">Gestione la información general y los parámetros económicos.</DialogDescription>
+                                </div>
+                            </div>
+                            {/* <Button variant="ghost" size="icon" onClick={() => setIsConfigOpen(false)} className="text-muted-foreground hover:text-[rimary"><X className="h-6 w-6" /></Button> */}
+                        </DialogHeader>
+                        <Tabs defaultValue="informacion" className="flex-1 flex flex-col overflow-hidden">
+                            <div className="bg-secondary border-b border-accent shrink-0">
+                                <TabsList className="h-14 bg-transparent p-0 gap-0 w-full" variant="default">
+                                    <TabsTrigger value="informacion" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">INFORMACIÓN</TabsTrigger>
+                                    <TabsTrigger value="parametros" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary border-x">PARÁMETROS</TabsTrigger>
+                                    <TabsTrigger value="niveles" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">NIVELES</TabsTrigger>
+                                    <TabsTrigger value="modelobim" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">MODELO</TabsTrigger>
+                                    <TabsTrigger value="permisos" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">PERMISOS</TabsTrigger>
+                                </TabsList>
+                            </div>
+                            <ScrollArea className="flex-1 p-8">
+                                <TabsContent value="informacion" className="mt-0 space-y-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Nombre del Proyecto</Label><Input value={editProjectData.title} onChange={(e) => handleProjectDataChange('title', e.target.value)} className="h-12 bg-card border-accent uppercase font-bold text-sm" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Cliente</Label><Input value={editProjectData.client} onChange={(e) => handleProjectDataChange('client', e.target.value)} className="h-12 bg-card border-accent uppercase font-bold text-sm" /></div>
+                                        <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Ubicación</Label><div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input value={editProjectData.location} onChange={(e) => handleProjectDataChange('location', e.target.value)} className="h-12 pl-10 bg-card border-accent uppercase font-bold text-sm" /></div></div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Estado del Proyecto</Label>
+                                            <Select value={editProjectData.status} onValueChange={(val) => handleProjectDataChange('status', val)}>
+                                                <SelectTrigger className="h-12 bg-card border-accent uppercase font-black text-[10px]"><SelectValue /></SelectTrigger>
+                                                <SelectContent className="bg-card text-primary border-white/10"><SelectItem value="activo">ACTIVO</SelectItem><SelectItem value="construccion">EN CONSTRUCCIÓN</SelectItem><SelectItem value="espera">EN ESPERA</SelectItem><SelectItem value="finalizado">FINALIZADO</SelectItem></SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+                                <TabsContent value="parametros" className="mt-0 space-y-10">
+                                    <div className="space-y-6">
+                                        <h3 className="text-[10px] font-black uppercase text-primary tracking-[0.2em] border-b border-accent pb-2">Coeficientes de Sobrecosto (%)</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"><TrendingUp className="h-3 w-3" /> Utilidad</Label>
+                                                <Input type="number" value={configParams.utility} onChange={(e) => updateConfigParam('utility', e.target.value)} className="h-11 bg-card border-accent font-mono text-primary font-bold" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"><Users className="h-3 w-3" /> Cargas Sociales</Label>
+                                                <Input type="number" value={configParams.socialCharges} onChange={(e) => updateConfigParam('socialCharges', e.target.value)} className="h-11 bg-card border-accent font-mono text-primary font-bold" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"><FileText className="h-3.5 w-3.5" /> Gastos Admin.</Label>
+                                                <Input type="number" value={configParams.adminExpenses} onChange={(e) => updateConfigParam('adminExpenses', e.target.value)} className="h-11 bg-card border-accent font-mono text-primary font-bold" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"><Wrench className="h-3 w-3" /> Desgaste Herr.</Label>
+                                                <Input type="number" value={configParams.toolWear} onChange={(e) => updateConfigParam('toolWear', e.target.value)} className="h-11 bg-card border-accent font-mono text-primary font-bold" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"><Lock className="h-3 w-3" /> Retención Gtia.</Label>
+                                                <Input type="number" value={configParams.guaranteeRetention} onChange={(e) => updateConfigParam('guaranteeRetention', e.target.value)} className="h-11 bg-card border-accent font-mono text-primary font-bold" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <h3 className="text-[10px] font-black uppercase text-primary tracking-[0.2em] border-b border-accent pb-2">Impuestos de Ley (%)</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"><Coins className="h-3 w-3" /> IVA</Label>
+                                                <Input type="number" value={configParams.iva} onChange={(e) => updateConfigParam('iva', e.target.value)} className="h-11 bg-card border-accent font-mono text-primary font-bold" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"><Banknote className="h-3.5 w-3.5" /> Impuesto Transacción (IT)</Label>
+                                                <Input type="number" value={configParams.it} onChange={(e) => updateConfigParam('it', e.target.value)} className="h-11 bg-card border-accent font-mono text-primary font-bold" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <h3 className="text-[10px] font-black uppercase text-primary tracking-[0.2em] border-b border-accent pb-2">Configuración Monetaria</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">Moneda Principal</Label>
+                                                <Input value={configParams.mainCurrency} onChange={(e) => updateConfigParam('mainCurrency', e.target.value)} className="h-11 bg-card border-accent uppercase font-bold text-xs" placeholder="EJ: BS" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">Moneda Secundaria</Label>
+                                                <Input value={configParams.secondaryCurrency} onChange={(e) => updateConfigParam('secondaryCurrency', e.target.value)} className="h-11 bg-card border-accent uppercase font-bold text-xs" placeholder="EJ: USD" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">Tipo de Cambio</Label>
+                                                <Input type="number" step="0.01" value={configParams.exchangeRate} onChange={(e) => updateConfigParam('exchangeRate', e.target.value)} className="h-11 bg-card border-accent font-mono text-emerald-500 font-bold" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+                                <TabsContent value="niveles" className="mt-0 space-y-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div><h3 className="text-sm font-bold uppercase">Gestión de Niveles</h3></div>
+                                        <Button onClick={handleAddLevel} size="sm" variant="default" className="bg-primary border-accent text-[10px] font-black uppercase text-background cursor-pointer"><PlusCircle className="h-3.5 w-3.5 mr-2" /> Añadir Nivel</Button>
+                                    </div>
+                                    <div className="space-y-3">{localLevels.map((lvl, idx) => (
+                                        <div key={idx} className="flex items-center gap-4 bg-card border border-accent p-3 rounded-xl group hover:border-accent transition-all">
+                                            <div className="h-8 w-8 rounded-lg bg-card flex items-center justify-center text-[10px] font-black text-muted-foreground">{idx + 1}</div>
+                                            <Input value={lvl.name} onChange={(e) => handleLevelNameChange(idx, e.target.value)} className="flex-1 bg-card border-accent font-bold uppercase text-xs focus-visible:ring-0" />
+                                            <Button variant="ghost" size="icon" onClick={() => handleRemoveLevel(idx)} className="opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 cursor-pointer"><Trash2 className="h-4 w-4" /></Button>
+                                        </div>
+                                    ))}</div>
+                                </TabsContent>
+                                <TabsContent value="permisos" className="mt-0">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <h3 className="text-sm font-bold uppercase tracking-tight">Permisos de Colaboradores</h3>
+                                            <p className="text-[10px] text-muted-foreground uppercase mt-1 tracking-widest font-black">Configure el acceso por módulo para los usuarios de su obra.</p>
+                                        </div>
+                                    </div>
+                                    <ScrollArea className="h-[420px] pr-2">
+                                        <div className="space-y-4">
+                                            {activeProject?.team?.filter((member: any) => member.id !== activeProject.authorId && member.type === 'personal').map((member: any) => (
+                                                <div key={member.id} className="bg-card border border-accent rounded-xl overflow-hidden shadow-lg">
+                                                    <div className="bg-secondary/50 p-4 border-b border-accent flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <Avatar className="h-8 w-8"><AvatarFallback className="text-[10px] font-black">{member.name[0]}</AvatarFallback></Avatar>
+                                                            <div>
+                                                                <p className="text-xs font-black uppercase text-primary">{member.name}</p>
+                                                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{member.email}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="p-0 overflow-x-auto">
+                                                        <table className="w-full text-left min-w-[400px]">
+                                                            <thead>
+                                                                <tr className="border-b border-accent bg-background/50">
+                                                                    <th className="px-4 py-3 text-[10px] font-black uppercase text-muted-foreground tracking-widest">Módulo</th>
+                                                                    <th className="px-4 py-3 text-[10px] font-black uppercase text-center text-muted-foreground tracking-widest w-24">Ver</th>
+                                                                    <th className="px-4 py-3 text-[10px] font-black uppercase text-center text-muted-foreground tracking-widest w-24">Editar</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-accent/50">
+                                                                {PERMISSION_MODULES.map(mod => {
+                                                                    const modPerms = member.permissions?.[mod.id] || { view: false, edit: false };
+                                                                    return (
+                                                                        <tr key={mod.id} className="hover:bg-white/5 transition-colors">
+                                                                            <td className="px-4 py-3 text-[11px] font-bold text-primary uppercase flex items-center gap-2">
+                                                                                {mod.icon && <mod.icon className="h-3.5 w-3.5 text-muted-foreground" />}
+                                                                                {mod.label}
+                                                                            </td>
+                                                                            <td className="px-4 py-3 text-center">
+                                                                                <Switch
+                                                                                    checked={modPerms.view}
+                                                                                    onCheckedChange={(val) => handleTogglePermission(member.id, mod.id, 'view', val)}
+                                                                                />
+                                                                            </td>
+                                                                            <td className="px-4 py-3 text-center">
+                                                                                <Switch
+                                                                                    checked={modPerms.edit}
+                                                                                    onCheckedChange={(val) => handleTogglePermission(member.id, mod.id, 'edit', val)}
+                                                                                />
+                                                                            </td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {activeProject?.team?.filter((member: any) => member.id !== activeProject.authorId && member.type === 'personal').length === 0 && (
+                                                <div className="text-center py-10 opacity-50 bg-card border border-accent rounded-xl border-dashed">
+                                                    <Shield className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Requieres invitar como mínimo a un colaborador para ajustar sus permisos.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </ScrollArea>
+                                </TabsContent>
+                                <TabsContent value="modelobim" className="mt-0 space-y-6">
+                                    <div className="flex items-center justify-between mb-4">modelobim
+                                    </div>
+                                </TabsContent>
+                            </ScrollArea>
+                            <DialogFooter className="p-8 border-t border-accent  shrink-0">
+                                <Button variant="ghost" onClick={() => setIsConfigOpen(false)} className="text-[11px] font-black uppercase tracking-widest h-12 px-8 cursor-pointer">CANCELAR</Button>
+                                <Button onClick={handleSaveConfig} disabled={isSubmittingProject} className="bg-primary text-background font-black uppercase text-[11px] h-12 px-10 tracking-widest cursor-pointer">{isSubmittingProject ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} GUARDAR</Button>
+                            </DialogFooter>
+                        </Tabs>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {activeProject && (
+                <Dialog open={isTeamOpen} onOpenChange={setIsTeamOpen}>
+                    <DialogContent className="max-w-2xl bg-card border-accent text-primary p-0 overflow-hidden shadow-2xl flex flex-col h-[85vh]">
+                        <DialogHeader className="p-6 bg-card border-b border-accent shrink-0 flex flex-row items-center space-y-0 gap-3">
+                            <Users className="h-6 w-6 text-primary" />
+                            <div><DialogTitle className="text-xl font-bold uppercase tracking-tight">Personal del Proyecto</DialogTitle><DialogDescription className="text-muted-foreground text-[10px] font-black uppercase mt-1">Gestión de equipo y responsables</DialogDescription></div>
+                        </DialogHeader>
+                        <Tabs defaultValue="current" className="flex-1 flex flex-col overflow-hidden">
+                            <div className="px-6 bg-secondary border-b border-accent shrink-0">
+                                <TabsList className="h-12 bg-transparent p-0 gap-0 w-full" variant="line">
+                                    <TabsTrigger value="current" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-[10px] font-black uppercase">EQUIPO TÉCNICO</TabsTrigger>
+                                    <TabsTrigger value="add" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-[10px] font-black uppercase border-l">AÑADIR PERSONAL</TabsTrigger>
+                                    <TabsTrigger value="invite" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-[10px] font-black uppercase border-l">COLABORADORES</TabsTrigger>
+                                </TabsList>
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                <TabsContent value="current" className="h-full m-0"><ScrollArea className="h-full p-6"><div className="space-y-3">{activeProject.team?.map((member: any) => (
+                                    <div key={member.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-accent group hover:border-primary/30 transition-all shadow-lg">
+                                        <div className="flex items-center gap-4">
+                                            <Avatar className="h-10 w-10 border border-white/10"><AvatarFallback className="bg-card text-primary text-xs font-black uppercase">{member.name[0]}</AvatarFallback></Avatar>
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-bold text-white uppercase">{member.name}</span>
+                                                <Badge variant="outline" className="text-[7px] h-4 border-accent bg-card font-black uppercase mt-1">{member.type}</Badge>
+                                            </div>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => handleRemoveTeamMember(member.id)} disabled={isSubmittingProject}><Trash2 className="h-4 w-4" /></Button>
+                                    </div>
+                                ))}</div></ScrollArea></TabsContent>
+                                <TabsContent value="add" className="h-full m-0 flex flex-col overflow-hidden">
+                                    <div className="p-6 border-b border-accent bg-card space-y-4">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <Input placeholder="BUSCAR EN EL DIRECTORIO..." className="pl-10 h-11 bg-white/5 border-white/10 text-[10px] font-bold uppercase tracking-widest" value={teamSearchTerm} onChange={(e) => setTeamSearchTerm(e.target.value)} />
+                                        </div>
+                                    </div>
+                                    <ScrollArea className="flex-1 p-6">
+                                        <div className="space-y-3">{isFetchingLibrary ? <div className="flex flex-col items-center justify-center py-20 opacity-20 gap-3"><Loader2 className="h-8 w-8 animate-spin" /><p className="text-[10px] font-black uppercase tracking-widest">Consultando Directorio...</p></div> : filteredLibraryContacts.map((contact) => (
+                                            <div key={contact.id} className="flex items-center justify-between p-4 rounded-xl bg-white/2 border border-white/5 hover:bg-white/5 transition-all group">
+                                                <div className="flex items-center gap-4"><Avatar className="h-10 w-10 border border-white/10 opacity-60 group-hover:opacity-100 transition-opacity"><AvatarFallback className="text-[10px] font-black uppercase">{contact.name[0]}</AvatarFallback></Avatar><div className="flex flex-col"><span className="text-xs font-bold text-white uppercase">{contact.name}</span><span className="text-[8px] text-muted-foreground uppercase font-black tracking-widest mt-1">{contact.type}</span></div></div>
+                                                <Button size="sm" className="h-8 bg-secondary hover:bg-primary/90 text-primary hover:text-black font-black text-[9px] uppercase tracking-widest px-4 rounded-lg cursor-pointer" onClick={() => handleAddTeamMember(contact.id)} disabled={isSubmittingProject}><Plus className="h-3 w-3 mr-1.5" /> Adicionar</Button>
+                                            </div>
+                                        ))}</div>
+                                    </ScrollArea>
+                                </TabsContent>
+                                <TabsContent value="invite" className="h-full m-0 flex flex-col overflow-hidden">
+                                    <div className="p-8 space-y-8">
+                                        <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6 space-y-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-primary/20 rounded-lg"><UserPlus className="h-5 w-5 text-primary" /></div>
+                                                <h3 className="text-sm font-black uppercase tracking-tight">Invitar Colaborador Externo</h3>
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground uppercase font-bold leading-relaxed">
+                                                El usuario invitado recibirá acceso completo de edición a esta terminal de proyecto una vez que inicie sesión con su correo.
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                                    <Mail className="h-3.5 w-3.5 text-primary" /> Correo Electrónico
+                                                </Label>
+                                                <Input
+                                                    type="email"
+                                                    value={inviteEmail}
+                                                    onChange={(e) => setInviteEmail(e.target.value)}
+                                                    placeholder="ejemplo@correo.com"
+                                                    className="h-12 bg-white/5 border-white/10 font-mono text-sm"
+                                                />
+                                            </div>
+                                            <Button
+                                                onClick={handleInviteSubmit}
+                                                disabled={isSubmittingProject || !inviteEmail}
+                                                className="w-full bg-primary text-black font-black uppercase text-[11px] h-12 tracking-widest shadow-xl shadow-primary/20 cursor-pointer"
+                                            >
+                                                {isSubmittingProject ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                                Enviar Invitación de Colaboración
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+                            </div>
+                        </Tabs>
+                        <DialogFooter className="p-4 border-t border-white/5 bg-black shrink-0"><Button variant="ghost" onClick={() => setIsTeamOpen(false)} className="w-full text-[9px] font-black uppercase tracking-[0.2em] h-10 hover:bg-white/5 cursor-pointer">Cerrar Terminal de Equipo</Button></DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+
+            {activeProject && (
+                <Dialog open={isLogOpen} onOpenChange={setIsLogOpen}>
+                    <DialogContent className="max-w-2xl bg-card border-accent text-primary p-0 overflow-hidden  flex flex-col h-[85vh]">
+                        <DialogHeader className="p-6 bg-card border-b border-accent shrink-0 flex flex-row items-center space-y-0 gap-3">
+                            <BookOpen className="h-6 w-6 text-primary" />
+                            <div><DialogTitle className="text-xl font-bold uppercase tracking-tight">Bitácora Maestra</DialogTitle><DialogDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mt-1">Historial cronológico de obra</DialogDescription></div>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-hidden p-6">
+                            <ScrollArea className="h-full pr-4">
+                                {activeProject.siteLogs?.length > 0 ? (
+                                    <div className="space-y-6 relative pl-4">
+                                        <div className="absolute left-2.75 top-2 bottom-2 w-px bg-primary" />
+                                        {activeProject.siteLogs.map((log: any) => (
+                                            <div key={log.id} className="relative pl-10 group">
+                                                <div className={cn("absolute left-0 top-1.5 h-6 w-6 rounded-full border-2 border-accent flex items-center justify-center z-10", log.type === 'incident' ? 'bg-red-500' : log.type === 'milestone' ? 'bg-emerald-500' : 'bg-secondary')}>
+                                                    <Clock className="h-3 w-3 text-primary" />
+                                                </div>
+                                                <div className="p-4 rounded-2xl bg-card border border-accent hover:border-primary transition-all space-y-2">
+                                                    <div className="flex items-center justify-between"><span className="text-[10px] font-mono font-black text-muted-foreground uppercase">{new Date(log.date).toLocaleString('es-ES')}</span><Badge variant="default" className="text-[7px] font-black uppercase border-none h-4 ">{log.type}</Badge></div>
+                                                    <p className="text-xs font-bold text-primary leading-relaxed uppercase">{log.content}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-40 opacity-20 gap-4"><BookOpen className="h-12 w-12" /><p className="text-[10px] font-black uppercase tracking-widest">Sin registros en bitácora</p></div>
+                                )}
+                            </ScrollArea>
+                        </div>
+                        <DialogFooter className="p-4 border-t border-accent bg-card shrink-0"><Button variant="ghost" onClick={() => setIsLogOpen(false)} className="w-full text-[9px] font-black uppercase h-10 hover:bg-white/5 bg-primary text-background cursor-pointer">Cerrar Historial</Button></DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {activeProject && isAuthor && (
+                <Dialog open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
+                    <DialogContent className="sm:max-w-106.25 bg-[#0a0a0a] border-white/10 text-primary p-0 overflow-hidden ">
+                        <form onSubmit={handleInviteSubmit}>
+                            <DialogHeader className="p-6 bg-white/2 border-b border-white/5"><div className="flex items-center gap-3"><div className="p-2 bg-blue-500/20 rounded-lg"><UserPlus className="h-6 w-6 text-blue-400" /></div><div><DialogTitle className="text-xl font-bold uppercase tracking-tight">Invitar Colaborador</DialogTitle></div></div></DialogHeader>
+                            <div className="p-6 space-y-6">
+                                <div className="space-y-3"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Correo del Usuario</Label><Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="ejemplo@correo.com" required className="h-12 bg-white/5 border-white/10 font-mono text-sm" /></div>
+                            </div>
+                            <DialogFooter className="p-6 border-t border-white/5 bg-black/20"><Button type="button" variant="ghost" onClick={() => setIsInviteModalOpen(false)}>Cancelar</Button><Button type="submit" disabled={isSubmittingProject} className="bg-blue-500 text-primary font-black text-[10px] uppercase h-11 px-8 shadow-xl">{isSubmittingProject ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />} Enviar</Button></DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+            )}
         </nav>
     );
 }

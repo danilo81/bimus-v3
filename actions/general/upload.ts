@@ -2,16 +2,16 @@
 
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { auth } from "@/lib/auth"; // Ajusta según tu autenticación
+import { auth, getSession } from "@/lib/auth"; // Ajusta según tu autenticación
 import prisma from "@/lib/prisma";
 
 // Inicializamos el cliente de S3 apuntando a Cloudflare R2
 const s3Client = new S3Client({
     region: "auto",
-    endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
     credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+        accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
     },
 });
 
@@ -30,13 +30,17 @@ export async function getUploadUrl(fileName: string, fileType: string, fileSize:
         const fileKey = `proyectos/${uniqueId}-${cleanFileName}`;
 
         const command = new PutObjectCommand({
-            Bucket: process.env.R2_BUCKET_NAME!,
+            Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME!,
             Key: fileKey,
             ContentType: fileType,
         });
 
         // Generamos la URL firmada válida por 1 hora (3600 segundos)
-        const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+        const signedUrl = await getSignedUrl(s3Client, command, {
+            expiresIn: 3600,
+
+            signableHeaders: new Set(["content-type, Authorization, Access-Control-Allow-Headers"]),
+        });
 
         return {
             success: true,
@@ -56,16 +60,16 @@ export async function saveFileRecordToDB(data: { name: string, key: string, url:
     if (!session?.user?.id) throw new Error("No autorizado");
 
     try {
-        const newDoc = await prisma.document.create({
+        const newDoc = await prisma.projectDocument.create({
             data: {
                 name: data.name,
-                originalName: data.name,
                 url: data.url,
-                key: data.key,
-                size: data.size,
-                mimeType: data.mimeType,
+                size: data.size.toString(),
+                type: data.mimeType,
                 projectId: data.projectId,
-                uploadedById: session.user.id,
+                authorName: session.user.name || "Usuario Bimus",
+                status: "uploaded",
+                source: "r2"
             }
         });
         return { success: true, document: newDoc };

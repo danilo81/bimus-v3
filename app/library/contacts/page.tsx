@@ -336,7 +336,7 @@ export default function ContactsPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 space-y-6 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card w-fit">
                 <div>
                     <h1 className="text-3xl font-bold font-headline flex items-center gap-3">
                         <Users className="h-8 w-8 text-primary" /> Contactos

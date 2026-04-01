@@ -51,7 +51,7 @@ export async function updateConstructionItemLibrary(id: string, data: {
             for (const s of updateData.supplies) {
                 let supplyId = s.id;
 
-                if (s.isNew && userId) {
+                if ((s.isNew || s.id?.startsWith('temp-')) && userId) {
                     const existingSupply = await prisma.supply.findFirst({
                         where: {
                             description: { equals: s.description, mode: 'insensitive' },

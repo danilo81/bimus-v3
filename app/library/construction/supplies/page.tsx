@@ -445,7 +445,7 @@ export default function SuppliesPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <ImportExportSupplies currentData={[]} />
+                    <ImportExportSupplies currentData={filteredSupplies} dbUnits={dbUnits} />
                     <Dialog open={isDialogOpen} onOpenChange={(open) => {
                         setIsDialogOpen(open);
                         if (!open) resetForm();

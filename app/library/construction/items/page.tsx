@@ -148,7 +148,7 @@ export default function ItemsPage() {
             ]);
 
             setDbChapters(chaptersData as any);
-            
+
             if (suppliesData.success && suppliesData.supplies) {
                 setDbSupplies(suppliesData.supplies);
             } else {
@@ -172,22 +172,22 @@ export default function ItemsPage() {
 
     const filteredItems = useMemo(() => {
         return items.filter(item =>
-            item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.chapter.toLowerCase().includes(searchTerm.toLowerCase())
+            (item.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item.chapter || '').toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [items, searchTerm]);
 
     const filteredSuppliesForDropdown = useMemo(() => {
         return dbSupplies.filter(s =>
-            s.description.toLowerCase().includes(supplySearchTerm.toLowerCase()) ||
-            s.typology.toLowerCase().includes(supplySearchTerm.toLowerCase())
+            (s.description || '').toLowerCase().includes(supplySearchTerm.toLowerCase()) ||
+            (s.typology || '').toLowerCase().includes(supplySearchTerm.toLowerCase())
         );
     }, [dbSupplies, supplySearchTerm]);
 
     const filteredSelectedSupplies = useMemo(() => {
         return selectedSupplies.filter(s =>
-            s.description.toLowerCase().includes(selectedSuppliesSearchTerm.toLowerCase()) ||
-            s.typology.toLowerCase().includes(selectedSuppliesSearchTerm.toLowerCase())
+            (s.description || '').toLowerCase().includes(selectedSuppliesSearchTerm.toLowerCase()) ||
+            (s.typology || '').toLowerCase().includes(selectedSuppliesSearchTerm.toLowerCase())
         );
     }, [selectedSupplies, selectedSuppliesSearchTerm]);
 
@@ -345,7 +345,16 @@ export default function ItemsPage() {
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
 
-        const supplies = (item.supplies || []) as ItemSupply[];
+        const supplies = (item.supplies as any[] || []).map(s => ({
+            id: s.supplyId,
+            description: s.supply?.description || '',
+            unit: s.supply?.unit || '',
+            price: s.supply?.price || 0,
+            quantity: s.quantity || 0,
+            subtotal: (s.quantity || 0) * (s.supply?.price || 0),
+            typology: s.supply?.typology || 'Material'
+        }));
+
         const mat = supplies.filter(s => s.typology === 'Material' || s.typology === 'Insumo').reduce((a, b) => a + b.subtotal, 0);
         const lab = supplies.filter(s => s.typology === 'Mano de Obra' || s.typology === 'Honorario').reduce((a, b) => a + b.subtotal, 0);
         const equ = supplies.filter(s => s.typology === 'Equipo' || s.typology === 'Herramienta').reduce((a, b) => a + b.subtotal, 0);
@@ -430,22 +439,22 @@ export default function ItemsPage() {
                                     <td><span class="type-badge ${typeCls}">${s.typology}</span></td>
                                     <td>${s.description}</td>
                                     <td class="center">${s.unit}</td>
-                                    <td class="right">$${s.price.toFixed(2)}</td>
-                                    <td class="center">${s.quantity.toFixed(4)}</td>
-                                    <td class="right"><strong>$${s.subtotal.toFixed(2)}</strong></td>
+                                    <td class="right">$${(s.price || 0).toFixed(2)}</td>
+                                    <td class="center">${(s.quantity || 0).toFixed(4)}</td>
+                                    <td class="right"><strong>$${(s.subtotal || 0).toFixed(2)}</strong></td>
                                 </tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">Sin insumos registrados</td></tr>'}
                         </tbody>
                     </table>
-
+ 
                     <table class="summary-table">
                         <tbody>
-                            <tr><td>Materiales e Insumos</td><td class="right">$${mat.toFixed(2)}</td></tr>
-                            <tr><td>Mano de Obra</td><td class="right">$${lab.toFixed(2)}</td></tr>
-                            <tr><td>Equipo y Herramienta</td><td class="right">$${equ.toFixed(2)}</td></tr>
+                            <tr><td>Materiales e Insumos</td><td class="right">$${(mat || 0).toFixed(2)}</td></tr>
+                            <tr><td>Mano de Obra</td><td class="right">$${(lab || 0).toFixed(2)}</td></tr>
+                            <tr><td>Equipo y Herramienta</td><td class="right">$${(equ || 0).toFixed(2)}</td></tr>
                         </tbody>
                         <tfoot class="summary-total">
-                            <tr><td style="padding:10px 10px">COSTO DIRECTO TOTAL</td><td class="right" style="padding:10px 10px">$${item.directCost.toFixed(2)}</td></tr>
+                            <tr><td style="padding:10px 10px">COSTO DIRECTO TOTAL</td><td class="right" style="padding:10px 10px">$${(item.directCost || 0).toFixed(2)}</td></tr>
                         </tfoot>
                     </table>
 
@@ -492,7 +501,18 @@ export default function ItemsPage() {
             performance: item.performance.toString(),
             notes: ''
         });
-        setSelectedSupplies(item.supplies || []);
+        // Transformar los suministros de Prisma al formato de la UI
+        const mappedSupplies = (item.supplies as any[] || []).map(s => ({
+            id: s.supplyId,
+            description: s.supply?.description || '',
+            unit: s.supply?.unit || '',
+            price: s.supply?.price || 0,
+            quantity: s.quantity || 0,
+            subtotal: (s.quantity || 0) * (s.supply?.price || 0),
+            typology: s.supply?.typology || 'Material'
+        }));
+
+        setSelectedSupplies(mappedSupplies);
         setQualityControls((item.qualityControls as any) || []);
         setIsDialogOpen(true);
     };
@@ -705,7 +725,7 @@ export default function ItemsPage() {
                                                                     </Select>
                                                                 </div>
                                                                 <div className="space-y-2">
-                                                                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Rendimiento Hr</Label>
+                                                                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Rendimiento "unidad"/Hr</Label>
                                                                     <Input
                                                                         className="bg-background/50 border-accent h-11 text-primary font-mono font-bold"
                                                                         type="number"
@@ -1003,7 +1023,7 @@ export default function ItemsPage() {
                                                                         </TableCell>
                                                                         <TableCell className="text-xs font-bold text-primary uppercase">{s.description}</TableCell>
                                                                         <TableCell className="text-[10px] text-muted-foreground font-black text-center uppercase tracking-widest">{s.unit}</TableCell>
-                                                                        <TableCell className="text-right text-[10px] font-mono font-bold text-muted-foreground">${s.price.toFixed(2)}</TableCell>
+                                                                        <TableCell className="text-right text-[10px] font-mono font-bold text-muted-foreground">${(s.price || 0).toFixed(2)}</TableCell>
                                                                         <TableCell className="text-center">
                                                                             <Input
                                                                                 className="w-24 h-9 bg-card border-accent text-center font-mono text-xs mx-auto focus:ring-1 focus:ring-primary text-primary"
@@ -1013,7 +1033,7 @@ export default function ItemsPage() {
                                                                                 onChange={(e) => handleUpdateQuantity(s.id!, e.target.value)}
                                                                             />
                                                                         </TableCell>
-                                                                        <TableCell className="text-right font-mono font-bold text-primary px-6">${s.subtotal.toFixed(2)}</TableCell>
+                                                                        <TableCell className="text-right font-mono font-bold text-primary px-6">${(s.subtotal || 0).toFixed(2)}</TableCell>
                                                                         <TableCell className="px-2">
                                                                             <button
                                                                                 type="button"
@@ -1190,9 +1210,9 @@ export default function ItemsPage() {
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-muted-foreground uppercase font-black text-[14px]">{item.unit}</TableCell>
-                                                <TableCell className="text-right font-mono text-[14px] font-bold">{item.performance.toFixed(2)}</TableCell>
+                                                <TableCell className="text-right font-mono text-[14px] font-bold">{(item.performance || 0).toFixed(2)}</TableCell>
                                                 <TableCell className="text-right font-mono font-bold text-emerald-500 text-[14px]">
-                                                    ${item.directCost.toFixed(2)}
+                                                    ${(item.directCost || 0).toFixed(2)}
                                                 </TableCell>
                                                 <TableCell className="text-right px-6">
                                                     <DropdownMenu>

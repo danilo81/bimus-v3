@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use server';
 
-import prisma from '@/lib/prisma'; // Asegúrate de que la ruta a prisma sea la correcta en tu proyecto
+import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 
 export async function importSuppliesBatch(data: any[]) {
     try {
-        // 1. Obtener el usuario autenticado (Opcional, pero recomendado si los insumos están ligados a un User)
         const cookieStore = await cookies();
         const userId = cookieStore.get('userId')?.value;
 
@@ -15,86 +14,89 @@ export async function importSuppliesBatch(data: any[]) {
             return { success: false, error: 'Usuario no autenticado.' };
         }
 
-        // 2. Obtener las unidades válidas de la base de datos
-        // Si las unidades son globales, quita el where. Si son por usuario, déjalo.
-        const validUnits = await prisma.unit.findMany({
-            select: { abbreviation: true }
-        });
+        // 1. Obtener datos de validación de la DB
+        const [validUnits, existingSupplies] = await Promise.all([
+            prisma.unit.findMany({
+                select: { abbreviation: true }
+            }),
+            prisma.supply.findMany({
+                where: { userId },
+                select: { description: true }
+            })
+        ]);
 
-        // Convertimos a mayúsculas para hacer una comparación exacta
+        // Normalizamos a mayúsculas para comparaciones precisas
         const validAbbreviations = validUnits.map(u => u.abbreviation.toUpperCase());
+        const existingDescriptions = new Set(existingSupplies.map(s => s.description.toUpperCase()));
 
         const formattedData = [];
-        let errorCount = 0;
+        const errors = [];
 
-        // 3. Procesar y validar cada fila del Excel
+        // 2. Procesar y validar cada fila del Excel
         for (let i = 0; i < data.length; i++) {
             const row = data[i];
+            const rowNum = i + 1;
 
-            // --- A. Validar Unidad ---
+            const nombre = (row.Nombre || '').toString().trim();
             const unit = (row.Unidad || '').toString().trim().toUpperCase();
+
+            // --- A. Validar que la Unidad exista en la DB ---
             if (!validAbbreviations.includes(unit)) {
-                errorCount++;
-                continue; // Saltamos este registro si es inválido
-            }
-
-            // --- B. Validar Costo ---
-            let rawCost = row.Costo;
-            let parsedCost = 0;
-
-            if (rawCost === undefined || rawCost === null || rawCost === '') {
-                errorCount++;
+                errors.push(`Fila ${rowNum}: La unidad "${unit}" no existe en el sistema.`);
                 continue;
             }
 
+            // --- B. Validar si el insumo ya existe (Duplicado) ---
+            if (existingDescriptions.has(nombre.toUpperCase())) {
+                errors.push(`Fila ${rowNum}: El insumo "${nombre}" ya existe en su catálogo.`);
+                continue;
+            }
+
+            // --- C. Validar y formatear Costo ---
+            let rawCost = row.Costo;
             if (typeof rawCost === 'string') {
-                // Reemplazamos coma por punto por si viene de un Excel en español
                 rawCost = rawCost.replace(',', '.');
             }
-            parsedCost = parseFloat(rawCost);
+            const parsedCost = parseFloat(rawCost);
 
-            // Verificamos si es un número real y no es negativo
             if (isNaN(parsedCost) || parsedCost < 0) {
-                errorCount++;
+                errors.push(`Fila ${rowNum}: Costo inválido.`);
                 continue;
             }
 
-            // --- C. Formatear para Prisma ---
             formattedData.push({
-                userId: userId, 
-                description: row.Nombre || 'Sin descripción',
+                userId: userId,
+                description: nombre || 'Sin descripción',
                 typology: row.Tipologia || 'Material',
                 unit: unit,
                 price: parsedCost,
             });
         }
 
-        // 4. Bloqueo de seguridad
-        // Si el servidor detecta errores (alguien intentó saltarse el paso del Frontend)
-        if (errorCount > 0) {
-            return { 
-                success: false, 
-                error: `Se detectaron ${errorCount} registros con unidades o costos inválidos. La importación fue bloqueada por seguridad.` 
+        // 3. Si hay errores de validación, abortamos y reportamos
+        if (errors.length > 0) {
+            return {
+                success: false,
+                error: `Se encontraron ${errors.length} problemas.`,
+                details: errors
             };
         }
 
         if (formattedData.length === 0) {
-            return { success: false, error: 'No hay datos válidos para importar.' };
+            return { success: false, error: 'No hay datos válidos o nuevos para importar.' };
         }
 
-        // 5. Inserción masiva en la Base de Datos
+        // 4. Inserción masiva
         await prisma.supply.createMany({
             data: formattedData,
-            skipDuplicates: true // Si tienes IDs o campos únicos, evita que el servidor crashee
+            skipDuplicates: true
         });
 
-        // 6. Refrescar la caché de la página
         revalidatePath('/library/construction/supplies');
-        
         return { success: true, count: formattedData.length };
 
     } catch (error: any) {
-        console.error("Error importando insumos en el servidor:", error);
-        return { success: false, error: 'Error interno del servidor al guardar los datos.' };
+        console.error("Error en importación:", error);
+        return { success: false, error: 'Error interno del servidor.' };
     }
 }
