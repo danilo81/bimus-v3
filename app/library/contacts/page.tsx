@@ -81,6 +81,8 @@ import { ScrollArea, ScrollBar } from '../../../components/ui/scroll-area';
 import { Textarea } from '../../../components/ui/textarea';
 import { cn } from '../../../lib/utils';
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar';
+import { getContactDocumentUploadUrl, deleteContactDocument, getContactDocuments } from '@/actions/contacts/contact-documents';
+import { useRef } from 'react';
 
 export default function ContactsPage() {
     const [contacts, setContacts] = useState<Contact[]>([]);
@@ -128,6 +130,10 @@ export default function ContactsPage() {
         swiftCode: '',
         isPreferred: false
     });
+    const [contactDocuments, setContactDocuments] = useState<any[]>([]);
+    const [isLoadingDocs, setIsLoadingDocs] = useState(false);
+    const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         setIsMounted(true);
@@ -154,6 +160,7 @@ export default function ContactsPage() {
     useEffect(() => {
         if (selectedContact && isProfileDialogOpen) {
             loadAccounting();
+            loadDocuments(selectedContact.id);
         }
     }, [selectedContact, isProfileDialogOpen]);
 
@@ -168,6 +175,69 @@ export default function ContactsPage() {
         } finally {
             setIsLoadingAccounting(false);
         }
+    }
+
+    async function loadDocuments(contactId: string) {
+        setIsLoadingDocs(true);
+        try {
+            const docs = await getContactDocuments(contactId);
+            setContactDocuments(docs);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsLoadingDocs(false);
+        }
+    }
+
+    const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !selectedContact) return;
+        setIsUploadingDoc(true);
+        try {
+            const result = await getContactDocumentUploadUrl(
+                selectedContact.id,
+                file.name,
+                file.type || 'application/pdf',
+                file.size,
+            );
+            if (!result.success) throw new Error('Error generando URL de subida');
+
+            // Subir directo a R2
+            const uploadRes = await fetch(result.presignedUrl, {
+                method: 'PUT',
+                body: file,
+                headers: { 'Content-Type': file.type || 'application/pdf' },
+            });
+            if (!uploadRes.ok) throw new Error('Error al subir el archivo');
+
+            toast({ title: 'Documento subido', description: file.name });
+            await loadDocuments(selectedContact.id);
+        } catch (err: any) {
+            toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        } finally {
+            setIsUploadingDoc(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleDocumentDelete = async (docId: string, docName: string) => {
+        if (!confirm(`¿Eliminar permanentemente "${docName}"?`)) return;
+        try {
+            const result = await deleteContactDocument(docId);
+            if (!result.success) throw new Error(result.error);
+            toast({ title: 'Documento eliminado' });
+            setContactDocuments(prev => prev.filter(d => d.id !== docId));
+        } catch (err: any) {
+            toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        }
+    };
+
+    function formatFileSize(bytes: number) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
     const filteredContacts = contacts.filter(contact => {
@@ -378,7 +448,7 @@ export default function ContactsPage() {
             </div>
 
             {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-40 gap-4 opacity-30">
+                <div className="flex flex-col items-center justify-center py-40 gap-4 opacity-30 h-[60vh]">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
                     <p className="text-[10px] font-black uppercase tracking-widest">Sincronizando Directorio...</p>
                 </div>
@@ -456,131 +526,133 @@ export default function ContactsPage() {
             {/* Modal de Nuevo Contacto */}
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogContent className="min-w-7xl bg-card border-accent text-primary p-0 overflow-hidden shadow-2xl flex flex-col h-[95vh]">
-
-                    <div className="flex flex-col h-full">
-                        <DialogHeader className="p-8 border-b border-accent bg-white/2 flex flex-row items-center gap-6 shrink-0 space-y-0">
-                            <div className="h-12 w-12 rounded-sm bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-3xl font-black text-primary uppercase ">
-                                <UserPlus className="h-6 w-6" />
-                            </div>
-                            <div className="flex-1 space-y-1">
-                                <DialogTitle className="text-2xl font-primary uppercase tracking-tight">Registro de Contacto Maestro</DialogTitle>
-                                <div className="flex items-center gap-3">
-                                    <Badge className="bg-primary text-background font-foreground uppercase text-[10px]">PENDIENTE</Badge>
-                                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-50 flex items-center gap-1.5">
-                                        <Clock className="h-3 w-3" /> Estado: Nuevo Registro
-                                    </span>
+                    <ScrollArea className='h-150'>
+                        <div className="flex flex-col h-full">
+                            <DialogHeader className="p-8 border-b border-accent bg-white/2 flex flex-row items-center gap-6 shrink-0 space-y-0">
+                                <div className="h-12 w-12 rounded-sm bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-3xl font-black text-primary uppercase ">
+                                    <UserPlus className="h-6 w-6" />
                                 </div>
-                            </div>
-                        </DialogHeader>
+                                <div className="flex-1 space-y-1">
+                                    <DialogTitle className="text-2xl font-primary uppercase tracking-tight">Registro de Contacto Maestro</DialogTitle>
+                                    <div className="flex items-center gap-3">
+                                        <Badge className="bg-primary text-background font-foreground uppercase text-[10px]">PENDIENTE</Badge>
+                                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-50 flex items-center gap-1.5">
+                                            <Clock className="h-3 w-3" /> Estado: Nuevo Registro
+                                        </span>
+                                    </div>
+                                </div>
+                            </DialogHeader>
 
-                        <Tabs defaultValue="info" className="flex-1 flex flex-col overflow-hidden">
-                            <div className="px-8  shrink-0">
-                                <TabsList className="h-14 bg-card p-0 gap-8" >
-                                    <TabsTrigger value="info" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
-                                        Información General
-                                    </TabsTrigger>
-                                    <TabsTrigger value="locked1" disabled className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
-                                        <Lock className="h-3 w-3 mr-2" /> Bancos
-                                    </TabsTrigger>
-                                    <TabsTrigger value="locked2" disabled className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
-                                        <Lock className="h-3 w-3 mr-2" /> Documentos
-                                    </TabsTrigger>
-                                </TabsList>
-                            </div>
+                            <Tabs defaultValue="info" className="flex-1 flex flex-col overflow-hidden">
+                                <div className="px-8  shrink-0">
+                                    <TabsList className="h-14 bg-card p-0 gap-8" >
+                                        <TabsTrigger value="info" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
+                                            Información General
+                                        </TabsTrigger>
+                                        <TabsTrigger value="locked1" disabled className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
+                                            <Lock className="h-3 w-3 mr-2" /> Bancos
+                                        </TabsTrigger>
+                                        <TabsTrigger value="locked2" disabled className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
+                                            <Lock className="h-3 w-3 mr-2" /> Documentos
+                                        </TabsTrigger>
+                                    </TabsList>
+                                </div>
 
-                            <ScrollArea className="flex-1">
-                                <TabsContent value="info" className="m-0 p-8 space-y-10">
-                                    <form onSubmit={handleSubmit} className="space-y-8">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <div className="space-y-3">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 ">
-                                                    <UserCircle className="h-3.5 w-3.5" /> Nombre Completo
-                                                </Label>
-                                                <Input id="name" value={formData.name} onChange={handleInputChange} required className="h-12 bg-white/5 border-accent uppercase font-bold text-sm" placeholder="Ej: JUAN PEREZ" />
+                                <ScrollArea className="flex-1">
+                                    <TabsContent value="info" className="m-0 p-8 space-y-10">
+                                        <form onSubmit={handleSubmit} className="space-y-8">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 ">
+                                                        <UserCircle className="h-3.5 w-3.5" /> Nombre Completo
+                                                    </Label>
+                                                    <Input id="name" value={formData.name} onChange={handleInputChange} required className="h-12 bg-white/5 border-accent uppercase font-bold text-sm" placeholder="Ej: JUAN PEREZ" />
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                        <Building2 className="h-3.5 w-3.5" /> Empresa / Razón Social
+                                                    </Label>
+                                                    <Input id="company" value={formData.company} onChange={handleInputChange} className="h-12 bg-white/5 border-accent uppercase font-bold text-sm" placeholder="Opcional" />
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                        <Mail className="h-3.5 w-3.5" /> Email corporativo
+                                                    </Label>
+                                                    <Input id="email" type="email" value={formData.email} onChange={handleInputChange} className="h-12 bg-white/5 border-accent font-mono text-sm" placeholder="usuario@ejemplo.com" />
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                        <Phone className="h-3.5 w-3.5" /> Teléfono Móvil
+                                                    </Label>
+                                                    <Input id="phone" value={formData.phone} onChange={handleInputChange} required className="h-12 bg-white/5 border-accent font-mono font-black" placeholder="+591 ..." />
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                        <Hash className="h-3.5 w-3.5" /> NIT / Identificación
+                                                    </Label>
+                                                    <Input id="nit" value={formData.nit} onChange={handleInputChange} className="h-12 bg-white/5 border-accent font-mono font-bold" placeholder="00000000" />
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                        <MapPin className="h-3.5 w-3.5" /> Dirección Física
+                                                    </Label>
+                                                    <Input id="address" value={formData.address} onChange={handleInputChange} className="h-12 bg-white/5 border-accent uppercase font-bold" placeholder="Calle, Nro, Ciudad" />
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Tipo de Contacto</Label>
+                                                    <Select value={formData.type} onValueChange={(v: any) => handleSelectChange('type', v)}>
+                                                        <SelectTrigger className="h-12 bg-white/5 border-accent uppercase font-black text-[12px] w-full"><SelectValue /></SelectTrigger>
+                                                        <SelectContent className="bg-card text-primary border-accent">
+                                                            <SelectItem value="cliente" className="text-[12px] font-bold uppercase">CLIENTE</SelectItem>
+                                                            <SelectItem value="proveedor" className="text-[12px] font-bold uppercase">PROVEEDOR</SelectItem>
+                                                            <SelectItem value="personal" className="text-[12px] font-bold uppercase">PERSONAL</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Estado Operativo</Label>
+                                                    <Select value={formData.status} onValueChange={(v: any) => handleSelectChange('status', v)}>
+                                                        <SelectTrigger className="h-12 bg-white/5 border-accent uppercase font-black text-[12px] w-full"><SelectValue /></SelectTrigger>
+                                                        <SelectContent className="bg-card text-primary border-accent">
+                                                            <SelectItem value="active" className="text-[12px] font-bold uppercase">ACTIVO</SelectItem>
+                                                            <SelectItem value="inactive" className="text-[12px] font-bold uppercase">INACTIVO</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
                                             </div>
                                             <div className="space-y-3">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                                    <Building2 className="h-3.5 w-3.5" /> Empresa / Razón Social
-                                                </Label>
-                                                <Input id="company" value={formData.company} onChange={handleInputChange} className="h-12 bg-white/5 border-accent uppercase font-bold text-sm" placeholder="Opcional" />
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Notas del Sistema</Label>
+                                                <Textarea id="notes" value={formData.notes} onChange={handleInputChange} className="bg-card border-accent min-h-12 text-xs uppercase resize-none" placeholder="Observaciones preliminares..." />
                                             </div>
-                                            <div className="space-y-3">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                                    <Mail className="h-3.5 w-3.5" /> Email corporativo
-                                                </Label>
-                                                <Input id="email" type="email" value={formData.email} onChange={handleInputChange} className="h-12 bg-white/5 border-accent font-mono text-sm" placeholder="usuario@ejemplo.com" />
-                                            </div>
-                                            <div className="space-y-3">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                                    <Phone className="h-3.5 w-3.5" /> Teléfono Móvil
-                                                </Label>
-                                                <Input id="phone" value={formData.phone} onChange={handleInputChange} required className="h-12 bg-white/5 border-accent font-mono font-black" placeholder="+591 ..." />
-                                            </div>
-                                            <div className="space-y-3">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                                    <Hash className="h-3.5 w-3.5" /> NIT / Identificación
-                                                </Label>
-                                                <Input id="nit" value={formData.nit} onChange={handleInputChange} className="h-12 bg-white/5 border-accent font-mono font-bold" placeholder="00000000" />
-                                            </div>
-                                            <div className="space-y-3">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                                    <MapPin className="h-3.5 w-3.5" /> Dirección Física
-                                                </Label>
-                                                <Input id="address" value={formData.address} onChange={handleInputChange} className="h-12 bg-white/5 border-accent uppercase font-bold" placeholder="Calle, Nro, Ciudad" />
-                                            </div>
-                                            <div className="space-y-3">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Tipo de Contacto</Label>
-                                                <Select value={formData.type} onValueChange={(v: any) => handleSelectChange('type', v)}>
-                                                    <SelectTrigger className="h-12 bg-white/5 border-accent uppercase font-black text-[12px] w-full"><SelectValue /></SelectTrigger>
-                                                    <SelectContent className="bg-card text-primary border-accent">
-                                                        <SelectItem value="cliente" className="text-[12px] font-bold uppercase">CLIENTE</SelectItem>
-                                                        <SelectItem value="proveedor" className="text-[12px] font-bold uppercase">PROVEEDOR</SelectItem>
-                                                        <SelectItem value="personal" className="text-[12px] font-bold uppercase">PERSONAL</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-3">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Estado Operativo</Label>
-                                                <Select value={formData.status} onValueChange={(v: any) => handleSelectChange('status', v)}>
-                                                    <SelectTrigger className="h-12 bg-white/5 border-accent uppercase font-black text-[12px] w-full"><SelectValue /></SelectTrigger>
-                                                    <SelectContent className="bg-card text-primary border-accent">
-                                                        <SelectItem value="active" className="text-[12px] font-bold uppercase">ACTIVO</SelectItem>
-                                                        <SelectItem value="inactive" className="text-[12px] font-bold uppercase">INACTIVO</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Notas del Sistema</Label>
-                                            <Textarea id="notes" value={formData.notes} onChange={handleInputChange} className="bg-card border-accent min-h-12 text-xs uppercase resize-none" placeholder="Observaciones preliminares..." />
-                                        </div>
-                                    </form>
-                                </TabsContent>
-                            </ScrollArea>
-                        </Tabs>
+                                        </form>
+                                    </TabsContent>
+                                </ScrollArea>
+                            </Tabs>
 
-                        <DialogFooter className="p-6 border-t border-white/5 bg-transparent shrink-0">
-                            <div className="flex justify-end gap-3">
-                                <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)} className="w-full text-[10px] font-black uppercase tracking-widest h-12 hover:bg-primary/20 transition-all cursor-pointer">
-                                    CANCELAR OPERACIÓN DE REGISTRO
-                                </Button>
-                                <Button
-                                    type="button"
-                                    disabled={isSubmitting}
-                                    onClick={(e) => handleSubmit(e as any)}
-                                    className="bg-primary text-background font-black uppercase text-[11px] h-12 px-12 tracking-widest  transition-all active:scale-95 cursor-pointer"
-                                >
-                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Finalizar Registro
-                                </Button>
-                            </div>
-                        </DialogFooter>
-                    </div>
+                            <DialogFooter className="p-6 border-t border-white/5 bg-transparent shrink-0">
+                                <div className="flex justify-end gap-3">
+                                    <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)} className="w-full text-[10px] font-black uppercase tracking-widest h-12 hover:bg-primary/20 transition-all cursor-pointer">
+                                        CANCELAR OPERACIÓN DE REGISTRO
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        disabled={isSubmitting}
+                                        onClick={(e) => handleSubmit(e as any)}
+                                        className="bg-primary text-background font-black uppercase text-[11px] h-12 px-12 tracking-widest  transition-all active:scale-95 cursor-pointer"
+                                    >
+                                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Finalizar Registro
+                                    </Button>
+                                </div>
+                            </DialogFooter>
+                        </div>
+                    </ScrollArea>
                 </DialogContent>
 
             </Dialog>
 
             {/* Modal de Perfil / Edición */}
             <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
+
                 <DialogContent className="min-w-7xl bg-card border-accent text-primary p-0 overflow-hidden  flex flex-col h-[95vh]">
                     {selectedContact && (
                         <div className="flex flex-col h-full">
@@ -617,7 +689,7 @@ export default function ContactsPage() {
                                     </TabsList>
                                 </div>
 
-                                <ScrollArea className="flex-1">
+                                <ScrollArea className="flex-1 h-50">
                                     <TabsContent value="info" className="m-0 p-8 space-y-10">
                                         <form onSubmit={handleProfileUpdate} className="space-y-8">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -822,39 +894,78 @@ export default function ContactsPage() {
                                                 <h3 className="text-xl font-black uppercase tracking-tight">Expediente Digital</h3>
                                                 <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mt-1">Contratos, identificaciones y certificados técnicos</p>
                                             </div>
-                                            <Button className="bg-primary text-background font-black text-[10px] uppercase h-10 px-6 border border-primary/20 cursor-pointer">
-                                                <Upload className="mr-2 h-4 w-4" /> Subir Documento
+                                            <Button
+                                                className="bg-primary text-background font-black text-[10px] uppercase h-10 px-6 border border-primary/20 cursor-pointer"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                disabled={isUploadingDoc}
+                                            >
+                                                {isUploadingDoc
+                                                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    : <Upload className="mr-2 h-4 w-4" />
+                                                }
+                                                {isUploadingDoc ? 'Subiendo...' : 'Subir Documento'}
                                             </Button>
+                                            <input
+                                                ref={fileInputRef}
+                                                type="file"
+                                                accept=".pdf,application/pdf"
+                                                className="hidden"
+                                                onChange={handleDocumentUpload}
+                                            />
                                         </div>
 
                                         <Separator className="bg-accent" />
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {[
-                                                { name: 'IDENTIFICACION_OFICIAL.PDF', type: 'ID', size: '1.2 MB' },
-                                                { name: 'REGISTRO_FISCAL_NIT.PDF', type: 'TAX', size: '850 KB' },
-                                                { name: 'CONTRATO_MARCO_OBRA.PDF', type: 'LEGAL', size: '4.5 MB' }
-                                            ].map((doc, idx) => (
-                                                <Card key={idx} className="bg-white/2 border-accent group hover:border-primary/30 transition-all p-0 overflow-hidden">
-                                                    <CardContent className="p-4 flex flex-col gap-3">
-                                                        <div className="flex items-start justify-between">
-                                                            <div className="p-2.5 bg-primary/10 rounded-xl">
-                                                                <FileText className="h-6 w-6 text-primary" />
+                                        {isLoadingDocs ? (
+                                            <div className="flex flex-col items-center justify-center py-20 gap-3 opacity-30">
+                                                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                                                <p className="text-[10px] font-black uppercase">Cargando documentos...</p>
+                                            </div>
+                                        ) : contactDocuments.length === 0 ? (
+                                            <div className="py-24 flex flex-col items-center justify-center border border-dashed border-white/5 rounded-3xl bg-white/1 opacity-20 gap-4">
+                                                <FileText className="h-12 w-12" />
+                                                <p className="text-[10px] font-black uppercase tracking-[0.3em]">Sin documentos adjuntos</p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {contactDocuments.map((doc) => (
+                                                    <Card key={doc.id} className="bg-white/2 border-accent group hover:border-primary/30 transition-all p-0 overflow-hidden">
+                                                        <CardContent className="p-4 flex flex-col gap-3">
+                                                            <div className="flex items-start justify-between">
+                                                                <div className="p-2.5 bg-primary/10 rounded-xl">
+                                                                    <FileText className="h-6 w-6 text-primary" />
+                                                                </div>
+                                                                <Badge variant="outline" className="text-[10px] font-black uppercase border-white/10">PDF</Badge>
                                                             </div>
-                                                            <Badge variant="outline" className="text-[10px] font-black uppercase border-white/10">{doc.type}</Badge>
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <p className="text-[11px] font-bold text-primary uppercase truncate">{doc.name}</p>
-                                                            <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-tighter">{doc.size} • 12/05/24</p>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 pt-2 border-t border-accent mt-1">
-                                                            <Button variant="ghost" size="xs" className="flex-1 text-[9px] font-black uppercase tracking-widest hover:bg-primary/10">Ver</Button>
-                                                            <Button variant="ghost" size="xs" className="flex-1 text-[9px] font-black uppercase tracking-widest hover:bg-destructive/10 text-destructive">Borrar</Button>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            ))}
-                                        </div>
+                                                            <div className="space-y-1">
+                                                                <p className="text-[11px] font-bold text-primary uppercase truncate" title={doc.name}>{doc.name}</p>
+                                                                <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-tighter">
+                                                                    {formatFileSize(doc.size)} • {new Date(doc.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 pt-2 border-t border-accent mt-1">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="flex-1 text-[9px] font-black uppercase tracking-widest hover:bg-primary/10 h-7"
+                                                                    onClick={() => window.open(doc.publicUrl, '_blank')}
+                                                                >
+                                                                    Ver
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="flex-1 text-[9px] font-black uppercase tracking-widest hover:bg-destructive/10 text-destructive h-7"
+                                                                    onClick={() => handleDocumentDelete(doc.id, doc.name)}
+                                                                >
+                                                                    Eliminar
+                                                                </Button>
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+                                                ))}
+                                            </div>
+                                        )}
                                     </TabsContent>
 
                                     <TabsContent value="accounting" className="m-0 p-8 space-y-10 animate-in fade-in duration-300">
@@ -964,6 +1075,7 @@ export default function ContactsPage() {
                         </div>
                     )}
                 </DialogContent>
+
             </Dialog>
         </div>
     );

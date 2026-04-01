@@ -27,6 +27,7 @@ model User {
   tasks                Task[]
   warehouseMovements   WarehouseMovement[]
   purchaseOrders       PurchaseOrder[]
+  libraryFiles         LibraryFile[]
 }
 
 model Project {
@@ -315,6 +316,7 @@ model Contact {
   projects       ProjectContact[]
   purchaseOrders PurchaseOrder[]
   supplyCosts    SupplyCost[]
+  contactDocuments ContactDocument[]
 }
 
 model BankAccount {
@@ -492,4 +494,31 @@ model ProjectDocument {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model LibraryFile {
+  id          String   @id @default(cuid())
+  userId      String
+  r2Key       String   @unique
+  name        String
+  size        Int
+  mimeType    String   @default("application/octet-stream")
+  publicUrl   String
+  category    String   @default("CAD Design")
+  libraryType String   @default("cad")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ContactDocument {
+  id        String   @id @default(cuid())
+  contactId String
+  r2Key     String   @unique
+  name      String
+  size      Int
+  mimeType  String   @default("application/pdf")
+  publicUrl String
+  createdAt DateTime @default(now())
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
 }
