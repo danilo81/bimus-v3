@@ -16,6 +16,12 @@ function constructCloudflareR2Url(
     bucketName: string,
     customDomain?: string
 ): string {
+    const publicBaseUrl = process.env.R2_PUBLIC_URL || process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+    
+    if (publicBaseUrl) {
+        return `${publicBaseUrl.endsWith("/") ? publicBaseUrl : publicBaseUrl + "/"}${encodeURIComponent(key)}`;
+    }
+    
     if (customDomain) {
         return `${customDomain}/${encodeURIComponent(key)}`;
     }

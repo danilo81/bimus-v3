@@ -10,3 +10,11 @@ export const r2Client = new S3Client({
     },
     forcePathStyle: false,
 });
+
+export interface FileObject {
+    Key?: string;
+    LastModified?: Date;
+    ETag?: string;
+    Size?: number;
+    StorageClass?: string;
+}

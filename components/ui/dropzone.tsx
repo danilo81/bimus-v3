@@ -1,4 +1,3 @@
-// components/ui/dropzone.tsx
 "use client";
 
 import {
@@ -32,7 +31,7 @@ export interface FileWithMetadata {
 }
 
 interface DropzoneProps {
-    provider: "aws-s3" | "cloudflare-r2";
+    provider: "cloudflare-r2" | "aws-s3";
     variant?: "default" | "compact" | "minimal" | "avatar" | "inline";
     accept?: Record<string, string[]>;
     maxFiles?: number;
@@ -101,7 +100,7 @@ export function Dropzone({
             // Only attempt to delete from server if the file was successfully uploaded
             if (fileToRemove.key && fileToRemove.publicUrl) {
                 const endpoint =
-                    provider === "aws-s3" ? "/api/s3/delete" : "/api/r2/delete";
+                    provider === "cloudflare-r2" ? "/api/r2/delete" : "/api/r2/delete";
                 const response = await fetch(endpoint, {
                     method: "DELETE",
                     headers: { "Content-Type": "application/json" },
@@ -138,7 +137,7 @@ export function Dropzone({
 
         try {
             const endpoint =
-                provider === "aws-s3" ? "/api/s3/upload" : "/api/r2/upload";
+                provider === "cloudflare-r2" ? "/api/r2/upload" : "/api/r2/upload";
             const presignedResponse = await fetch(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
