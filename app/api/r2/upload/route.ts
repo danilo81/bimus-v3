@@ -49,13 +49,11 @@ export async function POST(request: NextRequest) {
         const { filename, contentType, size } = validation.data;
         const uniqueKey = `${uuidv4()}-${filename}`;
 
-        // Select bucket based on isPublic flag
-        const bucketName = isPublic
-            ? (process.env.CLOUDFLARE_R2_BUCKET_NAME_PUBLIC || process.env.CLOUDFLARE_R2_BUCKET_NAME)
-            : process.env.CLOUDFLARE_R2_BUCKET_NAME;
+        // Select bucket (defaults to private for now or user can extend schema)
+        const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME!;
 
         const command = new PutObjectCommand({
-            Bucket: bucketName!,
+            Bucket: bucketName,
             Key: uniqueKey,
             ContentType: contentType,
             ContentLength: size,
@@ -64,16 +62,16 @@ export async function POST(request: NextRequest) {
         const presignedUrl = await getSignedUrl(r2Client, command, {
             expiresIn: 3600, // URL expires in 1 hour
         });
-        const key = uniqueKey;
-        const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME!;
 
-        const publicUrl = constructCloudflareR2Url(key, bucketName);
+        const publicUrl = constructCloudflareR2Url(uniqueKey, bucketName);
 
         return NextResponse.json({
             presignedUrl,
             key: uniqueKey,
             publicUrl,
-            fileId: libraryFile.id,
+            // Returning an empty id if no DB file is created here yet,
+            // or we could create a DB record if needed.
+            fileId: null,
         });
     } catch (error) {
         console.error("Error generating presigned URL:", error);
