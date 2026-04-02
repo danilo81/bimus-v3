@@ -6,13 +6,6 @@ export default async function LibraryLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
-
-    if (!userId) {
-        redirect('/');
-    }
-
     return (
         <main className="flex-1 overflow-y-auto">
             {children}

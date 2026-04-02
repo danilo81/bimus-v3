@@ -27,32 +27,22 @@ export async function GET(request: NextRequest, { params }: Props) {
             Key: keyToFetch,
         });
 
-        let response;
-        try {
-            response = await r2Client.send(command);
-        } catch (r2Error: any) {
-            if (r2Error.name === "NoSuchKey") {
-                return new Response(
-                    "El archivo físico no se encuentra en el servidor. Es muy probable que la carga original se haya interrumpido antes de terminar.", 
-                    { status: 404, headers: { "Content-Type": "text/plain" } }
-                );
-            }
-            throw r2Error;
+        const response = await r2Client.send(command);
+
+        if (!response.Body) {
+            throw new Error("Empty body from R2");
         }
 
-        if (!response.Body) throw new Error("Empty body from R2");
-
+        // Return the body with correct Content-Type if possible
         const headers = new Headers();
-        if (response.ContentType) headers.set("Content-Type", response.ContentType);
-        if (response.ContentLength) headers.set("Content-Length", response.ContentLength.toString());
-
-        const urlParams = new URL(request.url);
-        if (urlParams.searchParams.get("download") === "true") {
-            const fileName = urlParams.searchParams.get("name") || keyToFetch;
-            // Clean filename to prevent header injection vulnerabilities
-            const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
-            headers.set("Content-Disposition", `attachment; filename="${safeFileName}"`);
+        if (response.ContentType) {
+            headers.set("Content-Type", response.ContentType);
         }
+        if (response.ContentLength) {
+            headers.set("Content-Length", response.ContentLength.toString());
+        }
+        // Force inline display if it's common browser types, or download otherwise?
+        // For "visualizing", inline is better.
 
         return new Response(response.Body as any, {
             status: 200,

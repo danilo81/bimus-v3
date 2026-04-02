@@ -297,6 +297,19 @@ export default function CadLibraryPage() {
                                             </p>
                                         </div>
                                     </TableCell>
+                                    <TableCell
+                                        colSpan={hasMultipleOwners ? 6 : 5}
+                                        className="py-20 text-center text-muted-foreground"
+                                    >
+                                        <div className="flex flex-col items-center gap-4">
+                                            <FileCode className="h-12 w-12 opacity-20" />
+                                            <p className="text-[10px] uppercase tracking-widest font-black">
+                                                {searchTerm
+                                                    ? "Sin resultados para la búsqueda"
+                                                    : "Aún no has subido archivos a la librería CAD"}
+                                            </p>
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
                             ) : (
                                 filteredAssets.map((asset) => (
@@ -322,6 +335,8 @@ export default function CadLibraryPage() {
                                         </TableCell>
 
                                         {/* Categoría */}
+
+                                        {/* Categoría */}
                                         <TableCell>
                                             <Badge
                                                 variant="outline"
@@ -338,93 +353,116 @@ export default function CadLibraryPage() {
                                                     <UserIcon className="h-3.5 w-3.5 text-muted-foreground/50" />
                                                     <span className="text-[11px] text-muted-foreground truncate max-w-[120px]">
                                                         {asset.uploadedBy}
-                                                    </span>
-                                                    {asset.isOwner && (
-                                                        <Badge
-                                                            variant="secondary"
-                                                            className="text-[9px] px-1.5 py-0"
-                                                        >
-                                                            Tú
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                        )}
 
-                                        {/* Fecha */}
-                                        <TableCell className="text-center font-mono text-[11px] text-muted-foreground">
-                                            {asset.lastModified
-                                                ? new Date(asset.lastModified).toLocaleDateString(
-                                                    "es-ES",
-                                                    { day: "2-digit", month: "short", year: "numeric" }
-                                                )
-                                                : "—"}
-                                        </TableCell>
+                                                        {/* Subido por (solo visible para admin) */}
+                                                        {hasMultipleOwners && (
+                                                            <TableCell>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <UserIcon className="h-3.5 w-3.5 text-muted-foreground/50" />
+                                                                    <span className="text-[11px] text-muted-foreground truncate max-w-[120px]">
+                                                                        {asset.uploadedBy}
+                                                                    </span>
+                                                                    {asset.isOwner && (
+                                                                        <Badge
+                                                                            variant="secondary"
+                                                                            className="text-[9px] px-1.5 py-0"
+                                                                        >
+                                                                            Tú
+                                                                        </Badge>
+                                                                    )}
+                                                                    {asset.isOwner && (
+                                                                        <Badge
+                                                                            variant="secondary"
+                                                                            className="text-[9px] px-1.5 py-0"
+                                                                        >
+                                                                            Tú
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                            </TableCell>
+                                                        )}
 
-                                        {/* Tamaño */}
-                                        <TableCell className="text-right font-mono text-[11px] text-muted-foreground font-bold">
-                                            {formatBytes(asset.size)}
-                                        </TableCell>
+                                                        {/* Fecha */}
+                                                        <TableCell className="text-center font-mono text-[11px] text-muted-foreground">
+                                                            {asset.lastModified
+                                                                ? new Date(asset.lastModified).toLocaleDateString(
+                                                                    "es-ES",
+                                                                    { day: "2-digit", month: "short", year: "numeric" }
+                                                                )
+                                                                : "—"}
+                                                        </TableCell>
 
-                                        {/* Acciones */}
-                                        <TableCell className="px-8">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 hover:bg-primary/20 text-primary"
-                                                    onClick={() => {
-                                                        const downloadUrl = `/api/r2/file/${encodeURIComponent(asset.key)}?download=true&name=${encodeURIComponent(asset.name)}`;
-                                                        const link = document.createElement("a");
-                                                        link.href = downloadUrl;
-                                                        link.setAttribute("download", asset.name);
-                                                        document.body.appendChild(link);
-                                                        link.click();
-                                                        document.body.removeChild(link);
-                                                    }}
-                                                    title="Descargar"
-                                                >
-                                                    <Download className="h-4 w-4" />
-                                                </Button>
-                                                {/* Menú contextual — solo si eres dueño o admin */}
-                                                {(asset.isOwner || hasMultipleOwners) && (
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8 hover:bg-white/10"
-                                                                disabled={isDeletingId === asset.key}
-                                                            >
-                                                                {isDeletingId === asset.key ? (
-                                                                    <Loader2 className="h-4 w-4 animate-spin text-destructive" />
-                                                                ) : (
-                                                                    <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                                                        {/* Tamaño */}
+                                                        <TableCell className="text-right font-mono text-[11px] text-muted-foreground font-bold">
+                                                            {formatBytes(asset.size)}
+                                                        </TableCell>
+
+                                                        {/* Acciones */}
+                                                        <TableCell className="px-8">
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 hover:bg-primary/20 text-primary"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 hover:bg-primary/20 text-primary"
+                                                                    onClick={() => {
+                                                                        const downloadUrl = `/api/r2/file/${encodeURIComponent(asset.key)}?download=true&name=${encodeURIComponent(asset.name)}`;
+                                                                        const link = document.createElement("a");
+                                                                        link.href = downloadUrl;
+                                                                        link.setAttribute("download", asset.name);
+                                                                        document.body.appendChild(link);
+                                                                        link.click();
+                                                                        document.body.removeChild(link);
+                                                                    }}
+                                                                    title="Descargar"
+                                                                    title="Descargar"
+                                                                >
+                                                                    <Download className="h-4 w-4" />
+                                                                </Button>
+                                                                {/* Menú contextual — solo si eres dueño o admin */}
+                                                                {(asset.isOwner || hasMultipleOwners) && (
+                                                                    <DropdownMenu>
+                                                                        <DropdownMenuTrigger asChild>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8 hover:bg-white/10"
+                                                                                disabled={isDeletingId === asset.key}
+                                                                            >
+                                                                                {isDeletingId === asset.key ? (
+                                                                                    <Loader2 className="h-4 w-4 animate-spin text-destructive" />
+                                                                                ) : (
+                                                                                    <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                                                                                )}
+                                                                            </Button>
+                                                                        </DropdownMenuTrigger>
+                                                                        <DropdownMenuContent
+                                                                            align="end"
+                                                                            className="bg-card border-white/10 p-1.5 rounded-xl"
+                                                                        >
+                                                                            <DropdownMenuItem
+                                                                                onClick={() =>
+                                                                                    handleDelete(asset.key, asset.name)
+                                                                                }
+                                                                                className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer text-destructive focus:bg-destructive/10 rounded-lg"
+                                                                            >
+                                                                                <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                                                                                Permanente
+                                                                            </DropdownMenuItem>
+                                                                        </DropdownMenuContent>
+                                                                    </DropdownMenu>
                                                                 )}
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent
-                                                            align="end"
-                                                            className="bg-card border-white/10 p-1.5 rounded-xl"
-                                                        >
-                                                            <DropdownMenuItem
-                                                                onClick={() =>
-                                                                    handleDelete(asset.key, asset.name)
-                                                                }
-                                                                className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer text-destructive focus:bg-destructive/10 rounded-lg"
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" /> Eliminar
-                                                                Permanente
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                    ))
                             )}
-                        </TableBody>
+                                                </TableBody>
+                                            </Table>
+                                        ))
+                            )}
+                                    </TableBody>
                     </Table>
                 </CardContent>
             </Card>

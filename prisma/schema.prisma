@@ -28,6 +28,7 @@ model User {
   warehouseMovements   WarehouseMovement[]
   purchaseOrders       PurchaseOrder[]
   libraryFiles         LibraryFile[]
+  libraryFiles         LibraryFile[]
 }
 
 model Project {
