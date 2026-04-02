@@ -10,18 +10,16 @@ const uploadRequestSchema = z.object({
     filename: z.string(),
     contentType: z.string(),
     size: z.number(),
-    category: z.string().optional().default("CAD Design"),
-    libraryType: z.string().optional().default("cad"),
-    isPublic: z.boolean().optional().default(false),
 });
+function constructCloudflareR2Url(
+    key: string,
+    bucketName: string,
+    customDomain?: string
+): string {
+    const publicBaseUrl = process.env.R2_PUBLIC_URL || process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
 
-function constructPublicUrl(key: string, isPublic: boolean = false): string {
-    // If it's a public bucket, we might use a different base URL if provided in .env
-    const publicUrlEnv = isPublic ? (process.env.R2_PUBLIC_URL_PUBLIC || process.env.R2_PUBLIC_URL) : process.env.R2_PUBLIC_URL;
-    const base = publicUrlEnv || process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
-    
-    if (base) {
-        return `${base.endsWith("/") ? base : base + "/"}${encodeURIComponent(key)}`;
+    if (publicBaseUrl) {
+        return `${publicBaseUrl.endsWith("/") ? publicBaseUrl : publicBaseUrl + "/"}${encodeURIComponent(key)}`;
     }
     const endpoint = process.env.CLOUDFLARE_R2_ENDPOINT || "";
     const match = endpoint.match(/https:\/\/([a-z0-9]+)\.r2\.cloudflarestorage\.com/);
@@ -48,12 +46,11 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { filename, contentType, size, category, libraryType, isPublic } = validation.data;
-
+        const { filename, contentType, size } = validation.data;
         const uniqueKey = `${uuidv4()}-${filename}`;
 
         // Select bucket based on isPublic flag
-        const bucketName = isPublic 
+        const bucketName = isPublic
             ? (process.env.CLOUDFLARE_R2_BUCKET_NAME_PUBLIC || process.env.CLOUDFLARE_R2_BUCKET_NAME)
             : process.env.CLOUDFLARE_R2_BUCKET_NAME;
 
@@ -65,24 +62,12 @@ export async function POST(request: NextRequest) {
         });
 
         const presignedUrl = await getSignedUrl(r2Client, command, {
-            expiresIn: 3600,
+            expiresIn: 3600, // URL expires in 1 hour
         });
+        const key = uniqueKey;
+        const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME!;
 
-        const publicUrl = constructPublicUrl(uniqueKey, isPublic);
-
-        // Crear registro en BD
-        const libraryFile = await prisma.libraryFile.create({
-            data: {
-                userId: userId,
-                r2Key: uniqueKey,
-                name: filename,
-                size: size,
-                mimeType: contentType,
-                publicUrl: publicUrl,
-                category: category,
-                libraryType: libraryType,
-            },
-        });
+        const publicUrl = constructCloudflareR2Url(key, bucketName);
 
         return NextResponse.json({
             presignedUrl,
