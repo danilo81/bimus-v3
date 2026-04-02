@@ -89,7 +89,7 @@ function ProjectsPageContent() {
         projectType: 'residencial',
         area: '',
         status: 'activo' as 'activo' | 'espera' | 'finalizado' | 'construccion',
-        imageUrl: 'https://picsum.photos/seed/project/800/600'
+        imageUrl: '/project-img.png'
     });
 
     const fetchProjects = async () => {
@@ -153,7 +153,7 @@ function ProjectsPageContent() {
                     projectType: 'residencial',
                     area: '',
                     status: 'activo',
-                    imageUrl: 'https://picsum.photos/seed/project/800/600'
+                    imageUrl: '/project-img.png'
                 });
                 toast({
                     title: "Proyecto creado",
@@ -288,7 +288,7 @@ function ProjectsPageContent() {
                                 <TableCell className="py-4 px-6">
                                     <div className="flex items-center gap-4">
                                         <div className="h-10 w-10 rounded-lg overflow-hidden border border-accent shrink-0 bg-accent ">
-                                            <img src={project.imageUrl} alt="" className="w-full h-full object-cover" />
+                                            <img src={project.imageUrl || '/project-img.png'} alt="" className="w-full h-full object-cover" />
                                         </div>
                                         <div className="flex flex-col">
                                             <div className="flex items-center gap-2">
@@ -383,7 +383,7 @@ function ProjectsPageContent() {
                     <div className="relative aspect-video overflow-hidden border-b border-accent">
                         <Link href={`/projects/${project.id}`}>
                             <img
-                                src={project.imageUrl}
+                                src={project.imageUrl || '/project-img.png'}
                                 alt={project.title}
                                 className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110 cursor-pointer"
                             />

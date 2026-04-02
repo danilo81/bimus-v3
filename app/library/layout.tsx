@@ -1,11 +1,18 @@
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
-"use client";
-
-export default function LibraryLayout({
+export default async function LibraryLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+
+    if (!userId) {
+        redirect('/');
+    }
+
     return (
         <main className="flex-1 overflow-y-auto">
             {children}

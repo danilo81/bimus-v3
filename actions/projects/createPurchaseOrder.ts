@@ -1,4 +1,4 @@
-'use server';
+"use server";
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -17,14 +17,21 @@ export async function createPurchaseOrder(data: {
     paymentType?: string;
     dueDate?: string;
     notes?: string;
+    requestIds?: string[];
 }) {
     try {
         const userId = await getAuthUserId();
         if (!userId) return { success: false, error: 'No autorizado' };
 
-        const { projectId, supplierId, items, paymentType, dueDate, notes } = data;
+        const { projectId, supplierId, items, paymentType, dueDate, notes, requestIds } = data;
 
         return await prisma.$transaction(async (tx: any) => {
+            if (requestIds && requestIds.length > 0) {
+                await tx.supplyRequest.updateMany({
+                    where: { id: { in: requestIds } },
+                    data: { status: 'completado' }
+                });
+            }
             const count = await tx.purchaseOrder.count({
                 where: { projectId }
             });
@@ -40,7 +47,7 @@ export async function createPurchaseOrder(data: {
                     number: poNumber,
                     projectId,
                     supplierId: supplierId === 'none' ? null : supplierId,
-                    author: userId ? { connect: { id: userId } } : undefined,
+                    authorId: userId || null,
                     paymentType: paymentType || 'contado',
                     dueDate: dueDate ? new Date(dueDate) : null,
                     notes,
@@ -54,6 +61,39 @@ export async function createPurchaseOrder(data: {
                     }
                 }
             });
+
+            // --- DETECCIÓN DE SOBRECOSTOS ---
+            let totalOvercost = 0;
+            const supplyIds = items.map(i => i.supplyId);
+            const baseSupplies = await tx.supply.findMany({
+                where: { id: { in: supplyIds } }
+            });
+
+            for (const item of items) {
+                const baseSupply = baseSupplies.find((s: any) => s.id === item.supplyId);
+                if (baseSupply && item.price > baseSupply.price) {
+                    const unitDiff = item.price - baseSupply.price;
+                    totalOvercost += unitDiff * item.quantity;
+                }
+            }
+
+            if (totalOvercost > 0) {
+                const ocCount = await tx.projectChangeOrder.count({ where: { projectId } });
+                const ocNumber = `OC-P-${(ocCount + 1).toString().padStart(3, '0')}`;
+                
+                await tx.projectChangeOrder.create({
+                    data: {
+                        projectId,
+                        number: ocNumber,
+                        description: `Sobrecosto en Orden de Compra ${poNumber}`,
+                        amount: totalOvercost,
+                        type: "Incremento de Precio",
+                        status: "pendiente", // El usuario pidió que fuera pendiente para revisión manual
+                        reason: "Sobreprecio en Compra"
+                    }
+                });
+            }
+            // --------------------------------
 
             if (supplierId && supplierId !== 'none') {
                 const existingLink = await tx.projectContact.findUnique({
@@ -80,7 +120,7 @@ export async function createPurchaseOrder(data: {
                     projectId,
                     authorId: userId,
                     type: 'info',
-                    content: `Se generó la Orden de Compra N° ${newOrder.number}.`,
+                    content: `Se generó la Orden de Compra N° ${newOrder.number}.${totalOvercost > 0 ? ' Se detectó un sobrecosto y se generó una Orden de Cambio pendiente.' : ''}`,
                     date: new Date()
                 }
             });

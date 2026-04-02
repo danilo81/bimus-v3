@@ -27,6 +27,7 @@ model User {
   tasks                Task[]
   warehouseMovements   WarehouseMovement[]
   purchaseOrders       PurchaseOrder[]
+  libraryFiles         LibraryFile[]
 }
 
 model Project {
@@ -59,6 +60,9 @@ model Project {
   tasks             Task[]
   movements         WarehouseMovement[]
   documents         ProjectDocument[]
+  changeOrders      ProjectChangeOrder[]
+  payrolls          Payroll[]
+  valuations        Valuation[]
 }
 
 model ProjectConfig {
@@ -161,6 +165,7 @@ model ProjectItem {
   project           Project                    @relation(fields: [projectId], references: [id])
   levelQuantities   ProjectItemLevelQuantity[]
   movements         WarehouseMovement[]
+  valuations        ValuationItem[]
   predecessorId     String?
   startDate         DateTime?
   predecessor       ProjectItem?               @relation("ItemDependencies", fields: [predecessorId], references: [id])
@@ -203,6 +208,8 @@ model ProjectTransaction {
   date        DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  payrollId   String?  @unique
+  payroll     Payroll? @relation(fields: [payrollId], references: [id], onDelete: Cascade)
   project     Project  @relation(fields: [projectId], references: [id])
 }
 
@@ -315,6 +322,8 @@ model Contact {
   projects       ProjectContact[]
   purchaseOrders PurchaseOrder[]
   supplyCosts    SupplyCost[]
+  contactDocuments ContactDocument[]
+  payrollEntries   PayrollEntry[]
 }
 
 model BankAccount {
@@ -461,6 +470,7 @@ model InspectionRecord {
   date          DateTime          @default(now())
   status        String            @default("pendiente")
   notes         String?
+  imageUrls     String[]          @default([])
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   checks        InspectionCheck[]
@@ -492,4 +502,97 @@ model ProjectDocument {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model LibraryFile {
+  id          String   @id @default(cuid())
+  userId      String
+  r2Key       String   @unique
+  name        String
+  size        Int
+  mimeType    String   @default("application/octet-stream")
+  publicUrl   String
+  category    String   @default("CAD Design")
+  libraryType String   @default("cad")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ContactDocument {
+  id        String   @id @default(cuid())
+  contactId String
+  r2Key     String   @unique
+  name      String
+  size      Int
+  mimeType  String   @default("application/pdf")
+  publicUrl String
+  createdAt DateTime @default(now())
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+}
+
+model ProjectChangeOrder {
+  id          String   @id @default(cuid())
+  projectId   String
+  number      String?  @unique // e.g., OC-001
+  description String
+  type        String   @default("Adición") // Adición, Deducción, Incremento de Precio
+  status      String   @default("Aprobada")
+  amount      Float    @default(0)
+  reason      String?  @default("Cambio de Cómputo")
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Payroll {
+  id           String         @id @default(cuid())
+  projectId    String
+  startDate    DateTime
+  endDate      DateTime
+  totalAmount  Float          @default(0)
+  status       String         @default("completado")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  project      Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  entries      PayrollEntry[]
+  transaction  ProjectTransaction?
+}
+
+model PayrollEntry {
+  id          String   @id @default(cuid())
+  payrollId   String
+  contactId   String
+  daysWorked  Float    @default(0)
+  dailyRate   Float    @default(0)
+  totalAmount Float    @default(0)
+  payroll     Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  contact     Contact  @relation(fields: [contactId], references: [id])
+}
+model Valuation {
+  id                  String          @id @default(cuid())
+  projectId           String
+  number              String?         @unique
+  description         String?
+  status              String          @default("completado")
+  totalAmount         Float           @default(0)
+  retentionAmount     Float           @default(0)
+  retentionPercentage Float           @default(0)
+  netAmount           Float           @default(0)
+  date                DateTime        @default(now())
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  project             Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  items               ValuationItem[]
+}
+
+model ValuationItem {
+  id            String      @id @default(cuid())
+  valuationId   String
+  projectItemId String
+  quantity      Float       @default(0)
+  price         Float       @default(0)
+  amount        Float       @default(0)
+  valuation     Valuation   @relation(fields: [valuationId], references: [id], onDelete: Cascade)
+  projectItem   ProjectItem @relation(fields: [projectItemId], references: [id])
 }

@@ -27,7 +27,7 @@ export async function updateProjectItemProgress(projectId: string, itemId: strin
                 data: {
                     projectId,
                     authorId: userId,
-                    type: 'info',
+                    type: 'progress',
                     content: logDescription || `AVANCE: +${progressIncrement} en "${projectItem.item.description}".`,
                     date: new Date()
                 }

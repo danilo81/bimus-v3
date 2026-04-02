@@ -155,7 +155,7 @@ export default function ProjectDetailPage() {
         <div className="flex flex-col min-h-screen  text-primary">
             <main className="flex-1 p-4 md:p-8">
                 <div className="relative h-[500px] rounded-3xl overflow-hidden border border-white/10  bg-black">
-                    <img src={project?.imageUrl || 'https://picsum.photos/seed/project/1920/1080'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-50  hover:grayscale-0 transition-all duration-1000" />
+                    <img src={project?.imageUrl || '/project-img.png'} alt="" className="absolute inset-0 w-full h-full object-cover opacity-50  hover:grayscale-0 transition-all duration-1000" />
                     <div className="absolute inset-0 " />
                     <div className="absolute bottom-8 left-8 right-8 flex flex-col md:flex-row items-end justify-between gap-6">
                         <div className="space-y-4">

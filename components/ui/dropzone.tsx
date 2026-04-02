@@ -40,6 +40,7 @@ interface DropzoneProps {
     className?: string;
     disabled?: boolean;
     helperText?: string;
+    libraryType?: string;
     children?: React.ReactNode;
 }
 
@@ -76,6 +77,7 @@ export function Dropzone({
     className,
     disabled = false,
     helperText,
+    libraryType,
     children,
 }: DropzoneProps) {
     const [files, setFiles] = useState<FileWithMetadata[]>([]);
@@ -145,6 +147,7 @@ export function Dropzone({
                     filename: file.name,
                     contentType: file.type,
                     size: file.size,
+                    libraryType: libraryType || "cad",
                 }),
             });
 

@@ -29,7 +29,6 @@ export function useCloudflareUpload({ projectId, onSuccess, onError }: UseUpload
                 body: file,
                 headers: {
                     "Content-Type": file.type,
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-File-Name"
                 },
             });
 

@@ -122,7 +122,8 @@ export function Navbar() {
         projectType: 'residencial',
         area: 0,
         status: 'activo',
-        startDate: ''
+        startDate: '',
+        imageUrl: ''
     });
 
     const [configParams, setConfigParams] = useState<ProjectConfig>({
@@ -225,7 +226,8 @@ export function Navbar() {
                             projectType: data.projectType || 'residencial',
                             area: data.area || 0,
                             status: (data.status || 'activo').toLowerCase(),
-                            startDate: data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : ''
+                            startDate: data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : '',
+                            imageUrl: data.imageUrl || ''
                         });
                         if (data.config) {
                             setConfigParams({
@@ -632,6 +634,48 @@ export function Navbar() {
     const handleRemoveLevel = (index: number) => setLevels(prev => prev.filter((_, i) => i !== index));
     const handleLevelNameChange = (index: number, name: string) => setLevels(prev => prev.map((l, i) => i === index ? { ...l, name } : l));
     const handleProjectDataChange = (field: string, value: string) => setEditProjectData(prev => ({ ...prev, [field]: value }));
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsSubmittingProject(true);
+        try {
+            const response = await fetch('/api/r2/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filename: file.name,
+                    contentType: file.type,
+                    size: file.size,
+                    category: 'Project Image',
+                    libraryType: 'asset',
+                    isPublic: true
+                })
+            });
+            
+            if (!response.ok) throw new Error("Fallo al obtener URL de subida");
+            
+            const { presignedUrl, publicUrl } = await response.json();
+
+            // Upload to R2 using PUT
+            const uploadRes = await fetch(presignedUrl, {
+                method: 'PUT',
+                headers: { 'Content-Type': file.type },
+                body: file
+            });
+
+            if (!uploadRes.ok) throw new Error("Fallo al subir archivo a R2");
+
+            handleProjectDataChange('imageUrl', publicUrl);
+            toast({ title: "Imagen subida", description: "La imagen se ha cargado correctamente." });
+        } catch (error: any) {
+            console.error(error);
+            toast({ title: "Error", description: error.message || "No se pudo subir la imagen.", variant: "destructive" });
+        } finally {
+            setIsSubmittingProject(false);
+        }
+    };
 
     const projectTools = useMemo(() => [
         { name: 'PIZARRA', icon: Presentation, url: `/projects/${activeProject?.id}/board`, permissionId: 'board' },
@@ -1451,6 +1495,58 @@ export function Navbar() {
                                                 <SelectTrigger className="h-12 bg-card border-accent uppercase font-black text-[10px]"><SelectValue /></SelectTrigger>
                                                 <SelectContent className="bg-card text-primary border-white/10"><SelectItem value="activo">ACTIVO</SelectItem><SelectItem value="construccion">EN CONSTRUCCIÓN</SelectItem><SelectItem value="espera">EN ESPERA</SelectItem><SelectItem value="finalizado">FINALIZADO</SelectItem></SelectContent>
                                             </Select>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Imagen del Proyecto</Label>
+                                        <div className="flex flex-col md:flex-row items-center gap-6 p-6 border border-accent rounded-2xl bg-secondary/30">
+                                            <div className="relative h-40 w-full md:w-72 bg-card rounded-xl overflow-hidden border border-accent group">
+                                                <img 
+                                                    src={editProjectData.imageUrl || '/project-img.png'} 
+                                                    alt="Vista previa" 
+                                                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                                />
+                                                {isSubmittingProject && (
+                                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 space-y-4">
+                                                <div className="space-y-2">
+                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase leading-relaxed">
+                                                        Sube una imagen representativa para identificar este activo de obra en el portafolio global.
+                                                    </p>
+                                                    <p className="text-[9px] text-muted-foreground/50 uppercase tracking-widest">Formatos: JPG, PNG, WEBP (Max 5MB)</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={handleImageUpload}
+                                                        className="hidden"
+                                                        id="project-image-upload"
+                                                        disabled={isSubmittingProject}
+                                                    />
+                                                    <Label
+                                                        htmlFor="project-image-upload"
+                                                        className="h-10 px-6 rounded-xl bg-primary text-background font-black text-[10px] uppercase tracking-widest flex items-center justify-center cursor-pointer hover:bg-primary/80 transition-colors"
+                                                    >
+                                                        {isSubmittingProject ? 'Subiendo...' : 'Seleccionar Imagen'}
+                                                    </Label>
+                                                    {editProjectData.imageUrl && (
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="sm"
+                                                            onClick={() => handleProjectDataChange('imageUrl', '')}
+                                                            className="text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10"
+                                                        >
+                                                            Quitar
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </TabsContent>

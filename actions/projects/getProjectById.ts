@@ -35,7 +35,7 @@ export async function getProjectById(id: string) {
             }).catch(() => [])
         ]);
 
-        const [contacts, siteLogs, transactions] = await Promise.all([
+        const [contacts, siteLogs, transactions, inspectionRecords, changeOrders, supplyRequests] = await Promise.all([
             prisma.projectContact.findMany({
                 where: { projectId: cleanId },
                 include: {
@@ -53,8 +53,23 @@ export async function getProjectById(id: string) {
                 where: { projectId: cleanId },
                 orderBy: { date: 'desc' },
                 take: 50
+            }).catch(() => []),
+            prisma.inspectionRecord.findMany({
+                where: { projectId: cleanId },
+                include: { projectItem: { include: { item: true } }, checks: true, level: true },
+                orderBy: { date: 'desc' }
+            }).catch(() => []),
+            (prisma as any).projectChangeOrder.findMany({
+                where: { projectId: cleanId },
+                orderBy: { date: 'desc' }
+            }).catch(() => []),
+            prisma.supplyRequest.findMany({
+                where: { projectId: cleanId },
+                include: { supply: true },
+                orderBy: { createdAt: 'desc' }
             }).catch(() => [])
         ]);
+
 
         const team = contacts.map((pc: any) => ({
             ...pc.contact,
@@ -69,7 +84,10 @@ export async function getProjectById(id: string) {
             team,
             items,
             siteLogs,
-            transactions
+            transactions,
+            inspectionRecords,
+            changeOrders,
+            supplyRequests
         }));
 
     } catch (error: any) {

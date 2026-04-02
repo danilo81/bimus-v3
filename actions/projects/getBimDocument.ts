@@ -17,19 +17,7 @@ export async function getBimDocument(projectId: string) {
 
         if (!doc) {
             doc = await prisma.bimDocument.create({
-                data: {
-                    projectId,
-                    topics: {
-                        create: [
-                            { title: 'OIR - Organizational Information Requirements', order: 0, status: 'in_progress', content: '' },
-                            { title: 'PIR - Project Information Requirements', order: 1, status: 'in_progress', content: '' },
-                            { title: 'AIR - Asset Information Requirements', order: 2, status: 'in_progress', content: '' },
-                            { title: 'EIR - Exchange Information Requirements', order: 3, status: 'in_progress', content: '' },
-                            { title: 'BEP - BIM Execution Plan', order: 4, status: 'in_progress', content: '' },
-                            { title: 'Common Data Environment (CDE) Protocols', order: 5, status: 'in_progress', content: '' },
-                        ]
-                    }
-                },
+                data: { projectId },
                 include: {
                     topics: {
                         orderBy: { order: 'asc' }

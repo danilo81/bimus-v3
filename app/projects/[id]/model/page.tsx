@@ -316,7 +316,7 @@ export default function ModelPage() {
     ];
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#050505] text-white p-4 md:p-8 space-y-6">
+        <div className="flex flex-col min-h-screen  text-primary p-4 md:p-8 space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <Button

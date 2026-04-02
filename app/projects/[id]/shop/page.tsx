@@ -333,6 +333,7 @@ export default function ProjectShopPage() {
                 paymentType: poPaymentType,
                 dueDate: poPaymentType === 'credito' ? poDueDate : undefined,
                 items,
+                requestIds: poCompatibleItems.map(i => i.id)
             };
 
             // Inyectamos la nota de forma segura
@@ -514,7 +515,7 @@ export default function ProjectShopPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {requests.filter(r => r.status !== 'almacenado').filter(r => r.supply.description.toLowerCase().includes(searchTerm.toLowerCase())).map((req) => {
+                                    {requests.filter(r => r.status === 'pendiente').filter(r => r.supply.description.toLowerCase().includes(searchTerm.toLowerCase())).map((req) => {
                                         const override = quotationOverrides[req.id];
                                         const dbPreferredCost = req.supply.costs?.find((c: any) => c.isPreferred) || req.supply.costs?.[0];
 

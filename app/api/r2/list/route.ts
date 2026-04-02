@@ -1,39 +1,65 @@
 // app/api/r2/list/route.ts
-import { NextResponse } from "next/server";
-import { ListObjectsV2Command } from "@aws-sdk/client-s3";
-import { r2Client } from "@/lib/r2Client";
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 
-export async function GET() {
+export const dynamic = "force-dynamic";
+
+export async function GET(request: NextRequest) {
     try {
-        const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME!;
+        // Leer userId de la cookie (sistema de auth propio del proyecto)
+        const userId = request.cookies.get("userId")?.value;
 
-        const command = new ListObjectsV2Command({
-            Bucket: bucketName,
+        if (!userId) {
+            return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(request.url);
+        const libraryType = searchParams.get("type") ?? "cad";
+
+        // Verificar rol del usuario
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true },
         });
 
-        const response = await r2Client.send(command);
-        
-        const files = response.Contents?.map(item => {
-            const key = item.Key || "";
-            const publicBaseUrl = process.env.R2_PUBLIC_URL || process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
-            const publicUrl = publicBaseUrl 
-                ? `${publicBaseUrl.endsWith("/") ? publicBaseUrl : publicBaseUrl + "/"}${encodeURIComponent(key)}`
-                : `https://pub-${bucketName}.r2.dev/${encodeURIComponent(key)}`;
-                
-            return {
-                key: key,
-                size: item.Size,
-                lastModified: item.LastModified,
-                publicUrl: publicUrl,
-            };
-        }) || [];
+        if (!user) {
+            return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+        }
+
+        const isAdmin = user.role === "admin";
+
+        // Consultar BD: admin ve todos, usuario normal solo los suyos
+        const files = await prisma.libraryFile.findMany({
+            where: {
+                libraryType,
+                ...(!isAdmin && { userId }),
+            },
+            include: {
+                user: {
+                    select: { id: true, name: true, email: true },
+                },
+            },
+            orderBy: { createdAt: "desc" },
+        });
 
         return NextResponse.json({
             success: true,
-            files: files,
+            files: (files || []).map((f: any) => ({
+                id: f.id,
+                key: f.r2Key,
+                name: f.name,
+                size: f.size,
+                mimeType: f.mimeType,
+                publicUrl: f.publicUrl,
+                category: f.category,
+                lastModified: f.createdAt,
+                uploadedBy: f.user?.name ?? f.user?.email ?? "Unknown",
+                uploadedById: f.userId,
+                isOwner: f.userId === userId,
+            })),
         });
     } catch (error) {
-        console.error("Error listing files from R2:", error);
+        console.error("Error listing files from DB:", error);
         return NextResponse.json(
             { error: "Failed to list files" },
             { status: 500 }

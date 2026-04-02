@@ -28,7 +28,7 @@ export default async function ProjectIdLayout({
     const userId = cookieStore.get('userId')?.value;
 
     if (!userId) {
-        redirect('/login');
+        redirect('/');
     }
 
     // Fetch project + user email concurrently

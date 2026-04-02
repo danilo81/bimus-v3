@@ -455,7 +455,7 @@ export default function SuppliesPage() {
                                 <Plus className="mr-2 h-4 w-4" /> Nuevo Insumo
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-150 bg-card border-muted/50 shadow-2xl p-0 overflow-hidden">
+                        <DialogContent className="sm:max-w-150 bg-card border-muted/50 shadow-2xl p-0 overflow-hidden sm:max-h-[90vh] overflow-y-auto">
                             <form onSubmit={editingSupply ? handleUpdate : handleSubmit} className="flex flex-col">
                                 <DialogHeader className="p-6 border-b border-accent">
                                     <div className="flex items-center gap-3">

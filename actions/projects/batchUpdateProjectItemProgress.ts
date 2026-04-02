@@ -35,7 +35,7 @@ export async function batchUpdateProjectItemProgress(projectId: string, updates:
                     data: {
                         projectId,
                         authorId: userId,
-                        type: 'info',
+                        type: 'progress',
                         content: update.log,
                         date: new Date()
                     }

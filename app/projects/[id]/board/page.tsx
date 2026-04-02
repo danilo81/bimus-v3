@@ -2,9 +2,9 @@
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { BimTopic, BimTopicStatus } from '../../../../types/types';
-import { getBimDocument, upsertBimTopic, deleteBimTopic, applyBimTemplate, createTopicWithChildren, getProjectById } from '@/actions';
+import { getBimDocument, upsertBimTopic, deleteBimTopic, applyBimTemplate, createTopicWithChildren, getProjectById, saveBimTemplateToCloud, applyCloudBimTemplate, getCloudBimTemplates } from '@/actions';
 import {
     Plus,
     Search,
@@ -35,7 +35,9 @@ import {
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
+    SelectLabel,
     SelectTrigger,
     SelectValue,
 } from "../../../../components/ui/select";
@@ -72,17 +74,99 @@ export default function BimDocumentationPage() {
     const [documentId, setDocumentId] = useState<string | null>(null);
     const [topics, setTopics] = useState<BimTopic[]>([]);
     const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+    const activeTopicIdRef = useRef<string | null>(null);
+    activeTopicIdRef.current = selectedTopicId;
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [sidebarSearchTerm, setSidebarSearchTerm] = useState('');
     const [selectedTemplate, setSelectedTemplate] = useState<string>('none');
     const [isMounted, setIsMounted] = useState(false);
 
-    // Local Editor States
-    const [localTitle, setLocalTitle] = useState('');
-    const [localContent, setLocalContent] = useState('');
-    const [localStatus, setLocalStatus] = useState<BimTopicStatus>('in_progress');
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [cloudTemplates, setCloudTemplates] = useState<any[]>([]);
+    const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
+    const [newTemplateName, setNewTemplateName] = useState('');
+
+    const [drafts, setDrafts] = useState<Record<string, { title: string, content: string, status: BimTopicStatus }>>({});
+    const [visitedTopics, setVisitedTopics] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        if (selectedTopicId) {
+            setVisitedTopics(prev => prev.has(selectedTopicId) ? prev : new Set(prev).add(selectedTopicId));
+        }
+    }, [selectedTopicId]);
+
+    const findTopicById = useCallback(function recursiveFind(list: BimTopic[], id: string): BimTopic | null {
+        for (const t of list) {
+            if (t.id === id) return t;
+            if (t.children) {
+                const found = recursiveFind(t.children, id);
+                if (found) return found;
+            }
+        }
+        return null;
+    }, []);
+
+    const selectedTopic = useMemo(() => {
+        if (!selectedTopicId) return null;
+        return findTopicById(topics, selectedTopicId);
+    }, [topics, selectedTopicId, findTopicById]);
+
+    const activeValues = useMemo(() => {
+        if (!selectedTopic) return null;
+        return drafts[selectedTopic.id] || {
+            title: selectedTopic.title || '',
+            content: selectedTopic.content || '',
+            status: selectedTopic.status || 'in_progress'
+        };
+    }, [selectedTopic, drafts]);
+
+    const updateDraft = useCallback((topicId: string, updates: Partial<{ title: string, content: string, status: BimTopicStatus }>) => {
+        setDrafts(prev => {
+            const topic = findTopicById(topics, topicId);
+            const currentDraft = prev[topicId] || {
+                title: topic?.title || '',
+                content: topic?.content || '',
+                status: topic?.status || 'in_progress'
+            };
+            return {
+                ...prev,
+                [topicId]: { ...currentDraft, ...updates }
+            };
+        });
+    }, [topics, findTopicById]);
+
+    const handleSaveAsTemplate = async () => {
+        if (!projectId) return;
+        if (!newTemplateName.trim()) {
+            toast({ title: "Validación", description: "El nombre de la plantilla es obligatorio.", variant: "destructive" });
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const result = await saveBimTemplateToCloud(projectId, newTemplateName.trim());
+
+            if (result.success) {
+                toast({ title: "Plantilla guardada en la nube con éxito" });
+                setIsSaveTemplateModalOpen(false);
+                setNewTemplateName('');
+                const templates = await getCloudBimTemplates();
+                setCloudTemplates(templates);
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error: any) {
+            toast({ title: "Error al guardar", description: error.message, variant: "destructive" });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleSelectTopic = (newTopicId: string) => {
+        setSelectedTopicId(newTopicId);
+    };
+
+    const hasAnyUnsaved = Object.keys(drafts).length > 0;
 
     // Create Modal State
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -106,17 +190,20 @@ export default function BimDocumentationPage() {
 
         setIsLoading(true);
         try {
-            const [proj, bimDoc] = await Promise.all([
+            const [proj, bimDoc, cTemplates] = await Promise.all([
                 getProjectById(projectId),
-                getBimDocument(projectId)
+                getBimDocument(projectId),
+                getCloudBimTemplates()
             ]);
+
+            if (cTemplates) setCloudTemplates(cTemplates);
 
             if (proj) setProject(proj);
             if (bimDoc.success) {
                 setTopics(bimDoc.topics || []);
                 setDocumentId(bimDoc.documentId || null);
-                if (bimDoc.topics && bimDoc.topics.length > 0 && !selectedTopicId) {
-                    setSelectedTopicId(bimDoc.topics[0].id);
+                if (bimDoc.topics && bimDoc.topics.length > 0) {
+                    setSelectedTopicId(prev => prev || bimDoc.topics[0].id);
                 }
             } else {
                 toast({ title: "Error", description: bimDoc.error, variant: "destructive" });
@@ -126,7 +213,8 @@ export default function BimDocumentationPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [projectId, toast, selectedTopicId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [projectId, toast]);
 
     useEffect(() => {
         if (isMounted) {
@@ -134,30 +222,38 @@ export default function BimDocumentationPage() {
         }
     }, [isMounted, fetchData]);
 
-    const findTopicById = useCallback((list: BimTopic[], id: string): BimTopic | null => {
-        for (const t of list) {
-            if (t.id === id) return t;
-            if (t.children) {
-                const found = findTopicById(t.children, id);
-                if (found) return found;
-            }
-        }
-        return null;
-    }, []);
-
-    const selectedTopic = useMemo(() => {
-        if (!selectedTopicId) return null;
-        return findTopicById(topics, selectedTopicId);
-    }, [topics, selectedTopicId, findTopicById]);
-
     useEffect(() => {
-        if (selectedTopic) {
-            setLocalTitle(selectedTopic.title || '');
-            setLocalContent(selectedTopic.content || '');
-            setLocalStatus(selectedTopic.status || 'in_progress');
-            setHasUnsavedChanges(false);
-        }
-    }, [selectedTopic]);
+        const handleAnchorClick = (e: MouseEvent) => {
+            if (!hasAnyUnsaved) return;
+            const target = (e.target as HTMLElement).closest('a');
+            if (!target) return;
+
+            const currentUrl = window.location.pathname;
+            const newUrl = new URL(target.href, window.location.origin).pathname;
+
+            if (newUrl !== currentUrl) {
+                if (!window.confirm('Tienes cambios sin guardar. Si abandonas la página se perderán en todos los tópicos modificados. ¿Estás seguro?')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }
+        };
+
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (hasAnyUnsaved) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+
+        document.addEventListener('click', handleAnchorClick, { capture: true });
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            document.removeEventListener('click', handleAnchorClick, { capture: true });
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [hasAnyUnsaved]);
 
     const filteredTopics = useMemo(() => {
         if (!sidebarSearchTerm.trim()) return topics;
@@ -171,31 +267,37 @@ export default function BimDocumentationPage() {
     }, [topics, sidebarSearchTerm]);
 
     const handlePersistChanges = async () => {
-        if (!documentId || !selectedTopicId || !projectId) {
+        if (!documentId || !projectId) {
             toast({ title: "Error", description: "Datos incompletos para guardar.", variant: "destructive" });
             return;
         }
+
+        const draftIds = Object.keys(drafts);
+        if (draftIds.length === 0) return;
+
         setIsSaving(true);
         try {
-            const result = await upsertBimTopic({
-                id: selectedTopicId,
-                documentId,
-                projectId,
-                title: localTitle,
-                content: localContent,
-                status: localStatus,
-                order: selectedTopic?.order || 0
+            const promises = draftIds.map(id => {
+                const topic = findTopicById(topics, id);
+                const draft = drafts[id];
+                return upsertBimTopic({
+                    id,
+                    documentId,
+                    projectId,
+                    title: draft.title,
+                    content: draft.content,
+                    status: draft.status,
+                    order: topic?.order || 0
+                });
             });
 
-            if (result.success) {
-                setHasUnsavedChanges(false);
-                toast({ title: "Cambios guardados exitosamente" });
-                await fetchData();
-            } else {
-                throw new Error(result.error);
-            }
+            await Promise.all(promises);
+
+            setDrafts({});
+            toast({ title: "Todos los cambios han sido guardados exitosamente" });
+            await fetchData();
         } catch (error: any) {
-            toast({ title: "Fallo al guardar", description: error.message, variant: "destructive" });
+            toast({ title: "Fallo al guardar", description: error.message || "Error desconocido al procesar cambios", variant: "destructive" });
         } finally {
             setIsSaving(false);
         }
@@ -290,11 +392,21 @@ export default function BimDocumentationPage() {
 
     const handleApplyTemplate = async (templateId: string) => {
         if (templateId === 'none' || !projectId) return;
-        if (!confirm('Esta acción reemplazará toda la documentación actual con la nueva plantilla. ¿Continuar?')) return;
+        setSelectedTemplate(templateId);
+        if (!confirm('Esta acción cargará la plantilla seleccionada. Si ya tienes tópicos serán reemplazados. ¿Continuar?')) {
+            setSelectedTemplate('none');
+            return;
+        }
 
         setIsSaving(true);
         try {
-            const result = await applyBimTemplate(projectId, templateId);
+            let result;
+            if (templateId.startsWith('cloud_')) {
+                const fileId = templateId.replace('cloud_', '');
+                result = await applyCloudBimTemplate(projectId, fileId);
+            } else {
+                result = await applyBimTemplate(projectId, templateId);
+            }
             if (result.success) {
                 toast({ title: "Plantilla aplicada con éxito" });
                 setSelectedTopicId(null);
@@ -323,7 +435,7 @@ export default function BimDocumentationPage() {
     if (!isMounted) return null;
 
     return (
-        <div className="flex flex-col h-screen text-primary overflow-hidden">
+        <div className="flex flex-col h-[calc(100vh-100px)] text-primary overflow-hidden ">
 
             <div className="flex flex-1 overflow-hidden  ">
                 <aside className=" border border-accent  flex flex-col shrink-0 overflow-hidden bg-card rounded-lg opacity-99 m-2 max-h-[90vh]">
@@ -349,9 +461,20 @@ export default function BimDocumentationPage() {
                                 </SelectTrigger>
                                 <SelectContent className="bg-card text-primary border-accent">
                                     <SelectItem value="none" className="text-[9px] font-bold uppercase">Seleccionar...</SelectItem>
-                                    <SelectItem value="iso_19650" className="text-[9px] font-bold uppercase">ISO 19650 Requerimientos</SelectItem>
-                                    <SelectItem value="bep_only" className="text-[9px] font-bold uppercase">Plan de Ejecución (BEP)</SelectItem>
-                                    <SelectItem value="construction_phase" className="text-[9px] font-bold uppercase">Protocolos de Obra</SelectItem>
+                                    <SelectGroup>
+                                        <SelectLabel className="text-[8px] text-muted-foreground uppercase font-black tracking-widest pl-2">General</SelectLabel>
+                                        <SelectItem value="iso_19650" className="text-[9px] font-bold uppercase">ISO 19650 Requerimientos</SelectItem>
+                                        <SelectItem value="bep_only" className="text-[9px] font-bold uppercase">Plan de Ejecución (BEP)</SelectItem>
+                                        <SelectItem value="construction_phase" className="text-[9px] font-bold uppercase">Protocolos de Obra</SelectItem>
+                                    </SelectGroup>
+                                    {cloudTemplates.length > 0 && (
+                                        <SelectGroup>
+                                            <SelectLabel className="text-[8px] text-muted-foreground uppercase font-black tracking-widest mt-2 border-t border-accent pt-2 pl-2">Mis Plantillas en Nube</SelectLabel>
+                                            {cloudTemplates.map(t => (
+                                                <SelectItem key={t.id} value={`cloud_${t.id}`} className="text-[9px] font-bold uppercase">{t.name}</SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -367,14 +490,12 @@ export default function BimDocumentationPage() {
                                     )}>
                                         <div
                                             className="p-2.5 flex items-center justify-between cursor-pointer"
-                                            onClick={() => {
-                                                if (hasUnsavedChanges && !confirm('Cambios sin guardar en esta sección. ¿Deseas descartarlos?')) return;
-                                                setSelectedTopicId(topic.id);
-                                            }}
+                                            onClick={() => handleSelectTopic(topic.id)}
                                         >
                                             <div className="flex items-center gap-2 overflow-hidden">
                                                 <div className={cn("h-1.5 w-1.5 rounded-full shrink-0",
-                                                    topic.status === 'approved' ? 'bg-emerald-500' : 'bg-amber-500'
+                                                    drafts[topic.id] ? "bg-amber-500 ring-2 ring-amber-500/20" :
+                                                        topic.status === 'approved' ? 'bg-emerald-500' : 'bg-amber-500'
                                                 )} />
                                                 <span className={cn("text-[10px] font-black uppercase tracking-tight truncate",
                                                     selectedTopicId === topic.id ? "text-primary" : "text-primary"
@@ -403,8 +524,7 @@ export default function BimDocumentationPage() {
                                                                     key={child.id}
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        if (hasUnsavedChanges && !confirm('Cambios sin guardar.')) return;
-                                                                        setSelectedTopicId(child.id);
+                                                                        handleSelectTopic(child.id);
                                                                     }}
                                                                     className={cn(
                                                                         "pl-8 pr-3 py-2 text-[9px] font-bold uppercase cursor-pointer hover:bg-white/5 transition-all border-l-2",
@@ -444,92 +564,147 @@ export default function BimDocumentationPage() {
                 <main className="flex-1 flex flex-col  overflow-hidden relative">
                     {selectedTopic ? (
                         <div className="flex flex-col h-full animate-in fade-in duration-500">
-                            <div className="h-14 border border-accent bg-card flex items-center justify-between px-8 shrink-0 rounded-xl m-2">
-                                <div className="flex items-center gap-4">
-                                    <Badge variant="outline" className={cn("text-[8px] font-black uppercase border-none px-2",
-                                        localStatus === 'approved' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
-                                    )}>
-                                        {localStatus.replace('_', ' ')}
-                                    </Badge>
-                                    {hasUnsavedChanges && (
-                                        <Badge className="bg-amber-500/20 text-amber-500 border-none text-[8px] font-black uppercase">Pendiente de guardado</Badge>
-                                    )}
-                                </div>
-                                <div className="flex items-center gap-2 bg-card border-accent ">
-                                    <Button
-                                        onClick={handlePersistChanges}
-                                        disabled={!hasUnsavedChanges || isSaving}
-                                        className={cn(
-                                            "h-9 px-6 text-[9px] font-black uppercase tracking-widest transition-all",
-                                            hasUnsavedChanges ? "bg-emerald-500 text-black shadow-lg" : "bg-white/5 text-muted-foreground"
+                            <div className="border border-accent bg-card flex flex-col px-8 py-5 shrink-0 rounded-2xl m-2 gap-6 ">
+                                {/* Top row: Badges and Save */}
+                                {/* <div className="flex flex-row items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <Badge variant="outline" className={cn("text-[8px] font-black uppercase border-none px-2",
+                                            activeValues?.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
+                                        )}>
+                                            {activeValues?.status.replace('_', ' ')}
+                                        </Badge>
+                                        {hasAnyUnsaved && (
+                                            <Badge className="bg-amber-500/20 text-amber-500 border-none text-[8px] font-black uppercase shadow-sm">Cambios sin guardar</Badge>
                                         )}
-                                    >
-                                        {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <CloudUpload className="h-3.5 w-3.5 mr-2" />}
-                                        Guardar Cambios en Servidor
-                                    </Button>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><MoreVertical className="h-4 w-4" /></Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="bg-card border-accent text-primary  p-1.5 rounded-xl">
-                                            <DropdownMenuItem onClick={() => handleDelete(selectedTopic.id)} className="text-red-500 text-[10px] font-black uppercase flex items-center gap-2 focus:bg-red-500/10 cursor-pointer rounded-lg focus:text-destructive">
-                                                <Trash2 className="h-3.5 w-3.5 text-destructive" /> Eliminar Sección
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    </div>
+
+                                </div> */}
+
+                                {/* Bottom row: Title and Status Inputs */}
+                                <div className="flex flex-row items-end gap-6 w-full">
+                                    <div className="flex-1 space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Título de la Sección Técnica</Label>
+                                        <Input
+                                            value={activeValues?.title || ''}
+                                            onChange={(e) => updateDraft(selectedTopicId!, { title: e.target.value })}
+                                            className="text-[14px] font-bold bg-background h-12 border-accent p-0 outline-none focus-visible:ring-0 uppercase tracking-tighter pl-5 w-full rounded-xl"
+                                        />
+                                    </div>
+                                    <div className="w-72 space-y-2">
+                                        <Label className="text-[9px] font-black uppercase text-primary tracking-widest pl-2">Validación de Estado</Label>
+                                        <Select value={activeValues?.status || 'in_progress'} onValueChange={(val: BimTopicStatus) => updateDraft(selectedTopicId!, { status: val })}>
+                                            <SelectTrigger className="h-12 bg-background border-accent uppercase text-[10px] font-black rounded-xl px-4  w-full">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-card text-primary border-white/10 w-full">
+                                                <SelectItem value="in_progress" className="text-[10px] font-bold uppercase">En Desarrollo</SelectItem>
+                                                <SelectItem value="reviewed" className="text-[10px] font-bold uppercase">En Revisión</SelectItem>
+                                                <SelectItem value="approved" className="text-[10px] font-bold uppercase text-emerald-400">Aprobado / Publicado</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            onClick={handlePersistChanges}
+                                            disabled={!hasAnyUnsaved || isSaving}
+                                            className={cn(
+                                                "h-9 px-6 text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer",
+                                                hasAnyUnsaved ? "bg-primary text-background " : "bg-white/5 text-muted-foreground"
+                                            )}
+                                        >
+                                            {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <CloudUpload className="h-3.5 w-3.5 mr-2" />}
+                                            Guardar Todo
+                                        </Button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><MoreVertical className="h-4 w-4" /></Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="bg-card border-accent text-primary  p-1.5 rounded-xl">
+                                                <DropdownMenuItem onClick={() => setIsSaveTemplateModalOpen(true)} className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg">
+                                                    <Save className="h-3.5 w-3.5" /> Guardar como plantilla
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleDelete(selectedTopic.id)} className="text-red-500 text-[10px] font-black uppercase flex items-center gap-2 focus:bg-red-500/10 cursor-pointer rounded-lg focus:text-destructive">
+                                                    <Trash2 className="h-3.5 w-3.5 text-destructive" /> Eliminar Sección
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
                                 </div>
                             </div>
 
-                            <ScrollArea className="flex-1">
-                                <div className="p-2  mx-auto space-y-6">
-                                    <div className="space-y-4 bg-card border-accent p-6 rounded-2xl border">
-                                        <div className='flex flex-row items-center justify-between'>
-                                            <div className='flex flex-row items-center justify-between gap-4'>
-                                                <div className=''>
-                                                    <Label className="text-[12px] font-black uppercase tracking-[0.2em] text-muted-foreground">Título de la Sección Técnica</Label>
-                                                    <Input
-                                                        value={localTitle}
-                                                        onChange={(e) => { setLocalTitle(e.target.value); setHasUnsavedChanges(true); }}
-                                                        className="text-[12px] font-bold bg-card border-accent p-0 focus-visible:ring-0 uppercase tracking-tighter pl-4 w-150"
-                                                    />
-                                                </div>
-                                                <div className="space-y-3">
-                                                    <Label className="text-[9px] font-black uppercase text-primary tracking-widest">Validación de Estado</Label>
-                                                    <Select value={localStatus} onValueChange={(val: BimTopicStatus) => { setLocalStatus(val); setHasUnsavedChanges(true); }}>
-                                                        <SelectTrigger className="h-11 bg-card border-accent uppercase text-[10px] font-black w-72">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="bg-card text-primary border-white/10">
-                                                            <SelectItem value="in_progress" className="text-[10px] font-bold uppercase">En Desarrollo</SelectItem>
-                                                            <SelectItem value="reviewed" className="text-[10px] font-bold uppercase">En Revisión</SelectItem>
-                                                            <SelectItem value="approved" className="text-[10px] font-bold uppercase text-emerald-400">Aprobado / Publicado</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
+                            <ScrollArea className="flex-1 px-2 pb-2">
+                                {Array.from(visitedTopics).map(topicId => {
+                                    const topic = findTopicById(topics, topicId);
+                                    if (!topic) return null;
+                                    return (
+                                        <div key={topicId} className={topicId === selectedTopicId ? "w-full block h-full" : "w-full hidden h-full"}>
+                                            <EditorRich
+                                                className="min-h-[calc(100vh-270px)] h-full w-full"
+                                                initialContent={topic.content || undefined}
+                                                onChange={(json) => updateDraft(topicId, { content: json })}
+                                            />
                                         </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        {/* <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Contenido y Especificaciones Técnicas</Label> */}
-                                        {/* <Textarea
-                                            value={localContent}
-                                            onChange={(e) => { setLocalContent(e.target.value); setHasUnsavedChanges(true); }}
-                                            className="min-h-[450px] bg-card border-accent focus:border-primary/20 text-sm leading-relaxed uppercase font-medium p-8 rounded-3xl resize-none "
-                                            placeholder="Redacte los requerimientos de información o protocolos técnicos aquí..."
-                                        /> */}
-                                        <div className='w-full'>
-                                            <EditorRich></EditorRich>
-                                        </div>
-                                    </div>
-                                </div>
+                                    );
+                                })}
                             </ScrollArea>
+                        </div>
+                    ) : topics.length === 0 && !isLoading ? (
+                        // Empty state: no topics yet — prompt the user to pick a template
+                        <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-8 animate-in fade-in">
+                            <div className="opacity-20">
+                                <LayoutTemplate className="h-24 w-24 text-primary mx-auto" />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-black uppercase tracking-tight">Documento BIM sin estructura</h3>
+                                <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">
+                                    Selecciona una plantilla en el panel lateral para inicializar los tópicos documentales,<br />
+                                    o crea el primer tópico manualmente.
+                                </p>
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-4 items-center">
+                                <div className="space-y-2 w-64">
+                                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Inicializar con Plantilla</Label>
+                                    <Select value={selectedTemplate} onValueChange={handleApplyTemplate}>
+                                        <SelectTrigger className="h-11 bg-card border-accent text-[10px] font-black uppercase w-full">
+                                            <div className="flex items-center gap-2">
+                                                <LayoutTemplate className="h-3 w-3 text-primary" />
+                                                <SelectValue placeholder="ELEGIR PLANTILLA..." />
+                                            </div>
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-card text-primary border-accent">
+                                            <SelectItem value="none" className="text-[9px] font-bold uppercase">Seleccionar...</SelectItem>
+                                            <SelectGroup>
+                                                <SelectLabel className="text-[8px] text-muted-foreground uppercase font-black tracking-widest pl-2">General</SelectLabel>
+                                                <SelectItem value="iso_19650" className="text-[9px] font-bold uppercase">ISO 19650 Requerimientos</SelectItem>
+                                                <SelectItem value="bep_only" className="text-[9px] font-bold uppercase">Plan de Ejecución (BEP)</SelectItem>
+                                                <SelectItem value="construction_phase" className="text-[9px] font-bold uppercase">Protocolos de Obra</SelectItem>
+                                            </SelectGroup>
+                                            {cloudTemplates.length > 0 && (
+                                                <SelectGroup>
+                                                    <SelectLabel className="text-[8px] text-muted-foreground uppercase font-black tracking-widest mt-2 border-t border-accent pt-2 pl-2">Mis Plantillas en Nube</SelectLabel>
+                                                    {cloudTemplates.map(t => (
+                                                        <SelectItem key={t.id} value={`cloud_${t.id}`} className="text-[9px] font-bold uppercase">{t.name}</SelectItem>
+                                                    ))}
+                                                </SelectGroup>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-widest pt-4">ó</div>
+                                <Button
+                                    variant="outline"
+                                    className="h-11 border-dashed border-primary/30 text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/10"
+                                    onClick={() => handleOpenCreateModal(null)}
+                                >
+                                    <PlusCircle className="h-4 w-4 mr-2" /> Crear Tópico Manual
+                                </Button>
+                            </div>
                         </div>
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center p-20 text-center space-y-6 opacity-20 animate-in fade-in">
                             <FileText className="h-24 w-24 text-primary" />
                             <div className="space-y-2">
-                                <h3 className="text-xl font-black uppercase tracking-tight">Terminal de Documentación BIM</h3>
+                                <h3 className="text-xl font-black uppercase tracking-tight">Documentación BIM</h3>
                                 <p className="text-[10px] uppercase font-black tracking-widest">Seleccione una sección en el panel lateral para comenzar</p>
                             </div>
                         </div>
@@ -537,8 +712,35 @@ export default function BimDocumentationPage() {
                 </main>
             </div>
 
+            <Dialog open={isSaveTemplateModalOpen} onOpenChange={setIsSaveTemplateModalOpen}>
+                <DialogContent className="sm:max-w-md bg-card border-accent text-primary">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold uppercase tracking-tight text-primary">Guardar como Plantilla</DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground">
+                            Se guardará toda la estructura actual y su contenido en la nube para uso posterior.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-3">
+                        <Label className="text-[10px] font-black uppercase tracking-widest">Nombre de la Plantilla</Label>
+                        <Input
+                            value={newTemplateName}
+                            onChange={(e) => setNewTemplateName(e.target.value)}
+                            placeholder="Ej. Plantilla Institucional V1"
+                            className="bg-background border-accent font-bold text-sm h-12 uppercase"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground" onClick={() => setIsSaveTemplateModalOpen(false)}>Cancelar</Button>
+                        <Button disabled={isSaving || !newTemplateName.trim()} onClick={handleSaveAsTemplate} className="font-black uppercase tracking-widest text-[10px] bg-primary h-12 text-background hover:bg-primary/90">
+                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Guardar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-                <DialogContent className="sm:max-w-2xl bg-card border-accent text-primary p-0 overflow-hidden shadow-2xl flex flex-col h-[80vh]">
+                <DialogContent className="sm:max-w-2xl bg-card border-accent text-primary p-0 overflow-hidden  flex flex-col h-[80vh] max-h-[350px]">
                     <DialogHeader className="p-6 border-b border-accent bg-card shrink-0">
                         <div className="flex items-center gap-3">
                             <PlusCircle className="h-6 w-6 text-primary" />
@@ -558,42 +760,6 @@ export default function BimDocumentationPage() {
                                 className="h-12 bg-card border-accent uppercase font-bold text-sm"
                                 placeholder="EJ: PLAN DE EJECUCIÓN BIM (BEP)"
                             />
-                        </div>
-
-                        <Separator className="bg-accent" />
-
-                        <div className="flex-1 flex flex-col overflow-hidden space-y-4">
-                            <div className="flex items-center justify-between">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Estructura de Sub-tópicos</Label>
-                                <Button onClick={handleAddSubTopicField} variant="outline" size="sm" className="h-8 border-primary/20 bg-primary/5 text-[9px] font-black uppercase text-primary">
-                                    <Plus className="h-3 w-3 mr-1.5" /> Adicionar Nivel
-                                </Button>
-                            </div>
-
-                            <ScrollArea className="flex-1 border border-accent rounded-sm p-4">
-                                <div className="space-y-3">
-                                    {newTopicData.children.map((child, idx) => (
-                                        <div key={idx} className="flex items-center gap-3 animate-in slide-in-from-left-2 duration-300">
-                                            <div className="h-8 w-8 rounded-lg  border border-accent flex items-center justify-center text-[10px] font-black text-muted-foreground">{idx + 1}</div>
-                                            <Input
-                                                value={child}
-                                                onChange={(e) => handleSubTopicChange(idx, e.target.value)}
-                                                className="flex-1 bg-transparent border-accent text-xs font-bold uppercase h-9"
-                                                placeholder="Nombre de la sub-sección técnica..."
-                                            />
-                                            <Button variant="ghost" size="icon" onClick={() => handleRemoveSubTopicField(idx)} className="text-muted-foreground hover:text-destructive h-8 w-8">
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    ))}
-                                    {newTopicData.children.length === 0 && (
-                                        <div className="py-12 text-center opacity-20 flex flex-col items-center gap-3">
-                                            <Layers className="h-10 w-10" />
-                                            <p className="text-[9px] font-black uppercase tracking-widest">Sin sub-secciones definidas</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </ScrollArea>
                         </div>
                     </div>
 

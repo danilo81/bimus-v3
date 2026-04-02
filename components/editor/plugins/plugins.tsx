@@ -138,7 +138,7 @@ export function Plugins({ }) {
               <CodeLanguageToolbarPlugin />
             ) : (
               <>
-                <FontFamilyToolbarPlugin />
+                {/* <FontFamilyToolbarPlugin /> */}
                 <FontSizeToolbarPlugin />
                 <Separator orientation="vertical" className="h-7!" />
                 <FontFormatToolbarPlugin />
@@ -152,14 +152,14 @@ export function Plugins({ }) {
                 <FontBackgroundToolbarPlugin />
                 <Separator orientation="vertical" className="h-7!" />
                 <ElementFormatToolbarPlugin />
-                <Separator orientation="vertical" className="h-7!" />
+                {/* <Separator orientation="vertical" className="h-7!" />
                 <BlockInsertPlugin>
                   <InsertHorizontalRule />
                   <InsertImage />
                   <InsertTable />
                   <InsertColumnsLayout />
                   <InsertEmbeds />
-                </BlockInsertPlugin>
+                </BlockInsertPlugin> */}
               </>
             )}
           </div>
@@ -173,7 +173,7 @@ export function Plugins({ }) {
               <div className="" ref={onRef}>
                 <ContentEditable
                   placeholder={placeholder}
-                  className="ContentEditable__root relative block h-[calc(100vh-570px)] min-h-72 overflow-auto px-8 py-4 focus:outline-none"
+                  className="ContentEditable__root relative block h-[calc(100vh-320px)] min-h-72 overflow-auto px-8 py-4 focus:outline-none"
                 />
               </div>
             </div>
@@ -205,7 +205,7 @@ export function Plugins({ }) {
         <CodeHighlightPlugin />
         <CodeActionMenuPlugin anchorElem={floatingAnchorElem} />
 
-        <MarkdownShortcutPlugin
+        {/* <MarkdownShortcutPlugin
           transformers={[
             TABLE,
             HR,
@@ -219,7 +219,7 @@ export function Plugins({ }) {
             ...TEXT_MATCH_TRANSFORMERS,
           ]}
         />
-        <TypingPerfPlugin />
+        <TypingPerfPlugin /> */}
         <TabFocusPlugin />
         <AutocompletePlugin />
         <AutoLinkPlugin />
@@ -238,8 +238,8 @@ export function Plugins({ }) {
             QuotePickerPlugin(),
             CodePickerPlugin(),
             DividerPickerPlugin(),
-            EmbedsPickerPlugin({ embed: "tweet" }),
-            EmbedsPickerPlugin({ embed: "youtube-video" }),
+            // EmbedsPickerPlugin({ embed: "tweet" }),
+            // EmbedsPickerPlugin({ embed: "youtube-video" }),
             ImagePickerPlugin(),
             ColumnsLayoutPickerPlugin(),
             AlignmentPickerPlugin({ alignment: "left" }),
@@ -267,18 +267,18 @@ export function Plugins({ }) {
         <ListMaxIndentLevelPlugin />
       </div>
       <ActionsPlugin>
-        <div className="clear-both flex items-center justify-between gap-2 overflow-auto border-t p-1">
-          <div className="flex flex-1 justify-start">
+        <div className="clear-both flex items-center justify-between gap-2 overflow-auto border-t p-1 align-bottom">
+          {/* <div className="flex flex-1 justify-start">`
             <MaxLengthPlugin maxLength={maxLength} />
             <CharacterLimitPlugin maxLength={maxLength} charset="UTF-16" />
-          </div>
-          <div>
+          </div> */}
+          {/* <div>
             <CounterCharacterPlugin charset="UTF-16" />
-          </div>
+          </div> */}
           <div className="flex flex-1 justify-end">
-            <SpeechToTextPlugin />
-            <ShareContentPlugin />
-            <ImportExportPlugin />
+            {/* <SpeechToTextPlugin />
+            <ShareContentPlugin /> */}
+            {/* <ImportExportPlugin /> */}
             <MarkdownTogglePlugin
               shouldPreserveNewLinesInMarkdown={true}
               transformers={[
@@ -299,7 +299,7 @@ export function Plugins({ }) {
               <ClearEditorActionPlugin />
               <ClearEditorPlugin />
             </>
-            <TreeViewPlugin />
+            {/* <TreeViewPlugin /> */}
           </div>
         </div>
       </ActionsPlugin>

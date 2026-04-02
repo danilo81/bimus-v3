@@ -11,14 +11,22 @@ async function getAuthUserId() {
     return userId;
 }
 
-export async function createSiteLogEntry(projectId: string, type: string, content: string) {
+export async function deleteSiteLogEntry(logId: string, projectId: string) {
     try {
         const userId = await getAuthUserId();
         if (!userId) return { success: false, error: "No autorizado" };
-        const log = await prisma.siteLog.create({
-            data: { projectId, authorId: userId, type, content, date: new Date() }
+
+        const existingLog = await prisma.siteLog.findUnique({ where: { id: logId } });
+        if (!existingLog) return { success: false, error: "Registro no encontrado" };
+
+        await prisma.siteLog.delete({
+            where: { id: logId }
         });
+
         revalidatePath(`/projects/${projectId}`);
-        return { success: true, log };
-    } catch (error: any) { return { success: false, error: error.message }; }
+        revalidatePath(`/projects/${projectId}/operations`);
+        return { success: true };
+    } catch (error: any) { 
+        return { success: false, error: error.message }; 
+    }
 }

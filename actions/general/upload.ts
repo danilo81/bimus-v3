@@ -38,8 +38,8 @@ export async function getUploadUrl(fileName: string, fileType: string, fileSize:
         // Generamos la URL firmada válida por 1 hora (3600 segundos)
         const signedUrl = await getSignedUrl(s3Client, command, {
             expiresIn: 3600,
-
-            signableHeaders: new Set(["content-type, Authorization, Access-Control-Allow-Headers"]),
+            // Solo incluimos content-type en la firma si estamos seguros de que el cliente lo enviará exactamente igual
+            signableHeaders: new Set(["content-type"]),
         });
 
         return {

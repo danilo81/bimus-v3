@@ -13,7 +13,8 @@ import {
     createProjectChangeOrder,
     batchUpdateProjectItemProgress,
     getConstructionItems,
-    getSupplies
+    getSupplies,
+    getProjectSiteLogs
 } from '@/actions';
 import { useAuth } from '../../../../hooks/use-auth';
 import {
@@ -213,6 +214,10 @@ export default function ConstructionPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
+
+    // Progress History State
+    const [siteLogs, setSiteLogs] = useState<any[]>([]);
+    const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
     // Gantt State
     const [ganttRange, setGanttRange] = useState<Range>("monthly");
@@ -518,6 +523,82 @@ export default function ConstructionPage() {
             fetchMasterSupplies();
         }
     }, [isEditingAPU, isLocalAPUEditorOpen, masterSupplies.length, fetchMasterSupplies]);
+
+    const fetchLogs = useCallback(async () => {
+        if (!project?.id) return;
+        setIsLoadingLogs(true);
+        try {
+            const res = await getProjectSiteLogs(project.id);
+            if (res.success) {
+                setSiteLogs(res.logs || []);
+            }
+        } catch (error) {
+            console.error("Error loading logs:", error);
+        } finally {
+            setIsLoadingLogs(false);
+        }
+    }, [project?.id]);
+
+    useEffect(() => {
+        if (isHistoryModalOpen) {
+            fetchLogs();
+        }
+    }, [isHistoryModalOpen, fetchLogs]);
+
+    const handlePrintHistory = () => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        const html = `
+            <html>
+                <head>
+                    <title>Historial de Avance - ${project.title}</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 40px; color: #333; }
+                        .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 30px; }
+                        .title { font-size: 24px; font-weight: bold; text-transform: uppercase; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 12px; }
+                        th { background-color: #f2f2f2; font-weight: bold; text-transform: uppercase; }
+                        .footer { margin-top: 30px; text-align: right; font-size: 10px; color: #666; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="title">Historial de Avance Físico</div>
+                        <p>Proyecto: ${project.title}</p>
+                        <p>Fecha de Reporte: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Descripción del Avance</th>
+                                <th>Responsable</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${siteLogs.map(log => `
+                                <tr>
+                                    <td>${format(new Date(log.date), 'dd/MM/yyyy HH:mm')}</td>
+                                    <td>${log.content}</td>
+                                    <td>${log.author}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <div class="footer">
+                        Generado automáticamente por el Sistema BIMUS
+                    </div>
+                    <script>
+                        window.onload = () => { window.print(); window.close(); };
+                    </script>
+                </body>
+            </html>
+        `;
+        printWindow.document.write(html);
+        printWindow.document.close();
+    };
 
     const handleViewDetail = (item: any) => {
         setSelectedItem(item);
@@ -1831,9 +1912,14 @@ export default function ConstructionPage() {
                 <TabsContent value="computo">
                     <Card className="bg-card border-accent text-primary overflow-hidden">
                         <CardHeader className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0 pb-7 border-b border-accent">
-                            <div>
-                                <CardTitle className="text-lg font-bold uppercase tracking-tight">Cómputos Métricos</CardTitle>
-                                <CardDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mt-1">Cuantificación de actividades por niveles.</CardDescription>
+                            <div className="flex items-center gap-4 w-full">
+                                <div className="p-2 bg-primary/20 rounded-lg">
+                                    <Calculator className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="flex flex-col text-left flex-1">
+                                    <CardTitle className="text-lg font-bold uppercase tracking-tight">Cómputos Métricos</CardTitle>
+                                    <CardDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mt-1">Cuantificación de actividades por niveles.</CardDescription>
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4 pt-6">
@@ -1986,12 +2072,17 @@ export default function ConstructionPage() {
                 <TabsContent value="presupuesto">
                     <div className="space-y-6">
                         <Card className="bg-card border-accent text-primary  p-0 gap-0">
-                            <Accordion type="single" collapsible defaultValue="">
-                                <AccordionItem value="summary" className="border-none">
-                                    <AccordionTrigger className="px-6 py-6 hover:no-underline flex items-center w-full">
-                                        <div className="flex flex-col text-left flex-1">
-                                            <CardTitle className="text-lg font-bold uppercase tracking-tight">Resumen de Presupuesto</CardTitle>
-                                            <CardDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mt-1">Desglose detallado de costos operativos.</CardDescription>
+                            <Accordion type="single" collapsible defaultValue="" className='flex justify-between'>
+                                <AccordionItem value="summary" className="border-none w-full ">
+                                    <AccordionTrigger className="px-6 py-6 hover:no-underline flex items-center">
+                                        <div className="flex items-center gap-4 w-full">
+                                            <div className="p-2 bg-primary/20 rounded-lg">
+                                                <Coins className="h-5 w-5 text-primary" />
+                                            </div>
+                                            <div className="flex flex-col text-left flex-1">
+                                                <CardTitle className="text-lg font-bold uppercase tracking-tight">Resumen de Presupuesto</CardTitle>
+                                                <CardDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mt-1">Desglose detallado de costos operativos.</CardDescription>
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-3 mr-4">
                                             <div className="flex flex-col items-end">
@@ -2032,8 +2123,14 @@ export default function ConstructionPage() {
 
                         <Card className="bg-card border-accent text-primary ">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7 bg-card border-b border-accent">
-                                <div className='w-80'>
-                                    <CardTitle className="text-lg font-bold uppercase tracking-tight">Presupuesto de Obra</CardTitle>
+                                <div className="flex items-center gap-4 w-150">
+                                    <div className="p-2 bg-primary/20 rounded-lg">
+                                        <Coins className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="flex flex-col text-left flex-1">
+                                        <CardTitle className="text-lg font-bold uppercase tracking-tight">Resumen de Presupuesto</CardTitle>
+                                        <CardDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mt-1">Desglose detallado de costos operativos.</CardDescription>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-3 justify-between w-full">
                                     <div className="relative flex-1 max-w-md">
@@ -2373,9 +2470,14 @@ export default function ConstructionPage() {
 
                         <Card className="bg-card border-accent text-primary ">
                             <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-7 bg-card border-b border-accent">
-                                <div>
-                                    <CardTitle className="text-lg font-bold uppercase tracking-tight">Seguimiento de Avance Físico</CardTitle>
-                                    <CardDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mt-1">Control de metrados ejecutados vs programados.</CardDescription>
+                                <div className="flex items-center gap-4 w-full">
+                                    <div className="p-2 bg-primary/20 rounded-lg">
+                                        <Activity className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="flex flex-col text-left flex-1">
+                                        <CardTitle className="text-lg font-bold uppercase tracking-tight">Seguimiento de Avance Físico</CardTitle>
+                                        <CardDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mt-1">Control de metrados ejecutados vs programados.</CardDescription>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-3 w-full">
                                     <div className="flex items-center gap-2 mr-4 justify-between w-full">
@@ -2396,21 +2498,13 @@ export default function ConstructionPage() {
                                             >
                                                 <Printer className="h-4 w-4" />
                                             </Button>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="outline" className="border-accent bg-card text-muted-foreground font-black text-[10px] uppercase tracking-widest h-10 px-4 rounded-xl hover:bg-card/10 cursor-pointer">
-                                                        <History className="mr-2 h-4 w-4 text-primary" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="bg-card border-accent text-primary  p-1.5 rounded-xl w-60">
-                                                    <DropdownMenuItem onClick={() => setIsPayrollHistoryModalOpen(true)} className="text-[10px] font-black uppercase flex items-center gap-3 cursor-pointer py-3 focus:bg-primary/10">
-                                                        <History className="h-4 w-4 text-primary" /> Historial Planillas
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => setIsHistoryModalOpen(true)} className="text-[10px] font-black uppercase flex items-center gap-3 cursor-pointer py-3 focus:bg-primary/10">
-                                                        <History className="h-4 w-4 text-primary" /> Historial Avance
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <Button
+                                                onClick={() => setIsHistoryModalOpen(true)}
+                                                variant="outline"
+                                                className="border-accent bg-card text-muted-foreground font-black text-[10px] uppercase tracking-widest h-10 px-4 rounded-xl hover:bg-card/10"
+                                            >
+                                                <History className="h-4 w-4" />
+                                            </Button>
                                             {isConstruccion && isAuthor && (
                                                 <>
                                                     <Button
@@ -2619,6 +2713,86 @@ export default function ConstructionPage() {
                                 </Button>
                             </div>
                         </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}>
+                <DialogContent className="min-w-7xl bg-card border-accent text-primary p-0 overflow-hidden flex flex-col h-[80vh]">
+                    <DialogHeader className="p-6 bg-card border-b border-accent shrink-0 flex flex-row items-center justify-between space-y-0">
+                        <div className="flex items-center gap-3">
+                            <History className="h-6 w-6 text-primary" />
+                            <div>
+                                <DialogTitle className="text-xl font-bold uppercase tracking-tight text-primary">Historial de Avance Físico</DialogTitle>
+                                <DialogDescription className="text-muted-foreground text-[10px] font-black uppercase mt-1 tracking-widest">Registros chronológicos de certificaciones y reportes de obra</DialogDescription>
+                            </div>
+                        </div>
+                        <Button
+                            onClick={handlePrintHistory}
+                            variant="outline"
+                            className="border-accent bg-card text-primary font-black text-[10px] uppercase h-10 px-4 rounded-xl hover:bg-accent"
+                        >
+                            <Printer className="mr-2 h-4 w-4" /> Imprimir Historial
+                        </Button>
+                    </DialogHeader>
+
+                    <div className="flex-1 overflow-hidden p-6">
+                        <div className="border border-accent rounded-xl overflow-hidden bg-card h-full flex flex-col">
+                            <ScrollArea className="flex-1">
+                                <Table>
+                                    <TableHeader className="bg-accent sticky top-0 z-10">
+                                        <TableRow className="border-accent hover:bg-transparent">
+                                            <TableHead className="text-[10px] font-black uppercase py-4 px-6 w-40">Fecha / Hora</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase">Descripción del Avance</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase w-48">Responsable</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {isLoadingLogs ? (
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="text-center py-20">
+                                                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 opacity-20" />
+                                                    <span className="text-[10px] font-black uppercase text-muted-foreground opacity-50">Cargando Historial...</span>
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : siteLogs.length > 0 ? (
+                                            siteLogs.map((log) => (
+                                                <TableRow key={log.id} className="border-accent hover:bg-muted/40 transition-colors">
+                                                    <TableCell className="px-6 py-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[11px] font-bold text-primary">{format(new Date(log.date), 'dd/MM/yyyy')}</span>
+                                                            <span className="text-[9px] text-muted-foreground font-black opacity-50">{format(new Date(log.date), 'HH:mm')}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="py-4">
+                                                        <p className="text-[11px] font-medium text-primary leading-relaxed">{log.content}</p>
+                                                    </TableCell>
+                                                    <TableCell className="py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary uppercase">
+                                                                {log.author.charAt(0)}
+                                                            </div>
+                                                            <span className="text-[10px] font-black uppercase text-primary/70">{log.author}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow className="flex justify-center items-center">
+                                                <TableCell colSpan={3} className="text-center py-32 opacity-20 flex flex-col items-center gap-3 justify-center">
+                                                    <History className="h-12 w-12" />
+                                                    <p className="text-[10px] font-black uppercase tracking-widest">Sin registros de avance</p>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="p-6 border-t border-accent bg-card shrink-0">
+                        <Button variant="ghost" onClick={() => setIsHistoryModalOpen(false)} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cerrar Historial</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
