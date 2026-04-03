@@ -150,13 +150,13 @@ export function ImportExportSupplies({ currentData, dbUnits = [] }: { currentDat
 
     return (
         <div className="flex items-center gap-2">
-            <Button variant="default" size="sm" onClick={handleExport} className="text-[10px] font-black uppercase tracking-widest gap-2 bg-primary text-background">
+            <Button variant="default" size="sm" name='export-supplies' onClick={handleExport} className="text-[10px] font-black uppercase tracking-widest gap-2 bg-primary text-background">
                 <Download className="h-3.5 w-3.5" />
             </Button>
 
             <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetModal(); }}>
                 <DialogTrigger asChild>
-                    <Button variant="default" size="sm" className="text-[10px] font-black uppercase tracking-widest gap-2 bg-primary text-background">
+                    <Button variant="default" size="sm" name='import-supplies' className="text-[10px] font-black uppercase tracking-widest gap-2 bg-primary text-background">
                         <Upload className="h-3.5 w-3.5" />
                     </Button>
                 </DialogTrigger>

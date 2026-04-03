@@ -12,6 +12,7 @@ export async function updateProject(id: string, data: {
     projectType?: string;
     area?: number;
     status?: string;
+    imageUrl?: string;
     startDate?: string | null;
     config?: Partial<ProjectConfig>;
     levels?: { id?: string, name: string }[];

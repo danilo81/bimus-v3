@@ -54,9 +54,26 @@ export async function createProjectChangeOrder(projectId: string, reason: string
                 }
             }
 
-            // Crear registro de Orden de Cambio
-            const count = await (tx as any).projectChangeOrder.count({ where: { projectId } });
-            const orderNumber = `OC-${(count + 1).toString().padStart(3, '0')}`;
+            // Generar número de orden único buscando el máximo numérico real en el sistema
+            const allOrders = await (tx as any).projectChangeOrder.findMany({
+                where: { number: { startsWith: 'OC-' } },
+                select: { number: true }
+            });
+
+            let nextNumber = 1;
+            if (allOrders.length > 0) {
+                const numbers = allOrders
+                    .map((o: any) => {
+                        const parts = o.number.split('-');
+                        return parts[1] ? parseInt(parts[1], 10) : 0;
+                    })
+                    .filter((n: number) => !isNaN(n));
+                
+                if (numbers.length > 0) {
+                    nextNumber = Math.max(...numbers) + 1;
+                }
+            }
+            const orderNumber = `OC-${nextNumber.toString().padStart(3, '0')}`;
 
             await (tx as any).projectChangeOrder.create({
                 data: {

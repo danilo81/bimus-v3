@@ -21,6 +21,8 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://pub-0c4e991892914662ba0e3f09fb79757a.r2.dev" />
+        <link rel="preconnect" href="https://pub-c09b07f1a7954c46b7f2a640146d8703.r2.dev" />
       </head>
       <body className={`${inter.className} font-body antialiased min-h-screen bg-background text-foreground`}>
         <div className="h-full w-full fixed">

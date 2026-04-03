@@ -39,7 +39,7 @@ export async function createProject(data: CreateProjectData) {
                     projectType: data.projectType,
                     area: Number(data.area) || 0,
                     status: (data.status || 'activo').toLowerCase(),
-                    imageUrl: data.imageUrl || `https://picsum.photos/seed/${Math.random()}/800/600`,
+                    imageUrl: data.imageUrl || '/project-img.png',
                     authorId: userId,
                     config: {
                         create: {

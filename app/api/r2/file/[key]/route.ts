@@ -8,13 +8,6 @@ interface Props {
 
 export async function GET(request: NextRequest, { params }: Props) {
     try {
-        // Leer userId de la cookie (sistema de auth propio del proyecto)
-        const userId = request.cookies.get("userId")?.value;
-
-        if (!userId) {
-            return new Response("No autorizado", { status: 401 });
-        }
-
         const { key } = await params;
         const keyToFetch = decodeURIComponent(key);
 
@@ -22,12 +15,25 @@ export async function GET(request: NextRequest, { params }: Props) {
             return NextResponse.json({ error: "File key is required" }, { status: 400 });
         }
 
-        const command = new GetObjectCommand({
-            Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME!,
+        // Try Public Bucket first for images/public assets
+        let bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME_PUBLIC || process.env.CLOUDFLARE_R2_BUCKET_NAME!;
+        let command = new GetObjectCommand({
+            Bucket: bucketName,
             Key: keyToFetch,
         });
 
-        const response = await r2Client.send(command);
+        let response;
+        try {
+            response = await r2Client.send(command);
+        } catch (e) {
+            // Fallback to private bucket if public fails
+            bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME!;
+            command = new GetObjectCommand({
+                Bucket: bucketName,
+                Key: keyToFetch,
+            });
+            response = await r2Client.send(command);
+        }
 
         if (!response.Body) {
             throw new Error("Empty body from R2");

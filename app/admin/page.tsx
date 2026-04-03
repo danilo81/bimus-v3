@@ -181,7 +181,7 @@ export default function AdminPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Buscar por nombre o correo..."
-                        className="pl-10 bg-background/50 border-muted/50"
+                        className="pl-10 bg-card border-accent"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -271,10 +271,10 @@ export default function AdminPage() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Select defaultValue={u.role} onValueChange={(val) => handleRoleChange(u.id, val as UserRole)}>
-                                            <SelectTrigger className="w-40 ml-auto bg-white/5 border-white/10 h-8 text-[9px] font-black uppercase">
+                                            <SelectTrigger className="w-40 ml-auto bg-card border-accent h-8 text-[9px] font-black uppercase">
                                                 <SelectValue />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-card border-white/10 text-primary">
+                                            <SelectContent className="bg-card border-accent text-primary">
                                                 <SelectItem value="admin" className="text-[9px] font-bold uppercase">Administrador</SelectItem>
                                                 <SelectItem value="editor" className="text-[9px] font-bold uppercase">Editor</SelectItem>
                                                 <SelectItem value="viewer" className="text-[9px] font-black uppercase">Lector</SelectItem>

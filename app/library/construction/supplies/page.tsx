@@ -22,7 +22,6 @@ import {
     MoreVertical,
     Trash2,
     Edit,
-    Package,
     Loader2,
     Save,
     X,
@@ -665,7 +664,7 @@ export default function SuppliesPage() {
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 cursor-pointer">
-                                                                <MoreVertical className="h-4 w-4" />
+                                                                <MoreVertical name='more-options' className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end" className="bg-card border-muted/50 text-primary shadow-lg">

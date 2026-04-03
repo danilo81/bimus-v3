@@ -676,80 +676,85 @@ export default function ItemsPage() {
                                         </TabsTrigger>
                                     </TabsList>
                                 </div>
-                                <ScrollArea className="h-125 pr-4">
-                                    <div className="flex-1">
-                                        <TabsContent value="informacion" className="m-0 p-6 space-y-8 outline-none">
-                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                                <div className="lg:col-span-7 space-y-6">
-                                                    <div className="space-y-4">
-                                                        <div className="grid grid-cols-1 gap-4">
+                                <ScrollArea className="h-100">
+                                    <div className="flex">
+                                        <TabsContent value="informacion" className="m-0 p-6 space-y-8 outline-none w-full ">
+                                            <div className="flex gap-4 flex-row flex-wrap w-full">
+
+                                                <div className="space-y-4 h-100 sm:min-w-[550px] sm:max-w-[550px]">
+                                                    <div className="flex gap-4 flex-col  w-full">
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Capítulo</Label>
+                                                            <Select value={formData.chapter} onValueChange={(val) => setFormData(p => ({ ...p, chapter: val }))} required>
+                                                                <SelectTrigger className="bg-background/50 border-accent h-11 text-primary w-full uppercase text-xs font-bold ">
+                                                                    <SelectValue placeholder={isLoadingData ? "Cargando..." : "Seleccione capítulo"} />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="bg-card border-white/10">
+                                                                    {dbChapters.length > 0 ? (
+                                                                        dbChapters.map(c => <SelectItem key={c.id} value={c.name} className="uppercase text-[10px] font-bold">{c.name}</SelectItem>)
+                                                                    ) : (
+                                                                        <SelectItem value="none" disabled>No hay capítulos definidos</SelectItem>
+                                                                    )}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Descripción Ítem</Label>
+                                                            <Input
+                                                                className="bg-card border-accent h-11 text-primary uppercase text-xs font-bold "
+                                                                placeholder="Nombre de la partida..."
+                                                                value={formData.description}
+                                                                onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))}
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <div className="grid grid-rows-2 gap-4 h-0">
                                                             <div className="space-y-2">
-                                                                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Capítulo</Label>
-                                                                <Select value={formData.chapter} onValueChange={(val) => setFormData(p => ({ ...p, chapter: val }))} required>
-                                                                    <SelectTrigger className="bg-background/50 border-accent h-11 text-primary w-full uppercase text-xs font-bold">
-                                                                        <SelectValue placeholder={isLoadingData ? "Cargando..." : "Seleccione capítulo"} />
+                                                                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Unidad</Label>
+                                                                <Select value={formData.unit} onValueChange={(val) => setFormData(p => ({ ...p, unit: val }))} required>
+                                                                    <SelectTrigger className="bg-background/50 border-accent h-11 text-primary w-full uppercase text-xs font-bold ">
+                                                                        <SelectValue placeholder="Unidad" />
                                                                     </SelectTrigger>
-                                                                    <SelectContent className="bg-card border-white/10">
-                                                                        {dbChapters.length > 0 ? (
-                                                                            dbChapters.map(c => <SelectItem key={c.id} value={c.name} className="uppercase text-[10px] font-bold">{c.name}</SelectItem>)
-                                                                        ) : (
-                                                                            <SelectItem value="none" disabled>No hay capítulos definidos</SelectItem>
-                                                                        )}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Descripción Ítem</Label>
-                                                                <Input
-                                                                    className="bg-background/50 border-accent h-11 text-primary uppercase text-xs font-bold"
-                                                                    placeholder="Nombre de la partida..."
-                                                                    value={formData.description}
-                                                                    onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))}
-                                                                    required
-                                                                />
-                                                            </div>
-                                                            <div className="grid grid-cols-2 gap-4">
-                                                                <div className="space-y-2">
-                                                                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Unidad</Label>
-                                                                    <Select value={formData.unit} onValueChange={(val) => setFormData(p => ({ ...p, unit: val }))} required>
-                                                                        <SelectTrigger className="bg-background/50 border-accent h-11 text-primary w-full uppercase text-xs font-bold">
-                                                                            <SelectValue placeholder="Unidad" />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent className="bg-card border-white/10">
+                                                                    <div className="w-full h-0 flex flex-row">
+                                                                        <SelectContent className="bg-card border-accent w-full ">
                                                                             {dbUnits.length > 0 ? (
                                                                                 dbUnits.map(u => <SelectItem key={u.id} value={u.abbreviation} className="uppercase text-[10px] font-bold">{u.name} ({u.abbreviation})</SelectItem>)
                                                                             ) : (
                                                                                 <SelectItem value="none" disabled>No hay unidades</SelectItem>
                                                                             )}
                                                                         </SelectContent>
-                                                                    </Select>
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Rendimiento "unidad"/Hr</Label>
-                                                                    <Input
-                                                                        className="bg-background/50 border-accent h-11 text-primary font-mono font-bold"
-                                                                        type="number"
-                                                                        step="0.01"
-                                                                        value={formData.performance}
-                                                                        onChange={(e) => setFormData(p => ({ ...p, performance: e.target.value }))}
-                                                                        required
-                                                                    />
+                                                                    </div>
+                                                                    <div className="space-y-2 ">
+                                                                        <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Rendimiento "unidad"/Hr</Label>
+                                                                        <Input
+                                                                            className="bg-background/50 border-accent h-11 text-primary font-mono font-bold"
+                                                                            type="number"
+                                                                            step="0.01"
+                                                                            value={formData.performance}
+                                                                            onChange={(e) => setFormData(p => ({ ...p, performance: e.target.value }))}
+                                                                            required
+                                                                        />
+                                                                    </div>
+                                                                </Select>
+                                                                <div className="space-y-2 w-full ">
+                                                                    <div className="h-full space-y-2">
+                                                                        <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Notas</Label>
+                                                                        <Textarea
+                                                                            className="bg-background/50 border-accent  text-primary font-mono font-bold resize-none tracking-widest h-full"
+                                                                            value={formData.notes}
+                                                                            onChange={(e) => setFormData(p => ({ ...p, notes: e.target.value }))}
+                                                                        />
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                            <div className="space-y-2 w-full h-0">
-                                                                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Notas</Label>
-                                                                <Textarea
-                                                                    className="bg-background/50 border-accent h-40 text-primary font-mono font-bold w-full resize-none"
-                                                                    value={formData.notes}
-                                                                    onChange={(e) => setFormData(p => ({ ...p, notes: e.target.value }))}
-                                                                />
-                                                            </div>
+
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="lg:col-span-5">
-                                                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 h-full flex flex-col justify-between ">
+
+                                                <div className="flex w-full sm:min-w-[380px] sm:max-w-[380px]">
+                                                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 flex flex-col justify-between w-full h-fit">
                                                         <div className="space-y-3">
                                                             {[
                                                                 { label: 'Materiales', value: summary.mat },
@@ -788,7 +793,7 @@ export default function ItemsPage() {
                                             <Separator className="border-accent" />
 
                                             <div className="space-y-4">
-                                                <div className="flex flex-wrap gap-4 items-center p-4 rounded-xl border ">
+                                                <div className="flex  gap-4 items-center p-4 rounded-xl border ">
                                                     <Dialog open={isCreateSupplyDialogOpen} onOpenChange={(open) => {
                                                         setIsCreateSupplyDialogOpen(open);
                                                         if (!open) setSupplyCreationError(null);
@@ -809,7 +814,7 @@ export default function ItemsPage() {
                                                                         <Package className="h-5 w-5 text-primary" />
                                                                     </div>
                                                                     <div>
-                                                                        <DialogTitle className="text-lg font-bold uppercase tracking-tight text-primary leading-none">Nuevo Insumo Maestro</DialogTitle>
+                                                                        <DialogTitle className="text-lg font-bold uppercase tracking-tight text-primary leading-none">Nuevo Insumo</DialogTitle>
                                                                         <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-2">Añadir recurso al catálogo general</DialogDescription>
                                                                     </div>
                                                                 </div>
@@ -983,6 +988,8 @@ export default function ItemsPage() {
                                                                                 )}
                                                                             </TableBody>
                                                                         </Table>
+                                                                        <ScrollBar orientation='vertical' />
+                                                                        <ScrollBar orientation='horizontal' />
                                                                     </ScrollArea>
                                                                 </div>
                                                             </div>
@@ -1012,6 +1019,7 @@ export default function ItemsPage() {
                                                                 <TableHead className="w-10"></TableHead>
                                                             </TableRow>
                                                         </TableHeader>
+
                                                         <TableBody>
                                                             {filteredSelectedSupplies.length > 0 ? (
                                                                 filteredSelectedSupplies.map((s) => (

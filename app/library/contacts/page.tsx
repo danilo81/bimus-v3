@@ -11,7 +11,8 @@ import {
 } from '../../../components/ui/table';
 import {
     Card,
-    CardContent
+    CardContent,
+    CardDescription
 } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -541,6 +542,7 @@ export default function ContactsPage() {
                                         </span>
                                     </div>
                                 </div>
+                                <DialogDescription />
                             </DialogHeader>
 
                             <Tabs defaultValue="info" className="flex-1 flex flex-col overflow-hidden">
@@ -669,6 +671,7 @@ export default function ContactsPage() {
                                         </span>
                                     </div>
                                 </div>
+                                <DialogDescription />
                             </DialogHeader>
 
                             <Tabs defaultValue="info" className="flex-1 flex flex-col overflow-hidden">

@@ -352,32 +352,14 @@ export default function ModelPage() {
                     >
                         <HardDrive className="mr-2 h-4 w-4" /> ASSETS
                     </TabsTrigger>
-                    <TabsTrigger
-                        value="items"
-                        className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-white rounded-none border-r border-white/10 text-xs md:text-sm font-black uppercase tracking-widest"
-                    >
-                        <Layers className="mr-2 h-4 w-4" /> ITEMS
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="insumos"
-                        className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-white rounded-none border-r border-white/10 text-xs md:text-sm font-black uppercase tracking-widest"
-                    >
-                        <Package className="mr-2 h-4 w-4" /> INSUMOS
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="activos"
-                        className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-white rounded-none text-xs md:text-sm font-black uppercase tracking-widest"
-                    >
-                        <Truck className="mr-2 h-4 w-4" /> ACTIVOS
-                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="modelo">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[75vh]">
                         {/* Sidebar de Versiones (Timeline) */}
                         <div className="lg:col-span-3 flex flex-col gap-4">
-                            <Card className="bg-[#0a0a0a] border-white/10 flex-1 overflow-hidden flex flex-col">
-                                <CardHeader className="p-4 bg-white/2 border-b border-white/5 space-y-4">
+                            <Card className="bg-card border-accent flex-1 overflow-hidden flex flex-col">
+                                <CardHeader className="p-4 bg-accent/2 border-b border-accent space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <GitBranch className="h-4 w-4 text-primary" />
@@ -386,10 +368,10 @@ export default function ModelPage() {
                                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsNewBranchOpen(true)}><Plus className="h-4 w-4" /></Button>
                                     </div>
                                     <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
-                                        <SelectTrigger className="h-10 bg-black border-white/10 uppercase font-black text-[10px]">
+                                        <SelectTrigger className="h-10 bg-card border-accent uppercase font-black text-[10px]">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-[#0a0a0a] text-white border-white/10">
+                                        <SelectContent className="bg-card text-primary border-accent">
                                             {branches.map(b => (
                                                 <SelectItem key={b.id} value={b.id} className="text-[10px] font-bold uppercase">{b.name} {b.isMain && '(MAIN)'}</SelectItem>
                                             ))}
@@ -397,7 +379,7 @@ export default function ModelPage() {
                                     </Select>
                                 </CardHeader>
 
-                                <CardHeader className="p-4 bg-white/2 border-b border-white/5 py-3">
+                                <CardHeader className="p-4 bg-accent border-b border-accent py-3">
                                     <div className="flex items-center gap-2">
                                         <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                                         <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Historial de Cambios</span>
@@ -406,15 +388,15 @@ export default function ModelPage() {
 
                                 <ScrollArea className="flex-1">
                                     <div className="p-4 space-y-6 relative">
-                                        <div className="absolute left-5.25 top-6 bottom-6 w-px bg-white/5" />
+                                        <div className="absolute left-5.25 top-6 bottom-6 w-px bg-accent" />
                                         {(activeBranch as any)?.versions?.length > 0 ? (
                                             (activeBranch as any).versions.map((v: BimVersion) => (
                                                 <div key={v.id} className="relative pl-8 group">
-                                                    <div className="absolute left-0 top-1 h-3 w-3 rounded-full border-2 border-[#0a0a0a] bg-primary/20 z-10 group-hover:bg-primary transition-colors" />
+                                                    <div className="absolute left-0 top-1 h-3 w-3 rounded-full border-2 border-accent bg-primary/20 z-10 group-hover:bg-primary transition-colors" />
                                                     <div className="space-y-1">
                                                         <div className="flex items-center justify-between">
-                                                            <span className="text-[10px] font-black text-white uppercase truncate">{v.message}</span>
-                                                            <Badge variant="outline" className="text-[7px] font-mono border-white/10 h-3.5 bg-white/5">{v.hash}</Badge>
+                                                            <span className="text-[10px] font-black text-primary uppercase truncate">{v.message}</span>
+                                                            <Badge variant="outline" className="text-[7px] font-mono border-accent h-3.5 bg-accent/5">{v.hash}</Badge>
                                                         </div>
                                                         <div className="flex items-center gap-2 text-[8px] font-black text-muted-foreground uppercase tracking-tighter">
                                                             <UserCircle className="h-2.5 w-2.5" /> {v.authorName} • {new Date(v.createdAt).toLocaleDateString()}
@@ -431,9 +413,9 @@ export default function ModelPage() {
                                     </div>
                                 </ScrollArea>
 
-                                <div className="p-4 bg-white/2 border-t border-white/5">
+                                <div className="p-4 bg-accent/2 border-t border-accent">
                                     <Button
-                                        className="w-full bg-primary text-black font-black text-[10px] uppercase h-10 tracking-widest shadow-xl"
+                                        className="w-full bg-primary text-background font-black text-[10px] uppercase h-10 tracking-widest shadow-xl"
                                         onClick={() => setIsNewCommitOpen(true)}
                                     >
                                         <GitCommit className="mr-2 h-4 w-4" /> Registrar Versión
@@ -444,8 +426,8 @@ export default function ModelPage() {
 
                         {/* Visor de Modelo */}
                         <div className="lg:col-span-9 flex flex-col">
-                            <Card className="bg-[#0a0a0a] border-white/10 flex-1 overflow-hidden flex flex-col">
-                                <CardHeader className="p-4 bg-white/2 border-b border-white/5 flex flex-row items-center justify-between">
+                            <Card className="bg-card border-accent flex-1 overflow-hidden flex flex-col">
+                                <CardHeader className="p-4 bg-accent/2 border-b border-accent flex flex-row items-center justify-between">
                                     <div>
                                         <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2">
                                             <Terminal className="h-4 w-4 text-primary" /> Terminal del Modelo BIM
@@ -453,15 +435,15 @@ export default function ModelPage() {
                                         <CardDescription className="text-[9px] font-bold uppercase text-muted-foreground mt-1">Viendo Rama: <span className="text-primary">{activeBranch?.name}</span></CardDescription>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase hover:bg-white/5"><Download className="h-3.5 w-3.5 mr-1.5" /> Descargar (.rvt)</Button>
-                                        <Button variant="outline" size="sm" className="h-8 border-white/10 text-[9px] font-black uppercase hover:bg-white/10"><Plus className="h-3.5 w-3.5 mr-1.5" /> Vincular IFC</Button>
+                                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase hover:bg-accent/10"><Download className="h-3.5 w-3.5 mr-1.5" /> Descargar (.rvt)</Button>
+                                        <Button variant="outline" size="sm" className="h-8 border-accent text-[9px] font-black uppercase hover:bg-accent/10"><Plus className="h-3.5 w-3.5 mr-1.5" /> Vincular IFC</Button>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="flex-1 p-0 relative group">
-                                    <BimViewer branchName={activeBranch?.name} />
+                                    {/* <BimViewer branchName={activeBranch?.name} /> */}
 
                                     <div className="absolute bottom-6 right-6 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <div className="bg-black/80 backdrop-blur-md border border-white/10 p-2 rounded-xl flex gap-1 shadow-2xl">
+                                        <div className="bg-accent/20 backdrop-blur-md border border-accent p-2 rounded-xl flex gap-1 shadow-2xl">
                                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/20 hover:text-primary"><LayoutGrid className="h-4 w-4" /></Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/20 hover:text-primary"><Layers className="h-4 w-4" /></Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/20 hover:text-primary"><Box className="h-4 w-4" /></Button>
@@ -474,13 +456,13 @@ export default function ModelPage() {
                 </TabsContent>
 
                 <TabsContent value="assets">
-                    <Card className="bg-[#0a0a0a] border-white/10 text-white overflow-hidden">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7 bg-white/2 border-b border-white/5">
+                    <Card className="bg-card border-accent text-primary overflow-hidden">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7 bg-accent/2 border-b border-accent">
                             <div>
                                 <CardTitle className="text-lg font-bold uppercase tracking-tight">Activos Digitales</CardTitle>
                                 <CardDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mt-1">Planos, nubes de puntos y modelos vinculados.</CardDescription>
                             </div>
-                            <Button size="sm" className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest h-9 px-6 shadow-xl shadow-primary/10">
+                            <Button size="sm" className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest h-9 px-6 ">
                                 <Plus className="mr-2 h-4 w-4" /> Subir Asset
                             </Button>
                         </CardHeader>

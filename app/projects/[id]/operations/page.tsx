@@ -847,69 +847,62 @@ export default function OperationsPage() {
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="ordendecambio">
-                    <Card className="bg-card border-accent text-primary overflow-hidden">
+                    <Card className="bg-card border-accent text-primary overflow-hidden p-6">
                         <CardHeader className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0 pb-7 border-b border-accent">
 
                             <div className="flex items-center gap-4">
                                 <div>
                                     <h1 className="text-2xl font-bold flex items-center gap-3 font-headline">
-                                        <Calculator className="h-7 w-7 text-primary" /> Órdenes de Cambio (Variation Orders)
+                                        <Calculator className="h-7 w-7 text-primary" /> Órdenes de Cambio
                                     </h1>
                                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Registros de modificaciones al contrato y alcance</p>
-                                </div>
-                                <div className="ml-auto">
-                                    <Button
-                                        className="bg-primary hover:bg-primary/80 text-background border border-primary font-black text-[10px] uppercase tracking-widest h-10 px-5"
-                                    >
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Nueva Orden
-                                    </Button>
                                 </div>
                             </div>
 
                         </CardHeader>
 
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md">
                                 <CardContent className="p-6">
-                                    <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Aprobadas (Scope)</h3>
+                                    <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Aprobadas</h3>
                                     <p className="text-2xl font-mono text-emerald-400 font-bold">$ {statsOC.totalApproved.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                                     <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">{statsOC.approvedCount} registros consolidados</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Sobrecostos Pendientes</h3>
                                     <p className="text-2xl font-mono text-amber-400 font-bold">$ {statsOC.totalPending.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                                     <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">{statsOC.pendingCount} órdenes por revisar</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Deducciones</h3>
                                     <p className="text-2xl font-mono text-destructive font-bold">$ {statsOC.totalDeductions.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                                     <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">{statsOC.deductionCount} registros aplicados</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-primary/10 border-primary/20 backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-primary mb-2">Impacto Neto</h3>
-                                    <p className="text-2xl font-mono text-white font-bold">$ {(statsOC.totalApproved + statsOC.totalDeductions).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                                    <p className="text-2xl font-mono text-primary font-bold">$ {(statsOC.totalApproved + statsOC.totalDeductions).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                                     <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">Balance actual del proyecto</p>
                                 </CardContent>
                             </Card>
                         </div>
 
-                        <Card className="bg-black/40 border-white/10 backdrop-blur-md overflow-hidden">
+                        <Card className="bg-card border-accent backdrop-blur-md overflow-hidden p-0">
                             <Table>
-                                <TableHeader className="bg-white/5">
-                                    <TableRow className="border-white/5 hover:bg-transparent">
-                                        <TableHead className="text-[10px] font-black uppercase py-4 px-6 text-white w-24">Código</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-white">Descripción / Motivo</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-white">Tipo</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-white">Estado</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-right text-white">Monto (Impacto)</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-center text-white w-32">Fecha</TableHead>
-                                        <TableHead className="w-12 text-center text-white"></TableHead>
+                                <TableHeader className="bg-accent">
+                                    <TableRow className="border-accent hover:bg-transparent">
+                                        <TableHead className="text-[10px] font-black uppercase py-4 px-6 text-primary w-24">Código</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-primary">Descripción / Motivo</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-primary">Tipo</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-primary">Estado</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-right text-primary">Monto (Impacto)</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-center text-primary w-32">Fecha</TableHead>
+                                        <TableHead className="w-12 text-center text-primary"></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -921,16 +914,16 @@ export default function OperationsPage() {
                                         </TableRow>
                                     ) : (
                                         changeOrders.map((orden: any) => (
-                                            <TableRow key={orden.id} className="border-white/5 hover:bg-white/5 transition-colors group cursor-pointer">
+                                            <TableRow key={orden.id} className="border-accent hover:bg-accent transition-colors group cursor-pointer">
                                                 <TableCell className="px-6 py-4">
                                                     <span className="font-mono text-xs font-bold text-primary">{orden.number || 'N/A'}</span>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className="text-xs font-bold text-white block">{orden.description}</span>
+                                                    <span className="text-xs font-bold text-primary block">{orden.description}</span>
                                                     <span className="text-[9px] text-muted-foreground uppercase tracking-widest mt-0.5 block">{orden.reason}</span>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-white/10 bg-white/5">
+                                                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-accent bg-accent/5">
                                                         {orden.type}
                                                     </Badge>
                                                 </TableCell>
@@ -2141,7 +2134,7 @@ export default function OperationsPage() {
                                                     const subtotal = entry.amount || 0;
                                                     const retention = subtotal * (retentionPercent / 100);
                                                     const neto = subtotal - retention;
-                                                    
+
                                                     return (
                                                         <TableRow key={idx} className="border-white/5 hover:bg-white/5 group">
                                                             <TableCell className="pl-6 py-4">

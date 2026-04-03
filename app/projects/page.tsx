@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { CreateProjectData, Project } from '../../types/types';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Plus, LayoutGrid, List, Search, MoreVertical, Loader2, Building2, ChevronRight, MapPin, Ruler, Trash2, ArrowRight, UserPlus, Calendar, Mail, Send } from 'lucide-react';
+import { Plus, LayoutGrid, List, Search, MoreVertical, Loader2, Building2, ChevronRight, MapPin, Ruler, Trash2, ArrowRight, UserPlus, Calendar, Mail, Send, X, Upload } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
@@ -109,6 +109,15 @@ function ProjectsPageContent() {
         fetchProjects();
     }, []);
 
+    const getProjectImageUrl = (url: string | null) => {
+        if (!url || url === '/project-img.png') return '/project-img.png';
+        if (url.startsWith('/')) return url;
+        // Si es una URL de R2 directa, la pasamos por el proxy para evitar CORS/Status 0
+        const match = url.match(/https:\/\/pub-[a-z0-9]+\.r2\.dev\/(.+)$/);
+        if (match) return `/api/r2/file/${match[1]}`;
+        return url;
+    };
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value } = e.target;
         setFormData(prev => ({ ...prev, [id]: value }));
@@ -131,7 +140,7 @@ function ProjectsPageContent() {
                 projectType: formData.projectType,
                 area: parseFloat(formData.area) || 0,
                 status: formData.status as any,
-                imageUrl: formData.imageUrl
+                imageUrl: formData.imageUrl || '/project-img.png'
             };
 
             const result = await createProject(dataToSubmit);
@@ -288,7 +297,7 @@ function ProjectsPageContent() {
                                 <TableCell className="py-4 px-6">
                                     <div className="flex items-center gap-4">
                                         <div className="h-10 w-10 rounded-lg overflow-hidden border border-accent shrink-0 bg-accent ">
-                                            <img src={project.imageUrl || '/project-img.png'} alt="" className="w-full h-full object-cover" />
+                                            <img src={getProjectImageUrl(project.imageUrl)} alt="" className="w-full h-full object-cover" />
                                         </div>
                                         <div className="flex flex-col">
                                             <div className="flex items-center gap-2">
@@ -329,7 +338,7 @@ function ProjectsPageContent() {
                                 <TableCell className="text-right px-6">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted/40 bg-transparent">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted/40 bg-transparent cursor-pointer">
                                                 <MoreVertical className="h-4 w-4 text-muted-foreground" />
                                             </Button>
                                         </DropdownMenuTrigger>
@@ -383,7 +392,7 @@ function ProjectsPageContent() {
                     <div className="relative aspect-video overflow-hidden border-b border-accent">
                         <Link href={`/projects/${project.id}`}>
                             <img
-                                src={project.imageUrl || '/project-img.png'}
+                                src={getProjectImageUrl(project.imageUrl)}
                                 alt={project.title}
                                 className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110 cursor-pointer"
                             />
@@ -512,7 +521,7 @@ function ProjectsPageContent() {
                                 <Plus className="mr-2 h-4 w-4" /> Nuevo Proyecto
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[600px] bg-card border-accent text-primary overflow-y-auto max-h-[90vh] p-0 shadow-2xl">
+                        <DialogContent className="w-[95vw] lg:max-w-[600px] bg-card border-accent text-primary overflow-y-auto max-h-[90vh] p-0 shadow-2xl">
                             <form onSubmit={handleSubmit} className="flex flex-col">
                                 <DialogHeader className="p-6 border-b border-accent">
                                     <div className="flex items-center gap-3">
@@ -579,6 +588,75 @@ function ProjectsPageContent() {
                                                 <SelectItem value="espera" className="text-[10px] font-black uppercase text-amber-400">EN ESPERA</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Imagen del Proyecto (Opcional)</Label>
+                                        <div className="flex flex-col gap-4">
+                                            {formData.imageUrl && formData.imageUrl !== '/project-img.png' && (
+                                                <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-accent">
+                                                    <img src={getProjectImageUrl(formData.imageUrl)} className="w-full h-full object-cover" />
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="destructive" 
+                                                        size="icon" 
+                                                        className="absolute top-2 right-2 h-8 w-8 rounded-full"
+                                                        onClick={() => setFormData(prev => ({ ...prev, imageUrl: '/project-img.png' }))}
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            )}
+                                            <div 
+                                                className="border-2 border-dashed border-accent rounded-xl p-8 flex flex-col items-center justify-center gap-3 hover:border-primary/50 transition-colors cursor-pointer bg-accent/20"
+                                                onClick={() => document.getElementById('project-image-upload')?.click()}
+                                            >
+                                                <Upload className="h-8 w-8 text-muted-foreground" />
+                                                <div className="text-center">
+                                                    <p className="text-[10px] font-black uppercase">Subir Foto de Portada</p>
+                                                    <p className="text-[9px] text-muted-foreground uppercase mt-1">Formatos: JPG, PNG o WEBP (Máx. 5MB)</p>
+                                                </div>
+                                                <input 
+                                                    id="project-image-upload" 
+                                                    type="file" 
+                                                    className="hidden" 
+                                                    accept="image/*"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (!file) return;
+                                                        
+                                                        setIsSubmitting(true);
+                                                        try {
+                                                            const response = await fetch('/api/r2/upload', {
+                                                                method: 'POST',
+                                                                headers: { 'Content-Type': 'application/json' },
+                                                                body: JSON.stringify({
+                                                                    filename: file.name,
+                                                                    contentType: file.type,
+                                                                    size: file.size,
+                                                                    isPublic: true
+                                                                })
+                                                            });
+                                                            
+                                                            const { presignedUrl, publicUrl } = await response.json();
+                                                            
+                                                            await fetch(presignedUrl, {
+                                                                method: 'PUT',
+                                                                body: file,
+                                                                headers: { 'Content-Type': file.type }
+                                                            });
+                                                            
+                                                            setFormData(prev => ({ ...prev, imageUrl: publicUrl }));
+                                                            toast({ title: "Imagen subida", description: "La portada del proyecto ha sido actualizada." });
+                                                        } catch (error) {
+                                                            toast({ title: "Error", description: "No se pudo subir la imagen.", variant: "destructive" });
+                                                        } finally {
+                                                            setIsSubmitting(false);
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <DialogFooter className="p-6 border-t border-accent gap-3 items-center ">

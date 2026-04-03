@@ -653,9 +653,9 @@ export function Navbar() {
                     isPublic: true
                 })
             });
-            
+
             if (!response.ok) throw new Error("Fallo al obtener URL de subida");
-            
+
             const { presignedUrl, publicUrl } = await response.json();
 
             // Upload to R2 using PUT
@@ -1502,9 +1502,9 @@ export function Navbar() {
                                         <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Imagen del Proyecto</Label>
                                         <div className="flex flex-col md:flex-row items-center gap-6 p-6 border border-accent rounded-2xl bg-secondary/30">
                                             <div className="relative h-40 w-full md:w-72 bg-card rounded-xl overflow-hidden border border-accent group">
-                                                <img 
-                                                    src={editProjectData.imageUrl || '/project-img.png'} 
-                                                    alt="Vista previa" 
+                                                <img
+                                                    src={editProjectData.imageUrl || '/project-img.png'}
+                                                    alt="Vista previa"
                                                     className="h-full w-full object-cover transition-transform group-hover:scale-105"
                                                 />
                                                 {isSubmittingProject && (
@@ -1536,8 +1536,8 @@ export function Navbar() {
                                                         {isSubmittingProject ? 'Subiendo...' : 'Seleccionar Imagen'}
                                                     </Label>
                                                     {editProjectData.imageUrl && (
-                                                        <Button 
-                                                            variant="ghost" 
+                                                        <Button
+                                                            variant="ghost"
                                                             size="sm"
                                                             onClick={() => handleProjectDataChange('imageUrl', '')}
                                                             className="text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10"
@@ -1720,12 +1720,13 @@ export function Navbar() {
                             </div>
                             <div className="flex-1 overflow-hidden">
                                 <TabsContent value="current" className="h-full m-0"><ScrollArea className="h-full p-6"><div className="space-y-3">{activeProject.team?.map((member: any) => (
-                                    <div key={member.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-accent group hover:border-primary/30 transition-all shadow-lg">
+                                    <div key={member.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-accent group hover:border-primary/30 transition-all ">
                                         <div className="flex items-center gap-4">
-                                            <Avatar className="h-10 w-10 border border-white/10"><AvatarFallback className="bg-card text-primary text-xs font-black uppercase">{member.name[0]}</AvatarFallback></Avatar>
-                                            <div className="flex flex-col">
-                                                <span className="text-xs font-bold text-white uppercase">{member.name}</span>
-                                                <Badge variant="outline" className="text-[7px] h-4 border-accent bg-card font-black uppercase mt-1">{member.type}</Badge>
+                                            <Avatar className="h-10 w-10 border border-accent ">
+                                                <AvatarFallback className="bg-card text-primary text-xs font-black uppercase">{member.name[0]}</AvatarFallback></Avatar>
+                                            <div className="flex flex-col gap-0 items-start">
+                                                <span className="text-[14px] font-bold text-primary uppercase">{member.name}</span>
+                                                <Badge variant="outline" className="text-[12px] h-6 border-accent bg-card font-bold uppercase mt-1 text-muted-foreground">{member.type}</Badge>
                                             </div>
                                         </div>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => handleRemoveTeamMember(member.id)} disabled={isSubmittingProject}><Trash2 className="h-4 w-4" /></Button>
@@ -1735,14 +1736,14 @@ export function Navbar() {
                                     <div className="p-6 border-b border-accent bg-card space-y-4">
                                         <div className="relative">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input placeholder="BUSCAR EN EL DIRECTORIO..." className="pl-10 h-11 bg-white/5 border-white/10 text-[10px] font-bold uppercase tracking-widest" value={teamSearchTerm} onChange={(e) => setTeamSearchTerm(e.target.value)} />
+                                            <Input placeholder="BUSCAR EN EL DIRECTORIO..." className="pl-10 h-11 bg-card border-accent text-[10px] font-bold uppercase tracking-widest" value={teamSearchTerm} onChange={(e) => setTeamSearchTerm(e.target.value)} />
                                         </div>
                                     </div>
                                     <ScrollArea className="flex-1 p-6">
                                         <div className="space-y-3">{isFetchingLibrary ? <div className="flex flex-col items-center justify-center py-20 opacity-20 gap-3"><Loader2 className="h-8 w-8 animate-spin" /><p className="text-[10px] font-black uppercase tracking-widest">Consultando Directorio...</p></div> : filteredLibraryContacts.map((contact) => (
-                                            <div key={contact.id} className="flex items-center justify-between p-4 rounded-xl bg-white/2 border border-white/5 hover:bg-white/5 transition-all group">
-                                                <div className="flex items-center gap-4"><Avatar className="h-10 w-10 border border-white/10 opacity-60 group-hover:opacity-100 transition-opacity"><AvatarFallback className="text-[10px] font-black uppercase">{contact.name[0]}</AvatarFallback></Avatar><div className="flex flex-col"><span className="text-xs font-bold text-white uppercase">{contact.name}</span><span className="text-[8px] text-muted-foreground uppercase font-black tracking-widest mt-1">{contact.type}</span></div></div>
-                                                <Button size="sm" className="h-8 bg-secondary hover:bg-primary/90 text-primary hover:text-black font-black text-[9px] uppercase tracking-widest px-4 rounded-lg cursor-pointer" onClick={() => handleAddTeamMember(contact.id)} disabled={isSubmittingProject}><Plus className="h-3 w-3 mr-1.5" /> Adicionar</Button>
+                                            <div key={contact.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-accent hover:bg-accent/5 transition-all group">
+                                                <div className="flex items-center gap-4"><Avatar className="h-10 w-10 border border-accent opacity-60 group-hover:opacity-100 transition-opacity"><AvatarFallback className="text-[10px] font-black uppercase">{contact.name[0]}</AvatarFallback></Avatar><div className="flex flex-col"><span className="text-xs font-bold text-primary uppercase">{contact.name}</span><span className="text-[8px] text-muted-foreground uppercase font-black tracking-widest mt-1">{contact.type}</span></div></div>
+                                                <Button size="sm" className="h-8 bg-secondary hover:bg-primary/90 text-primary hover:text-primary font-black text-[9px] uppercase tracking-widest px-4 rounded-lg cursor-pointer" onClick={() => handleAddTeamMember(contact.id)} disabled={isSubmittingProject}><Plus className="h-3 w-3 mr-1.5" /> Adicionar</Button>
                                             </div>
                                         ))}</div>
                                     </ScrollArea>
@@ -1769,13 +1770,13 @@ export function Navbar() {
                                                     value={inviteEmail}
                                                     onChange={(e) => setInviteEmail(e.target.value)}
                                                     placeholder="ejemplo@correo.com"
-                                                    className="h-12 bg-white/5 border-white/10 font-mono text-sm"
+                                                    className="h-12 bg-card border-accent font-mono text-sm"
                                                 />
                                             </div>
                                             <Button
                                                 onClick={handleInviteSubmit}
                                                 disabled={isSubmittingProject || !inviteEmail}
-                                                className="w-full bg-primary text-black font-black uppercase text-[11px] h-12 tracking-widest shadow-xl shadow-primary/20 cursor-pointer"
+                                                className="w-full bg-primary text-background font-black uppercase text-[11px] h-12 tracking-widest  cursor-pointer"
                                             >
                                                 {isSubmittingProject ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                                                 Enviar Invitación de Colaboración
@@ -1785,7 +1786,7 @@ export function Navbar() {
                                 </TabsContent>
                             </div>
                         </Tabs>
-                        <DialogFooter className="p-4 border-t border-white/5 bg-black shrink-0"><Button variant="ghost" onClick={() => setIsTeamOpen(false)} className="w-full text-[9px] font-black uppercase tracking-[0.2em] h-10 hover:bg-white/5 cursor-pointer">Cerrar Terminal de Equipo</Button></DialogFooter>
+                        <DialogFooter className="p-4 border-t border-accent bg-card shrink-0"><Button variant="ghost" onClick={() => setIsTeamOpen(false)} className="w-full text-[9px] font-black uppercase tracking-[0.2em] h-10 hover:bg-accent cursor-pointer">Cerrar Terminal de Equipo</Button></DialogFooter>
                     </DialogContent>
                 </Dialog>
             )}

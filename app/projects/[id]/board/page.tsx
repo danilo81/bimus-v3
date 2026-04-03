@@ -639,7 +639,7 @@ export default function BimDocumentationPage() {
                                     return (
                                         <div key={topicId} className={topicId === selectedTopicId ? "w-full block h-full" : "w-full hidden h-full"}>
                                             <EditorRich
-                                                className="min-h-[calc(100vh-270px)] h-full w-full"
+                                                className="min-h-[calc(100vh-270px)] h-full w-full bg-card"
                                                 initialContent={topic.content || undefined}
                                                 onChange={(json) => updateDraft(topicId, { content: json })}
                                             />
