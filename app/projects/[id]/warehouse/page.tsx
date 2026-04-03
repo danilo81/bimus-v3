@@ -9,7 +9,9 @@ import {
     getPurchaseOrders,
     createWarehouseEntry,
     createWarehouseExit,
-    getProjectById
+    getProjectById,
+    getProjectAssets,
+    unassignAssetFromProject
 } from '@/actions';
 import {
     Package,
@@ -24,7 +26,13 @@ import {
     Activity,
     Printer,
     ChevronDown,
-    AlertCircle
+    AlertCircle,
+    Wrench,
+    Tag,
+    CalendarDays,
+    DollarSign,
+    MapPin,
+    Unlink
 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent } from '../../../../components/ui/card';
@@ -68,6 +76,7 @@ export default function ProjectWarehousePage() {
     const [stock, setStock] = useState<Record<string, any>>({});
     const [movements, setMovements] = useState<any[]>([]);
     const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
+    const [fixedAssets, setFixedAssets] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('stock');
 
@@ -93,17 +102,21 @@ export default function ProjectWarehousePage() {
 
         setIsLoading(true);
         try {
-            const [proj, stockData, movs, pos] = await Promise.all([
+            const [proj, stockData, movs, pos, assets] = await Promise.all([
                 getProjectById(cleanId),
                 getWarehouseStock(cleanId),
                 getProjectWarehouseMovements(cleanId),
-                getPurchaseOrders(cleanId)
+                getPurchaseOrders(cleanId),
+                getProjectAssets(cleanId)
             ]);
             setProject(proj);
             setStock(stockData);
             setMovements(movs);
             if (pos.success) {
                 setPurchaseOrders(pos.orders);
+            }
+            if (assets.success) {
+                setFixedAssets(assets.assets);
             }
         } catch (error) {
             console.error(error);
@@ -145,6 +158,22 @@ export default function ProjectWarehousePage() {
     }, [project, stock, searchTerm]);
 
     // --- Print Handlers ---
+
+    const handleUnassignAsset = async (assetId: string, assetName: string) => {
+        if (!project) return;
+        if (!confirm(`¿Desasignar "${assetName}" del proyecto? El activo volverá al inventario general como disponible.`)) return;
+        try {
+            const res = await unassignAssetFromProject(assetId, project.id);
+            if (res.success) {
+                toast({ title: 'Activo desasignado', description: `"${assetName}" fue devuelto al inventario general.` });
+                setFixedAssets(prev => prev.filter(a => a.id !== assetId));
+            } else {
+                toast({ title: 'Error', description: res.error, variant: 'destructive' });
+            }
+        } catch (e: any) {
+            toast({ title: 'Error', description: e.message, variant: 'destructive' });
+        }
+    };
     const handlePrintStock = () => {
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
@@ -455,6 +484,12 @@ export default function ProjectWarehousePage() {
                     <TabsTrigger value="history" className="text-[10px] font-black uppercase tracking-widest px-8 h-full data-[state=active]:bg-card data-[state=active]:text-black">
                         <History className="h-3.5 w-3.5 mr-2" /> Historial de Movimientos
                     </TabsTrigger>
+                    <TabsTrigger value="assets" className="text-[10px] font-black uppercase tracking-widest px-8 h-full data-[state=active]:bg-card data-[state=active]:text-black">
+                        <Wrench className="h-3.5 w-3.5 mr-2" /> Activos Fijos
+                        {fixedAssets.length > 0 && (
+                            <span className="ml-2 bg-primary text-background text-[9px] font-black rounded-full px-1.5 py-0.5">{fixedAssets.length}</span>
+                        )}
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="stock" className="space-y-6">
@@ -610,6 +645,126 @@ export default function ProjectWarehousePage() {
                         <div className="flex flex-col items-center justify-center py-40 border border-dashed border-white/5 rounded-3xl opacity-20">
                             <History className="h-16 w-16 mb-4" />
                             <p className="text-[10px] font-black uppercase tracking-[0.3em]">No se registran movimientos logísticos en esta obra.</p>
+                        </div>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="assets" className="space-y-6">
+                    <div className="flex items-center justify-between gap-4 bg-card p-4 rounded-2xl border border-accent">
+                        <div>
+                            <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                <Wrench className="h-4 w-4 text-primary" /> Activos Fijos Asignados al Proyecto
+                            </h2>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
+                                Equipos, herramientas y bienes de capital asignados a esta obra
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-2xl font-black font-mono text-primary">{fixedAssets.length}</p>
+                            <p className="text-[9px] text-muted-foreground uppercase tracking-widest">activos registrados</p>
+                        </div>
+                    </div>
+
+                    {fixedAssets.length > 0 ? (
+                        <Card className="bg-card border-accent overflow-hidden p-0 gap-0">
+                            <CardContent className="p-0">
+                                <Table>
+                                    <TableHeader className="bg-accent">
+                                        <TableRow className="border-accent hover:bg-transparent">
+                                            <TableHead className="py-5 px-8 text-[10px] font-black uppercase tracking-widest">Activo / Equipo</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase">Código</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase">Marca / Modelo</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase text-center">Estado</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase text-right">Valor de Compra</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase text-center">Fecha Adquisición</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase text-center">Ubicación</TableHead>
+                                            <TableHead className="w-14 text-center"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {fixedAssets.map((asset) => {
+                                            const statusConfig: Record<string, { label: string; cls: string }> = {
+                                                disponible: { label: 'Disponible', cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' },
+                                                en_uso:     { label: 'En Uso',     cls: 'bg-blue-500/15 text-blue-400 border-blue-500/20' },
+                                                mantenimiento: { label: 'Mantenimiento', cls: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
+                                                baja:       { label: 'Baja',       cls: 'bg-red-500/15 text-red-400 border-red-500/20' },
+                                            };
+                                            const sc = statusConfig[asset.status] ?? { label: asset.status, cls: 'bg-accent text-primary border-accent' };
+                                            return (
+                                                <TableRow key={asset.id} className="border-accent hover:bg-accent/30 transition-colors group">
+                                                    <TableCell className="py-5 px-8">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-primary/10 rounded-xl border border-primary/20 shrink-0">
+                                                                <Wrench className="h-4 w-4 text-primary" />
+                                                            </div>
+                                                            <span className="text-sm font-black uppercase tracking-tight text-primary">{asset.name}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Tag className="h-3 w-3 text-muted-foreground" />
+                                                            <span className="font-mono text-xs font-bold text-muted-foreground">{asset.code}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className="text-xs text-primary font-semibold">
+                                                            {[asset.brand, asset.model].filter(Boolean).join(' · ') || <span className="text-muted-foreground italic">—</span>}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge variant="outline" className={cn('text-[9px] font-black uppercase tracking-widest border', sc.cls)}>
+                                                            {sc.label}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <DollarSign className="h-3 w-3 text-muted-foreground" />
+                                                            <span className="font-mono text-sm font-bold text-primary">
+                                                                {asset.purchasePrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div className="flex items-center justify-center gap-1.5">
+                                                            <CalendarDays className="h-3 w-3 text-muted-foreground" />
+                                                            <span className="font-mono text-[10px] text-muted-foreground">
+                                                                {new Date(asset.purchaseDate).toLocaleDateString('es-ES')}
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {asset.location ? (
+                                                            <div className="flex items-center justify-center gap-1">
+                                                                <MapPin className="h-3 w-3 text-muted-foreground" />
+                                                                <span className="text-[10px] text-muted-foreground font-semibold">{asset.location}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-muted-foreground/30 text-[10px]">—</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-center pr-4">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-amber-400 hover:bg-amber-400/10 opacity-0 group-hover:opacity-100 transition-all"
+                                                            title="Desasignar del proyecto"
+                                                            onClick={() => handleUnassignAsset(asset.id, asset.name)}
+                                                        >
+                                                            <Unlink className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-40 border border-dashed border-accent rounded-3xl opacity-20">
+                            <Wrench className="h-16 w-16 mb-4" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em]">No hay activos fijos asignados a este proyecto.</p>
+                            <p className="text-[9px] uppercase tracking-widest mt-2 opacity-60">Asigna activos desde la Biblioteca → Activos Fijos</p>
                         </div>
                     )}
                 </TabsContent>

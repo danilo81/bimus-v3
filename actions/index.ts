@@ -32,6 +32,7 @@ export * from "@/actions/projects/createBimVersion";
 export * from "@/actions/projects/createProject";
 export * from "@/actions/projects/createProjectChangeOrder";
 export * from "@/actions/projects/updateProjectChangeOrder";
+export * from "@/actions/projects/deleteProjectChangeOrder";
 export * from "@/actions/projects/createSiteLodEntry";
 export * from "@/actions/projects/updateSiteLogEntry";
 export * from "@/actions/projects/deleteSiteLogEntry";

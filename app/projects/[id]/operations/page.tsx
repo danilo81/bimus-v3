@@ -18,6 +18,7 @@ import {
     updateInspectionRecord,
     deleteInspectionRecord,
     updateProjectChangeOrder,
+    deleteProjectChangeOrder,
     getProjectPayrolls,
     createPayroll,
     updatePayroll,
@@ -143,6 +144,36 @@ export default function OperationsPage() {
             toast({ title: "Error", variant: "destructive" });
         }
     };
+
+    // Change Order Delete state
+    const [isDeleteOCConfirmOpen, setIsDeleteOCConfirmOpen] = useState(false);
+    const [ocToDelete, setOcToDelete] = useState<any | null>(null);
+    const [isDeletingOC, setIsDeletingOC] = useState(false);
+
+    const handleConfirmDeleteOC = async () => {
+        if (!ocToDelete) return;
+        setIsDeletingOC(true);
+        try {
+            const res = await deleteProjectChangeOrder(ocToDelete.id);
+            if (res.success) {
+                toast({ title: "Orden de Cambio Eliminada", description: `${ocToDelete.number} ha sido eliminada correctamente.` });
+                setProject((prev: any) => ({
+                    ...prev,
+                    changeOrders: prev.changeOrders.filter((oc: any) => oc.id !== ocToDelete.id)
+                }));
+                setIsDeleteOCConfirmOpen(false);
+                setOcToDelete(null);
+            } else {
+                toast({ title: "No se puede eliminar", description: res.error, variant: "destructive" });
+                setIsDeleteOCConfirmOpen(false);
+            }
+        } catch (e: any) {
+            toast({ title: "Error", description: e.message, variant: "destructive" });
+        } finally {
+            setIsDeletingOC(false);
+        }
+    };
+
     const [isBalanceOpen, setIsBalanceOpen] = useState(false);
     const [isWarehouseEntryOpen, setIsWarehouseEntryOpen] = useState(false);
     const [isStockOpen, setIsStockOpen] = useState(false);
@@ -963,8 +994,18 @@ export default function OperationsPage() {
                                                                 Aprobar
                                                             </Button>
                                                         )}
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground group-hover:text-white transition-colors">
-                                                            <Info className="h-4 w-4" />
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setOcToDelete(orden);
+                                                                setIsDeleteOCConfirmOpen(true);
+                                                            }}
+                                                            title={orden.status === 'Aprobada' ? 'No se puede eliminar una OC aprobada' : 'Eliminar Orden de Cambio'}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </div>
                                                 </TableCell>
@@ -977,6 +1018,57 @@ export default function OperationsPage() {
 
                     </Card>
                 </TabsContent>
+
+                {/* ===== DELETE CHANGE ORDER CONFIRMATION DIALOG ===== */}
+                <Dialog open={isDeleteOCConfirmOpen} onOpenChange={(open) => { if (!isDeletingOC) { setIsDeleteOCConfirmOpen(open); if (!open) setOcToDelete(null); }}}>
+                    <DialogContent className="bg-card border-accent text-primary max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                                <Trash2 className="h-5 w-5 text-destructive" />
+                                Eliminar Orden de Cambio
+                            </DialogTitle>
+                            <DialogDescription className="text-muted-foreground text-sm pt-2">
+                                {ocToDelete?.status === 'Aprobada' ? (
+                                    <span className="text-amber-400 font-semibold">
+                                        ⚠️ Esta orden de cambio ya fue <strong>Aprobada</strong> e impactó el presupuesto del proyecto. No es posible eliminarla directamente. Para revertir su efecto, crea una Deducción con el mismo monto.
+                                    </span>
+                                ) : (
+                                    <>
+                                        ¿Estás seguro de que deseas eliminar la orden de cambio <strong className="text-primary">{ocToDelete?.number}</strong>?
+                                        <br /><br />
+                                        <span className="text-muted-foreground text-xs">
+                                            Motivo: {ocToDelete?.description} — Monto: ${Math.abs(ocToDelete?.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                        </span>
+                                        <br /><br />
+                                        Esta acción no se puede deshacer.
+                                    </>
+                                )}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter className="gap-2 pt-2">
+                            <Button
+                                variant="outline"
+                                className="border-accent"
+                                onClick={() => { setIsDeleteOCConfirmOpen(false); setOcToDelete(null); }}
+                                disabled={isDeletingOC}
+                            >
+                                Cancelar
+                            </Button>
+                            {ocToDelete?.status !== 'Aprobada' && (
+                                <Button
+                                    variant="destructive"
+                                    onClick={handleConfirmDeleteOC}
+                                    disabled={isDeletingOC}
+                                    className="font-black text-[10px] uppercase tracking-widest"
+                                >
+                                    {isDeletingOC ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                                    {isDeletingOC ? 'Eliminando...' : 'Confirmar Eliminación'}
+                                </Button>
+                            )}
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
                 <TabsContent value="inspecciones">
                     <div className="flex flex-col min-h-screen text-primary p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
                         <div className="flex items-center gap-4">

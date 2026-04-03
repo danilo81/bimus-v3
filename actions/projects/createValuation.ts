@@ -2,6 +2,12 @@
 
 import prisma from "../../lib/prisma";
 import { revalidatePath } from "next/cache";
+import { cookies } from 'next/headers';
+
+async function getAuthUserId() {
+    const cookieStore = await cookies();
+    return cookieStore.get('userId')?.value;
+}
 
 interface ValuationItemInput {
     projectItemId: string;
@@ -38,6 +44,9 @@ export async function createValuation(data: CreateValuationData) {
     }
 
     try {
+        const userId = await getAuthUserId();
+        if (!userId) throw new Error("No autorizado");
+
         const result = await prisma.$transaction(async (tx) => {
             // 1. Get the next valuation number for this project
             const count = await tx.valuation.count({
@@ -70,6 +79,17 @@ export async function createValuation(data: CreateValuationData) {
                     items: true
                 }
             });
+
+            // Registrar en bitácora
+            await tx.siteLog.create({
+                data: {
+                    projectId,
+                    authorId: userId,
+                    type: 'info',
+                    content: `PLANILLA DE AVANCE: Generada ${valuationNumber} - ${description}. Total: ${valuation.totalAmount.toLocaleString('es-ES')} BOB.`,
+                    date: new Date()
+                }
+            }).catch(() => null);
 
             // 3. Update ProjectItem progress ONLY if requested (usually for on-the-fly certifications)
             if (updateProgress) {

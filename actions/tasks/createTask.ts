@@ -41,6 +41,20 @@ export async function createTask(data: {
                 userId: userId,
             }
         });
+
+        // REGISTRAR EN BITÁCORA DEL PROYECTO
+        if (data.projectId) {
+            await prisma.siteLog.create({
+                data: {
+                    projectId: data.projectId,
+                    authorId: userId,
+                    type: 'info',
+                    content: `NUEVA TAREA: Se ha creado la tarea "${data.title}" asignada a ${data.assignee || 'Sin asignar'}.`,
+                    date: new Date()
+                }
+            }).catch(() => null);
+        }
+
         revalidatePath('/tasks');
         revalidatePath(`/projects/${data.projectId}/tasks`);
         return { success: true, task };

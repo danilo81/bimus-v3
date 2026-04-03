@@ -1,9 +1,14 @@
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Project } from '@/types/types';
-import { getProjectById } from '@/actions';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import {
+    getProjectById,
+    getProjectDocuments,
+    registerDocument,
+    deleteDocument,
+    getMyProjectPermissions
+} from '@/actions';
 import {
     Folder,
     FileText,
@@ -14,15 +19,20 @@ import {
     Trash2,
     Upload,
     ChevronRight,
-    FolderPlus,
     Grid,
     List,
     FileSearch,
-    ArrowUpCircle
+    Loader2,
+    FilePlus2,
+    ExternalLink,
+    ShieldAlert,
+    User,
+    Calendar
 } from 'lucide-react';
 import { Button, buttonVariants } from '../../../../components/ui/button';
 import { Input } from '../../../../components/ui/input';
 import { Card, CardContent } from '../../../../components/ui/card';
+import { Badge } from '../../../../components/ui/badge';
 import { cn } from '../../../../lib/utils';
 import {
     Dialog,
@@ -31,213 +41,359 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger
 } from '../../../../components/ui/dialog';
-import { Label } from '../../../../components/ui/label';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger
 } from '../../../../components/ui/dropdown-menu';
 import { useToast } from '../../../../hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../../components/ui/table';
+import { useAuth } from '../../../../hooks/use-auth';
+import { Progress } from '../../../../components/ui/progress';
 
-interface DocItem {
-    id: string;
-    name: string;
-    type: 'folder' | 'file';
-    size?: string;
-    updatedAt: string;
-    parentId: string | null;
+// Allowed MIME types and their display labels
+const ALLOWED_TYPES: Record<string, { ext: string; color: string; icon: string }> = {
+    'application/pdf':                          { ext: 'PDF',   color: 'text-red-400',    icon: '📄' },
+    'application/vnd.dwg':                      { ext: 'DWG',   color: 'text-blue-400',   icon: '📐' },
+    'image/vnd.dwg':                            { ext: 'DWG',   color: 'text-blue-400',   icon: '📐' },
+    'application/acad':                         { ext: 'DWG',   color: 'text-blue-400',   icon: '📐' },
+    'image/x-dwg':                              { ext: 'DWG',   color: 'text-blue-400',   icon: '📐' },
+    'application/dxf':                          { ext: 'DXF',   color: 'text-blue-300',   icon: '📐' },
+    'image/vnd.dxf':                            { ext: 'DXF',   color: 'text-blue-300',   icon: '📐' },
+    'application/msword':                       { ext: 'DOC',   color: 'text-indigo-400', icon: '📝' },
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { ext: 'DOCX', color: 'text-indigo-400', icon: '📝' },
+    'application/vnd.ms-excel':                 { ext: 'XLS',   color: 'text-emerald-400',icon: '📊' },
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { ext: 'XLSX', color: 'text-emerald-400', icon: '📊' },
+    'image/jpeg':                               { ext: 'JPG',   color: 'text-amber-400',  icon: '🖼️' },
+    'image/png':                                { ext: 'PNG',   color: 'text-amber-400',  icon: '🖼️' },
+};
+
+function getFileTypeMeta(mimeType: string, filename?: string) {
+    if (ALLOWED_TYPES[mimeType]) return ALLOWED_TYPES[mimeType];
+    // Fallback by extension
+    const ext = filename?.split('.').pop()?.toUpperCase() || 'FILE';
+    return { ext, color: 'text-muted-foreground', icon: '📄' };
 }
 
-const initialItems: DocItem[] = [
-    { id: '1', name: 'Planos Estructurales', type: 'folder', updatedAt: '2024-03-15', parentId: null },
-    { id: '2', name: 'Presupuestos', type: 'folder', updatedAt: '2024-03-12', parentId: null },
-    { id: '3', name: 'Contrato_Fase_1.pdf', type: 'file', size: '2.4 MB', updatedAt: '2024-03-10', parentId: null },
-    { id: '4', name: 'Plano_Cimentacion.pdf', type: 'file', size: '15.8 MB', updatedAt: '2024-03-18', parentId: '1' },
-];
+function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
 
 export default function DocumentationPage() {
     const params = useParams();
     const router = useRouter();
-    const [project, setProject] = useState<Project | null>(null);
-    const [items, setItems] = useState<DocItem[]>(initialItems);
-    const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-    const [searchTerm, setSearchTerm] = useState('');
-    const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
-    const [newFolderName, setNewFolderName] = useState('');
+    const { user } = useAuth();
     const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const fetchProject = useCallback(async () => {
-        if (params.id) {
-            try {
-                const found = await getProjectById(params.id as string);
-                if (found) setProject(found as any);
-            } catch (error) {
-                console.error("Error loading project:", error);
-                toast({
-                    title: "Error",
-                    description: "No se pudo cargar el proyecto.",
-                    variant: "destructive"
-                });
+    const [project, setProject] = useState<any | null>(null);
+    const [documents, setDocuments] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [typeFilter, setTypeFilter] = useState<string>('all');
+
+    // Upload state
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadingFileName, setUploadingFileName] = useState('');
+
+    // Delete confirm
+    const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Permissions
+    const [canEdit, setCanEdit] = useState(false);
+    const [isAuthor, setIsAuthor] = useState(false);
+
+    const projectId = Array.isArray(params?.id) ? params.id[0] : params?.id as string;
+
+    const fetchData = useCallback(async () => {
+        if (!projectId || projectId === 'undefined') return;
+        setIsLoading(true);
+        try {
+            const [proj, docs, perms] = await Promise.all([
+                getProjectById(projectId),
+                getProjectDocuments(projectId),
+                getMyProjectPermissions(projectId)
+            ]);
+            setProject(proj);
+            setDocuments(docs || []);
+            setIsAuthor(perms.isAuthor);
+            // Author can always edit; collaborator needs docs permission with edit:true
+            if (perms.isAuthor) {
+                setCanEdit(true);
+            } else {
+                const docsPerms = (perms.permissions as any)?.documentation || (perms.permissions as any)?.docs || null;
+                setCanEdit(docsPerms?.edit === true);
             }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsLoading(false);
         }
-    }, [params.id, toast]);
+    }, [projectId]);
 
-    useEffect(() => {
-        fetchProject();
-    }, [fetchProject]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
-    const currentItems = useMemo(() => {
-        return items.filter(item =>
-            item.parentId === currentFolderId &&
-            item.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [items, currentFolderId, searchTerm]);
-
-    const breadcrumbs = useMemo(() => {
-        const path: { id: string | null, name: string }[] = [{ id: null, name: 'Mi Unidad' }];
-        if (currentFolderId) {
-            const folder = items.find(i => i.id === currentFolderId);
-            if (folder) path.push({ id: folder.id, name: folder.name });
-        }
-        return path;
-    }, [currentFolderId, items]);
-
-    const handleCreateFolder = () => {
-        if (!newFolderName.trim()) return;
-        const newFolder: DocItem = {
-            id: Math.random().toString(36).substr(2, 9),
-            name: newFolderName,
-            type: 'folder',
-            updatedAt: new Date().toISOString().split('T')[0],
-            parentId: currentFolderId
-        };
-        setItems(prev => [...prev, newFolder]);
-        setIsFolderDialogOpen(false);
-        setNewFolderName('');
-        toast({ title: "Carpeta creada", description: `La carpeta "${newFolderName}" ha sido creada.` });
-    };
-
-    const handleDeleteItem = (id: string) => {
-        setItems(prev => prev.filter(i => i.id !== id));
-        toast({ title: "Eliminado", description: "El elemento ha sido eliminado.", variant: "destructive" });
-    };
-
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // -------------------------------------------------------
+    // Upload to R2 via presigned URL, then register in DB
+    // -------------------------------------------------------
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            const newFile: DocItem = {
-                id: Math.random().toString(36).substr(2, 9),
+        if (!file || !projectId) return;
+
+        if (file.size > 50 * 1024 * 1024) {
+            toast({ title: 'Archivo muy grande', description: 'El tamaño máximo es 50 MB.', variant: 'destructive' });
+            return;
+        }
+
+        setIsUploading(true);
+        setUploadProgress(5);
+        setUploadingFileName(file.name);
+
+        try {
+            // 1. Request presigned URL from API
+            const presignRes = await fetch('/api/r2/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filename: file.name,
+                    contentType: file.type || 'application/octet-stream',
+                    size: file.size
+                })
+            });
+
+            if (!presignRes.ok) {
+                const err = await presignRes.json();
+                throw new Error(err.error || 'No se pudo obtener la URL de subida');
+            }
+
+            const { presignedUrl, publicUrl } = await presignRes.json();
+            setUploadProgress(20);
+
+            // 2. PUT file directly to R2
+            await new Promise<void>((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('PUT', presignedUrl, true);
+                xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+                xhr.upload.onprogress = (ev) => {
+                    if (ev.lengthComputable) {
+                        const pct = 20 + Math.round((ev.loaded / ev.total) * 70);
+                        setUploadProgress(pct);
+                    }
+                };
+                xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)));
+                xhr.onerror = () => reject(new Error('Error de red durante la subida'));
+                xhr.send(file);
+            });
+
+            setUploadProgress(95);
+
+            // 3. Register in DB
+            const typeMeta = getFileTypeMeta(file.type, file.name);
+            const reg = await registerDocument({
+                projectId,
                 name: file.name,
-                type: 'file',
-                size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-                updatedAt: new Date().toISOString().split('T')[0],
-                parentId: currentFolderId
-            };
-            setItems(prev => [...prev, newFile]);
-            toast({ title: "Archivo subido", description: `Se ha subido el archivo ${file.name}.` });
+                type: typeMeta.ext,
+                size: formatFileSize(file.size),
+                url: publicUrl,
+                source: 'local'
+            });
+
+            if (!reg.success) throw new Error(reg.error);
+
+            setUploadProgress(100);
+            toast({ title: 'Archivo subido', description: `"${file.name}" ha sido registrado correctamente.` });
+            setDocuments(prev => [reg.document, ...prev]);
+        } catch (err: any) {
+            toast({ title: 'Error al subir', description: err.message, variant: 'destructive' });
+        } finally {
+            setIsUploading(false);
+            setUploadProgress(0);
+            setUploadingFileName('');
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
-    if (!project) {
-        return <div className="p-8 text-center text-muted-foreground">Cargando documentación...</div>;
+    // -------------------------------------------------------
+    // Delete
+    // -------------------------------------------------------
+    const handleConfirmDelete = async () => {
+        if (!deleteTarget || !projectId) return;
+        setIsDeleting(true);
+        try {
+            const res = await deleteDocument(deleteTarget.id, projectId);
+            if (res.success) {
+                toast({ title: 'Archivo eliminado', description: `"${deleteTarget.name}" fue eliminado.` });
+                setDocuments(prev => prev.filter(d => d.id !== deleteTarget.id));
+                setDeleteTarget(null);
+            } else {
+                toast({ title: 'Error', description: res.error, variant: 'destructive' });
+            }
+        } catch (e: any) {
+            toast({ title: 'Error', description: e.message, variant: 'destructive' });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    // -------------------------------------------------------
+    // Filtered list
+    // -------------------------------------------------------
+    const filteredDocs = useMemo(() => {
+        return documents.filter(d => {
+            const matchSearch = d.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchType = typeFilter === 'all' || d.type === typeFilter;
+            return matchSearch && matchType;
+        });
+    }, [documents, searchTerm, typeFilter]);
+
+    const docTypes = useMemo(() => {
+        const types = new Set(documents.map(d => d.type));
+        return Array.from(types);
+    }, [documents]);
+
+    const totalSizeBytes = useMemo(() => {
+        return documents.reduce((acc, d) => {
+            const match = d.size?.match(/^([\d.]+)\s*(B|KB|MB|GB)/i);
+            if (!match) return acc;
+            const val = parseFloat(match[1]);
+            const unit = match[2].toUpperCase();
+            const multipliers: Record<string, number> = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 };
+            return acc + val * (multipliers[unit] || 1);
+        }, 0);
+    }, [documents]);
+
+    // -------------------------------------------------------
+    // Loading / empty states
+    // -------------------------------------------------------
+    if (isLoading) {
+        return (
+            <div className="flex flex-col min-h-screen items-center justify-center gap-4 h-[50vh]">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cargando expediente...</p>
+            </div>
+        );
     }
 
+    if (!project) return null;
+
     return (
-        <div className="flex flex-col min-h-screen  text-primary p-4 md:p-8 space-y-6">
+        <div className="flex flex-col min-h-screen text-primary p-4 md:p-8 space-y-6">
+
+            {/* ── Header ── */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className='bg-card w-fit'>
-                        <h1 className="text-2xl font-bold flex items-center gap-3 font-headline">
-                            <Folder className="h-7 w-7 text-primary" /> Documentación: {project.title}
-                        </h1>
-                        <p className=" text-muted-foreground  mt-1">Gestión centralizada de archivos y planos</p>
-                    </div>
+                <div>
+                    <h1 className="text-2xl font-bold flex items-center gap-3 font-headline uppercase tracking-tight">
+                        <Folder className="h-7 w-7 text-primary" /> Documentación: {project.title}
+                    </h1>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
+                        Expediente técnico y archivos del proyecto
+                    </p>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <Dialog open={isFolderDialogOpen} onOpenChange={setIsFolderDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="default" size="sm" className="border-accent bg-primary hover:bg-primary text-background cursor-pointer hover:text-background">
-                                <FolderPlus className="mr-2 h-4 w-4" /> Nueva Carpeta
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="bg-card border-accent text-primary">
-                            <DialogHeader>
-                                <DialogTitle>Nueva Carpeta</DialogTitle>
-                                <DialogDescription className="text-muted-foreground text-xs">Asigne un nombre a la nueva carpeta.</DialogDescription>
-                            </DialogHeader>
-                            <div className="py-4 ">
-                                <Label htmlFor="folderName" className="text-xs uppercase font-bold text-muted-foreground mb-2 block">Nombre</Label>
-                                <Input
-                                    id="folderName"
-                                    value={newFolderName}
-                                    onChange={(e) => setNewFolderName(e.target.value)}
-                                    className="bg-card border-accent h-11"
-                                    placeholder="Ej: Planos Arquitectura"
-                                    autoFocus
-                                />
-                            </div>
-                            <DialogFooter>
-                                <Button variant="ghost" onClick={() => setIsFolderDialogOpen(false)}>Cancelar</Button>
-                                <Button onClick={handleCreateFolder} className="bg-primary hover:bg-primary/90 text-white">Crear</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                    {/* Permission badge */}
+                    {!canEdit && (
+                        <Badge variant="outline" className="border-amber-500/30 text-amber-400 text-[9px] font-black uppercase tracking-widest gap-1">
+                            <ShieldAlert className="h-3 w-3" /> Solo Visualización
+                        </Badge>
+                    )}
 
-                    <div className="relative">
-                        <input
-                            type="file"
-                            id="file-upload"
-                            className="hidden"
-                            accept=".pdf"
-                            onChange={handleFileUpload}
-                        />
-                        <label
-                            htmlFor="file-upload"
-                            className={cn(
-                                buttonVariants({ size: "sm" }),
-                                "bg-primary hover:bg-primary/80 text-background cursor-pointer h-8"
-                            )}
-                        >
-                            <Upload className="mr-2 h-4 w-4" /> Subir PDF
-                        </label>
-                    </div>
+                    {/* Upload button — only if user can edit */}
+                    {canEdit && (
+                        <>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                id="doc-upload"
+                                className="hidden"
+                                accept=".pdf,.dwg,.dxf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                onChange={handleFileSelect}
+                                disabled={isUploading}
+                            />
+                            <label
+                                htmlFor="doc-upload"
+                                className={cn(
+                                    buttonVariants({ size: 'sm' }),
+                                    'bg-primary hover:bg-primary/80 text-background font-black text-[10px] uppercase tracking-widest cursor-pointer px-5 h-10',
+                                    isUploading && 'opacity-50 pointer-events-none'
+                                )}
+                            >
+                                {isUploading
+                                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    : <Upload className="mr-2 h-4 w-4" />
+                                }
+                                {isUploading ? 'Subiendo...' : 'Subir Archivo'}
+                            </label>
+                        </>
+                    )}
                 </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card p-4 rounded-xl border border-accent ">
-                <div className="flex items-center gap-4 flex-1 w-full">
-                    <div className="relative flex-1 max-w-md">
+            {/* ── Upload progress bar ── */}
+            {isUploading && (
+                <div className="bg-card border border-accent rounded-xl p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            <span className="text-xs font-bold truncate max-w-xs">{uploadingFileName}</span>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-primary">{uploadProgress}%</span>
+                    </div>
+                    <Progress value={uploadProgress} className="h-1.5" />
+                </div>
+            )}
+
+            {/* ── Toolbar ── */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card p-4 rounded-xl border border-accent">
+                <div className="flex items-center gap-3 flex-1 w-full">
+                    <div className="relative flex-1 max-w-sm">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Buscar archivos o carpetas..."
+                            placeholder="Buscar documento..."
                             className="pl-10 bg-card border-accent h-9 text-xs"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-
-                    <nav className="flex items-center gap-2 text-xs font-medium text-muted-foreground overflow-x-auto whitespace-nowrap">
-                        {breadcrumbs.map((crumb, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                                {idx > 0 && <ChevronRight className="h-3 w-3" />}
-                                <button
-                                    onClick={() => setCurrentFolderId(crumb.id)}
-                                    className={`hover:text-white transition-colors ${crumb.id === currentFolderId ? 'text-white font-bold' : ''}`}
-                                >
-                                    {crumb.name}
-                                </button>
-                            </div>
+                    {/* Type filter pills */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <button
+                            onClick={() => setTypeFilter('all')}
+                            className={cn(
+                                'px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full border transition-colors',
+                                typeFilter === 'all'
+                                    ? 'bg-primary text-background border-primary'
+                                    : 'border-accent text-muted-foreground hover:border-primary/50'
+                            )}
+                        >
+                            Todos
+                        </button>
+                        {docTypes.map(t => (
+                            <button
+                                key={t}
+                                onClick={() => setTypeFilter(t)}
+                                className={cn(
+                                    'px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full border transition-colors',
+                                    typeFilter === t
+                                        ? 'bg-primary text-background border-primary'
+                                        : 'border-accent text-muted-foreground hover:border-primary/50'
+                                )}
+                            >
+                                {t}
+                            </button>
                         ))}
-                    </nav>
+                    </div>
                 </div>
 
-                <div className="flex items-center border border-white/10 rounded-lg overflow-hidden h-9">
+                <div className="flex items-center border border-accent rounded-lg overflow-hidden h-9 shrink-0">
                     <Button
                         variant="ghost"
                         size="icon"
@@ -257,15 +413,44 @@ export default function DocumentationPage() {
                 </div>
             </div>
 
+            {/* ── Content ── */}
             <div className="flex-1">
-                {currentItems.length > 0 ? (
-                    viewMode === 'grid' ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
-                            {currentItems.map((item) => (
+                {filteredDocs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-40 text-muted-foreground gap-4 bg-card border border-dashed border-accent rounded-3xl">
+                        <FileSearch className="h-16 w-16 opacity-10" />
+                        <div className="text-center">
+                            <p className="text-sm font-bold uppercase tracking-widest">
+                                {documents.length === 0 ? 'Sin documentos' : 'Sin resultados'}
+                            </p>
+                            <p className="text-xs mt-1 opacity-60">
+                                {documents.length === 0
+                                    ? canEdit
+                                        ? 'Sube el primer archivo del proyecto usando el botón "Subir Archivo".'
+                                        : 'El autor del proyecto aún no ha subido documentos.'
+                                    : 'Ningún archivo coincide con tu búsqueda.'}
+                            </p>
+                        </div>
+                        {canEdit && documents.length === 0 && (
+                            <label
+                                htmlFor="doc-upload"
+                                className={cn(
+                                    buttonVariants({ size: 'sm' }),
+                                    'bg-primary text-background cursor-pointer font-black text-[10px] uppercase tracking-widest mt-2'
+                                )}
+                            >
+                                <FilePlus2 className="mr-2 h-4 w-4" /> Subir primer archivo
+                            </label>
+                        )}
+                    </div>
+                ) : viewMode === 'grid' ? (
+                    /* ── Grid View ── */
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        {filteredDocs.map((doc) => {
+                            const meta = getFileTypeMeta(doc.type, doc.name);
+                            return (
                                 <Card
-                                    key={item.id}
-                                    className="bg-black/40 border-white/5 hover:border-primary/50 transition-all group cursor-pointer"
-                                    onDoubleClick={() => item.type === 'folder' && setCurrentFolderId(item.id)}
+                                    key={doc.id}
+                                    className="bg-card border-accent hover:border-primary/50 transition-all group cursor-pointer"
                                 >
                                     <CardContent className="p-4 flex flex-col items-center gap-3 relative">
                                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -275,123 +460,186 @@ export default function DocumentationPage() {
                                                         <MoreVertical className="h-3 w-3" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="bg-[#111] border-white/10 text-white">
-                                                    <DropdownMenuItem className="text-xs flex items-center gap-2">
-                                                        <Download className="h-3 w-3" /> Descargar
+                                                <DropdownMenuContent align="end" className="bg-card border-accent text-primary">
+                                                    <DropdownMenuItem asChild className="text-xs flex items-center gap-2 cursor-pointer">
+                                                        <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                                                            <ExternalLink className="h-3 w-3" /> Ver / Descargar
+                                                        </a>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        className="text-xs text-destructive flex items-center gap-2 focus:bg-destructive/10"
-                                                        onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
-                                                    >
-                                                        <Trash2 className="h-3 w-3" /> Eliminar
-                                                    </DropdownMenuItem>
+                                                    {canEdit && (
+                                                        <>
+                                                            <DropdownMenuSeparator className="bg-accent" />
+                                                            <DropdownMenuItem
+                                                                className="text-xs text-destructive flex items-center gap-2 focus:bg-destructive/10 cursor-pointer"
+                                                                onClick={() => setDeleteTarget(doc)}
+                                                            >
+                                                                <Trash2 className="h-3 w-3" /> Eliminar
+                                                            </DropdownMenuItem>
+                                                        </>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
 
-                                        <div className="p-4 bg-white/5 rounded-2xl group-hover:bg-primary/10 transition-colors">
-                                            {item.type === 'folder' ? (
-                                                <Folder className="h-10 w-10 text-primary" />
-                                            ) : (
-                                                <FileText className="h-10 w-10 text-red-500" />
-                                            )}
+                                        <div className="p-4 bg-accent rounded-2xl group-hover:bg-primary/10 transition-colors">
+                                            <FileText className={cn('h-10 w-10', meta.color)} />
                                         </div>
 
                                         <div className="text-center w-full">
-                                            <p className="text-[11px] font-bold truncate px-1" title={item.name}>{item.name}</p>
-                                            {item.type === 'file' && <p className="text-[8px] text-muted-foreground uppercase">{item.size}</p>}
+                                            <p className="text-[11px] font-bold truncate px-1" title={doc.name}>{doc.name}</p>
+                                            <Badge variant="outline" className={cn('text-[8px] font-black uppercase border-accent mt-1', meta.color)}>
+                                                {meta.ext}
+                                            </Badge>
+                                            {doc.size && <p className="text-[8px] text-muted-foreground mt-0.5">{doc.size}</p>}
                                         </div>
                                     </CardContent>
                                 </Card>
-                            ))}
-                        </div>
-                    ) : (
-                        <Card className="bg-black/40 border-white/5 text-white overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader className="bg-white/5">
-                                        <TableRow className="hover:bg-transparent border-white/10">
-                                            <TableHead className="text-[10px] font-bold uppercase">Nombre</TableHead>
-                                            <TableHead className="text-[10px] font-bold uppercase">Modificado</TableHead>
-                                            <TableHead className="text-[10px] font-bold uppercase">Tamaño</TableHead>
-                                            <TableHead className="text-right text-[10px] font-bold uppercase">Acciones</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {currentItems.map((item) => (
-                                            <TableRow
-                                                key={item.id}
-                                                className="hover:bg-white/5 border-white/5 transition-colors cursor-pointer"
-                                                onDoubleClick={() => item.type === 'folder' && setCurrentFolderId(item.id)}
-                                            >
-                                                <TableCell>
-                                                    <div className="flex items-center gap-3">
-                                                        {item.type === 'folder' ? (
-                                                            <Folder className="h-4 w-4 text-primary" />
-                                                        ) : (
-                                                            <FileText className="h-4 w-4 text-red-500" />
-                                                        )}
-                                                        <span className="text-xs font-medium">{item.name}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-xs text-muted-foreground font-mono">{item.updatedAt}</TableCell>
-                                                <TableCell className="text-xs text-muted-foreground font-mono">{item.size || '-'}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                                                                <MoreVertical className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="bg-[#111] border-white/10 text-white">
-                                                            <DropdownMenuItem className="text-xs flex items-center gap-2">
-                                                                <Download className="h-3 w-3" /> Descargar
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem
-                                                                className="text-xs text-destructive flex items-center gap-2 focus:bg-destructive/10"
-                                                                onClick={() => handleDeleteItem(item.id)}
-                                                            >
-                                                                <Trash2 className="h-3 w-3" /> Eliminar
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </Card>
-                    )
-                ) : (
-                    <div className="flex flex-col items-center justify-center py-40 text-muted-foreground gap-4 bg-card border border-dashed border-accent rounded-3xl">
-                        <FileSearch className="h-16 w-16 opacity-10" />
-                        <div className="text-center">
-                            <p className="text-sm font-bold uppercase tracking-widest">Carpeta Vacía</p>
-                            <p className="text-xs mt-1">Arrastra archivos aquí o usa el botón de subir.</p>
-                        </div>
+                            );
+                        })}
                     </div>
+                ) : (
+                    /* ── List View ── */
+                    <Card className="bg-card border-accent overflow-hidden p-0">
+                        <Table>
+                            <TableHeader className="bg-accent">
+                                <TableRow className="border-accent hover:bg-transparent">
+                                    <TableHead className="py-5 px-6 text-[10px] font-black uppercase tracking-widest">Nombre del Documento</TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase">Tipo</TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase">Tamaño</TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase">Subido por</TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase text-center">Fecha</TableHead>
+                                    <TableHead className="w-14 text-center"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredDocs.map((doc) => {
+                                    const meta = getFileTypeMeta(doc.type, doc.name);
+                                    return (
+                                        <TableRow
+                                            key={doc.id}
+                                            className="border-accent hover:bg-accent/30 transition-colors group cursor-pointer"
+                                            onClick={() => window.open(doc.url, '_blank')}
+                                        >
+                                            <TableCell className="py-5 px-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-accent rounded-xl shrink-0">
+                                                        <FileText className={cn('h-4 w-4', meta.color)} />
+                                                    </div>
+                                                    <span className="text-sm font-bold text-primary truncate max-w-xs">{doc.name}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline" className={cn('text-[9px] font-black uppercase border-accent', meta.color)}>
+                                                    {meta.ext}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-xs font-mono text-muted-foreground">{doc.size || '—'}</TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-1.5">
+                                                    <User className="h-3 w-3 text-muted-foreground" />
+                                                    <span className="text-[10px] font-semibold text-muted-foreground">{doc.authorName || '—'}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <Calendar className="h-3 w-3 text-muted-foreground" />
+                                                    <span className="font-mono text-[10px] text-muted-foreground">
+                                                        {new Date(doc.createdAt).toLocaleDateString('es-ES')}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center pr-4" onClick={(e) => e.stopPropagation()}>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="bg-card border-accent text-primary">
+                                                        <DropdownMenuItem asChild className="text-xs flex items-center gap-2 cursor-pointer">
+                                                            <a href={doc.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                                                                <ExternalLink className="h-3 w-3" /> Ver / Descargar
+                                                            </a>
+                                                        </DropdownMenuItem>
+                                                        {canEdit && (
+                                                            <>
+                                                                <DropdownMenuSeparator className="bg-accent" />
+                                                                <DropdownMenuItem
+                                                                    className="text-xs text-destructive flex items-center gap-2 focus:bg-destructive/10 cursor-pointer"
+                                                                    onClick={() => setDeleteTarget(doc)}
+                                                                >
+                                                                    <Trash2 className="h-3 w-3" /> Eliminar
+                                                                </DropdownMenuItem>
+                                                            </>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </Card>
                 )}
             </div>
 
+            {/* ── Footer stats ── */}
             <div className="flex items-center justify-between p-4 rounded-xl bg-card border border-accent">
-                <div className="flex items-center gap-4 flex-1">
-                    <ArrowUpCircle className="h-5 w-5 text-primary animate-pulse" />
-                    <div className="flex-1 max-w-xs">
-                        <div className="flex justify-between text-[10px] font-bold uppercase mb-1.5">
-                            <span>Almacenamiento Utilizado</span>
-                            <span className="text-primary">2.4 GB / 10 GB</span>
-                        </div>
-                        <div className="w-full bg-card h-1 rounded-full overflow-hidden">
-                            <div className="bg-primary h-full w-[24%]" />
-                        </div>
+                <div className="flex items-center gap-6 text-[10px] font-black uppercase text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                        <FileText className="h-3.5 w-3.5 text-primary" />
+                        <span>{documents.length} documento{documents.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span>Total: {formatFileSize(totalSizeBytes)}</span>
                     </div>
                 </div>
-                <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-6">
-                    <span>{items.filter(i => i.type === 'folder').length} Carpetas</span>
-                    <span>{items.filter(i => i.type === 'file').length} Archivos</span>
+                <div className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-2">
+                    {isAuthor ? (
+                        <Badge variant="outline" className="border-primary/20 text-primary text-[9px] font-black uppercase tracking-widest">Autor del Proyecto</Badge>
+                    ) : canEdit ? (
+                        <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 text-[9px] font-black uppercase tracking-widest">Colaborador — Edición</Badge>
+                    ) : (
+                        <Badge variant="outline" className="border-amber-500/30 text-amber-400 text-[9px] font-black uppercase tracking-widest">Colaborador — Lectura</Badge>
+                    )}
                 </div>
             </div>
+
+            {/* ── Delete Confirm Dialog ── */}
+            <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!isDeleting) { if (!open) setDeleteTarget(null); } }}>
+                <DialogContent className="bg-card border-accent text-primary max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                            <Trash2 className="h-5 w-5 text-destructive" /> Eliminar Documento
+                        </DialogTitle>
+                        <DialogDescription className="text-muted-foreground text-sm pt-2">
+                            ¿Estás seguro de que deseas eliminar <strong className="text-primary">"{deleteTarget?.name}"</strong>?
+                            <br /><br />
+                            El archivo será eliminado del registro del proyecto. Esta acción no se puede deshacer.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 pt-2">
+                        <Button
+                            variant="outline"
+                            className="border-accent"
+                            onClick={() => setDeleteTarget(null)}
+                            disabled={isDeleting}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleConfirmDelete}
+                            disabled={isDeleting}
+                            className="font-black text-[10px] uppercase tracking-widest"
+                        >
+                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                            {isDeleting ? 'Eliminando...' : 'Confirmar Eliminación'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

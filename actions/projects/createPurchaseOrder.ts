@@ -115,12 +115,16 @@ export async function createPurchaseOrder(data: {
                 }
             }
 
+            const supplier = supplierId && supplierId !== 'none' 
+                ? await tx.contact.findUnique({ where: { id: supplierId }, select: { name: true } })
+                : null;
+
             await tx.siteLog.create({
                 data: {
                     projectId,
                     authorId: userId,
                     type: 'info',
-                    content: `Se generó la Orden de Compra N° ${newOrder.number}.${totalOvercost > 0 ? ' Se detectó un sobrecosto y se generó una Orden de Cambio pendiente.' : ''}`,
+                    content: `ORDEN DE COMPRA: Generada N° ${newOrder.number} para ${supplier?.name || "Sin proveedor asignado"} por ${newOrder.totalAmount.toLocaleString('es-ES')} BOB.${totalOvercost > 0 ? ' Se detectó UN SOBRECOSTO y se generó una Orden de Cambio pendiente.' : ''}`,
                     date: new Date()
                 }
             });

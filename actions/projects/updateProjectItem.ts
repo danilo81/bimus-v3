@@ -2,6 +2,12 @@
 
 import prisma from "../../lib/prisma";
 import { revalidatePath } from "next/cache";
+import { cookies } from 'next/headers';
+
+async function getAuthUserId() {
+    const cookieStore = await cookies();
+    return cookieStore.get('userId')?.value;
+}
 
 export async function updateProjectItem(
     projectId: string,
@@ -17,6 +23,9 @@ export async function updateProjectItem(
     }
 ) {
     try {
+        const userId = await getAuthUserId();
+        if (!userId) return { success: false, error: "No autorizado" };
+
         await prisma.$transaction(async (tx) => {
             const updateData: any = {};
             if (data.quantity !== undefined) updateData.quantity = Number(data.quantity);
@@ -40,8 +49,41 @@ export async function updateProjectItem(
 
             const projectItem = await tx.projectItem.update({
                 where: { projectId_itemId: { projectId, itemId } },
-                data: updateData
+                data: updateData,
+                include: { item: true }
             });
+
+            // REGISTRAR EN BITÁCORA SI SE CAMBIÓ EL CÓMPUTO
+            if (data.quantity !== undefined) {
+                await tx.siteLog.create({
+                    data: {
+                        projectId,
+                        authorId: userId,
+                        type: 'info',
+                        content: `CÓMPUTO ACTUALIZADO: "${projectItem.item.description}" ahora es ${data.quantity} ${projectItem.item.unit || ''}.`,
+                        date: new Date()
+                    }
+                });
+            }
+
+            // REGISTRAR EN BITÁCORA SI SE MODIFICÓ EL CRONOGRAMA
+            const isScheduleMod = data.performance !== undefined || 
+                                 data.extraDays !== undefined || 
+                                 data.ganttStatus !== undefined || 
+                                 data.startDate !== undefined || 
+                                 data.predecessorId !== undefined;
+
+            if (isScheduleMod) {
+                await tx.siteLog.create({
+                    data: {
+                        projectId,
+                        authorId: userId,
+                        type: 'info',
+                        content: `CRONOGRAMA MODIFICADO: Ajuste de fechas/rendimiento en "${projectItem.item.description}".`,
+                        date: new Date()
+                    }
+                });
+            }
 
             if (data.levelQuantities && data.levelQuantities.length > 0) {
                 for (const lq of data.levelQuantities) {
@@ -53,6 +95,7 @@ export async function updateProjectItem(
                 }
             }
         });
+
         revalidatePath(`/projects/${projectId}`);
         revalidatePath(`/projects/${projectId}/construction`);
         return { success: true };

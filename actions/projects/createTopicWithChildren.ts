@@ -2,6 +2,12 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { cookies } from 'next/headers';
+
+async function getAuthUserId() {
+    const cookieStore = await cookies();
+    return cookieStore.get('userId')?.value;
+}
 
 export async function createTopicWithChildren(data: {
     documentId: string;
@@ -11,6 +17,9 @@ export async function createTopicWithChildren(data: {
     children: string[];
 }) {
     try {
+        const userId = await getAuthUserId();
+        if (!userId) throw new Error("No autorizado");
+
         if (!data.documentId) throw new Error("Document ID es requerido");
 
         const result = await prisma.$transaction(async (tx) => {
@@ -28,6 +37,17 @@ export async function createTopicWithChildren(data: {
                     content: ''
                 }
             });
+
+            // Registrar en bitácora
+            await tx.siteLog.create({
+                data: {
+                    projectId: data.projectId,
+                    authorId: userId,
+                    type: 'info',
+                    content: `SECCIÓN BIM CREADA: Se ha añadido "${data.title}" al documento técnico del proyecto.`,
+                    date: new Date()
+                }
+            }).catch(() => null);
 
             const validChildrenTitles = (data.children || []).filter(title => title.trim() !== '');
             if (validChildrenTitles.length > 0) {
@@ -49,6 +69,7 @@ export async function createTopicWithChildren(data: {
         });
 
         revalidatePath(`/projects/${data.projectId}/documentation`);
+        revalidatePath(`/projects/${data.projectId}/board`);
         return { success: true, topic: result };
     } catch (error: any) {
         console.error('Error creating topic with children:', error);

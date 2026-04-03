@@ -1,6 +1,13 @@
 'use server';
 
 import prisma from "../../lib/prisma";
+import { revalidatePath } from "next/cache";
+import { cookies } from 'next/headers';
+
+async function getAuthUserId() {
+    const cookieStore = await cookies();
+    return cookieStore.get('userId')?.value;
+}
 
 interface PayrollEntryInput {
     contactId: string;
@@ -25,6 +32,9 @@ export async function createPayroll(data: CreatePayrollData) {
     }
 
     try {
+        const userId = await getAuthUserId();
+        if (!userId) throw new Error("No autorizado");
+
         const result = await prisma.$transaction(async (tx) => {
             // 1. Create Payroll and linked Transaction
             const payroll = await tx.payroll.create({
@@ -59,9 +69,21 @@ export async function createPayroll(data: CreatePayrollData) {
                 }
             });
 
+            // Registrar en bitácora
+            await tx.siteLog.create({
+                data: {
+                    projectId,
+                    authorId: userId,
+                    type: 'info',
+                    content: `PLANILLA DE PERSONAL: Generada planilla por ${totalAmount.toLocaleString('es-ES')} BOB (${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}).`,
+                    date: new Date()
+                }
+            }).catch(() => null);
+
             return payroll;
         });
 
+        revalidatePath(`/projects/${projectId}/operations`);
         return { success: true, payroll: result };
     } catch (error: any) {
         console.error('Error creating payroll:', error);
