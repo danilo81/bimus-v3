@@ -11,7 +11,8 @@ import {
     Download,
     RefreshCw,
     Loader2,
-    Upload
+    Upload,
+    Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getStorageStats } from '@/actions';
+import { Progress } from '@/components/ui/progress';
 
 interface ModelAsset {
     id: string;
@@ -70,6 +73,7 @@ export default function ModelsLibraryPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+    const [storageStats, setStorageStats] = useState<any>(null);
     const hasMultipleOwners = assets.some((a) => !a.isOwner);
 
     const fetchAssets = async () => {
@@ -101,8 +105,14 @@ export default function ModelsLibraryPage() {
         }
     };
 
+    const fetchStats = async () => {
+        const res = await getStorageStats();
+        if (res.success) setStorageStats(res);
+    };
+
     useEffect(() => {
         fetchAssets();
+        fetchStats();
     }, []);
 
     const handleDelete = async (key: string, name: string) => {
@@ -121,6 +131,7 @@ export default function ModelsLibraryPage() {
             if (response.ok) {
                 toast.success("Modelo eliminado correctamente");
                 setAssets((prev) => prev.filter((a) => a.key !== key));
+                fetchStats();
             } else {
                 toast.error(data.error ?? "Error al eliminar el modelo");
             }
@@ -140,7 +151,10 @@ export default function ModelsLibraryPage() {
 
         if (newlyFinished.length > 0) {
             newlyFinished.forEach((f) => processedUploads.current.add(f.id));
-            setTimeout(() => fetchAssets(), 800);
+            setTimeout(() => {
+                fetchAssets();
+                fetchStats();
+            }, 800);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -151,7 +165,7 @@ export default function ModelsLibraryPage() {
 
     return (
         <div className="container mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-500 max-w-7xl">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-transparent border-none w-full">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card border-accent w-fit">
                 <div>
                     <h1 className="text-3xl font-bold font-headline flex items-center gap-3">
                         <Box className="h-8 w-8 text-primary" /> Modelos BIM
@@ -172,9 +186,37 @@ export default function ModelsLibraryPage() {
                 </div>
 
                 <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
-                    <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mr-2 hidden sm:inline-block">
-                        {assets.length} modelo{assets.length !== 1 ? "s" : ""}
-                    </span>
+                    {/* --- STORAGE STATS --- */}
+                    {storageStats && (
+                        <div className="rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4 shrink-0">
+                            <div className="flex-1 w-full space-y-1.5">
+                                <div className="flex justify-between items-end">
+                                    <p className="text-xs font-bold text-primary">
+                                        {formatBytes(storageStats.used)} / {formatBytes(storageStats.total)}
+                                        <span className="ml-2 text-muted-foreground opacity-50">({storageStats.percentage.toFixed(1)}%)</span>
+                                    </p>
+                                </div>
+                                <Progress
+                                    value={storageStats.percentage}
+                                    className={cn(
+                                        "h-2",
+                                        storageStats.percentage > 90 ? "bg-red-500/20" :
+                                            storageStats.percentage > 70 ? "bg-amber-500/20" : "bg-primary/20"
+                                    )}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {hasMultipleOwners && (
+                        <Badge
+                            variant="outline"
+                            className="flex items-center gap-1.5 text-amber-400 border-amber-400/30 bg-amber-400/5 px-3 py-1.5"
+                        >
+                            <Shield className="h-3.5 w-3.5" />
+                            Vista Administrador — todos los archivos
+                        </Badge>
+                    )}
                     <Button
                         onClick={() => fetchAssets()}
                         variant="outline"
@@ -182,8 +224,7 @@ export default function ModelsLibraryPage() {
                         disabled={isLoading}
                         className="h-10 px-4"
                     >
-                        <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
-                        Actualizar
+                        <RefreshCw className={cn("h-4 w-4 ", isLoading && "animate-spin")} />
                     </Button>
                     <Button
                         onClick={() => {

@@ -4,7 +4,19 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { BimTopic, BimTopicStatus } from '../../../../types/types';
-import { getBimDocument, upsertBimTopic, deleteBimTopic, applyBimTemplate, createTopicWithChildren, getProjectById, saveBimTemplateToCloud, applyCloudBimTemplate, getCloudBimTemplates } from '@/actions';
+import { 
+    getBimDocument, 
+    upsertBimTopic, 
+    deleteBimTopic, 
+    applyBimTemplate, 
+    createTopicWithChildren, 
+    getProjectById, 
+    saveBimTemplateToCloud, 
+    applyCloudBimTemplate, 
+    getCloudBimTemplates,
+    getProjectDocuments,
+    exportTopicToPDF
+} from '@/actions';
 import {
     Plus,
     Search,
@@ -17,7 +29,9 @@ import {
     LayoutTemplate,
     PlusCircle,
     Layers,
-    CloudUpload
+    CloudUpload,
+    FileDown,
+    FolderPlus
 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { Input } from '../../../../components/ui/input';
@@ -88,6 +102,13 @@ export default function BimDocumentationPage() {
 
     const [drafts, setDrafts] = useState<Record<string, { title: string, content: string, status: BimTopicStatus }>>({});
     const [visitedTopics, setVisitedTopics] = useState<Set<string>>(new Set());
+
+    // --- PDF Export States ---
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportTargetTopicId, setExportTargetTopicId] = useState<string | null>(null);
+    const [folders, setFolders] = useState<any[]>([]);
+    const [selectedFolder, setSelectedFolder] = useState("/");
+    const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => {
         if (selectedTopicId) {
@@ -431,6 +452,34 @@ export default function BimDocumentationPage() {
         },
     }
 
+    const fetchProjectFolders = async () => {
+        if (!projectId) return;
+        const docs = await getProjectDocuments(projectId);
+        const dirs = docs.filter(d => d.isFolder).map(d => d.folder === "/" ? `/${d.name}/` : `${d.folder}${d.name}/`);
+        setFolders(["/", ...dirs]);
+    };
+
+    const handleExportPDF = async () => {
+        if (!projectId || !exportTargetTopicId) return;
+        setIsExporting(true);
+        try {
+            const res = await exportTopicToPDF(projectId, exportTargetTopicId, selectedFolder);
+            if (res.success) {
+                toast({ 
+                    title: "PDF Generado", 
+                    description: `El archivo "${res.filename}" se ha guardado en ${selectedFolder}.` 
+                });
+                setIsExportModalOpen(false);
+            } else {
+                throw new Error(res.error);
+            }
+        } catch (error: any) {
+            toast({ title: "Error al exportar", description: error.message, variant: "destructive" });
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     /////////////////////////////
     if (!isMounted) return null;
 
@@ -623,6 +672,16 @@ export default function BimDocumentationPage() {
                                                 <DropdownMenuItem onClick={() => setIsSaveTemplateModalOpen(true)} className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg">
                                                     <Save className="h-3.5 w-3.5" /> Guardar como plantilla
                                                 </DropdownMenuItem>
+                                                <DropdownMenuItem 
+                                                    onClick={() => {
+                                                        setExportTargetTopicId(selectedTopic.id);
+                                                        setIsExportModalOpen(true);
+                                                        fetchProjectFolders();
+                                                    }} 
+                                                    className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg"
+                                                >
+                                                    <FileDown className="h-3.5 w-3.5" /> Guardar PDF
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleDelete(selectedTopic.id)} className="text-red-500 text-[10px] font-black uppercase flex items-center gap-2 focus:bg-red-500/10 cursor-pointer rounded-lg focus:text-destructive">
                                                     <Trash2 className="h-3.5 w-3.5 text-destructive" /> Eliminar Sección
                                                 </DropdownMenuItem>
@@ -773,6 +832,68 @@ export default function BimDocumentationPage() {
                         >
                             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                             Guardar Estructura Documental
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* --- PDF EXPORT MODAL --- */}
+            <Dialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>
+                <DialogContent className="sm:max-w-md bg-card border-accent text-primary">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold uppercase tracking-tight text-primary flex items-center gap-2">
+                            <FileDown className="h-5 w-5" /> Exportar a PDF
+                        </DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground">
+                            Selecciona la carpeta de destino en donde se guardará el documento.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="py-6 space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary px-1">Carpeta de Destino</Label>
+                            <Select value={selectedFolder} onValueChange={setSelectedFolder}>
+                                <SelectTrigger className="h-12 bg-background border-accent uppercase text-[10px] font-black rounded-xl px-4 w-full">
+                                    <div className="flex items-center gap-2">
+                                        <FolderPlus className="h-4 w-4 text-primary" />
+                                        <SelectValue />
+                                    </div>
+                                </SelectTrigger>
+                                <SelectContent className="bg-card text-primary border-accent w-full">
+                                    {folders.map(f => (
+                                        <SelectItem key={f} value={f} className="text-[10px] font-bold uppercase">
+                                            {f}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 space-y-2">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-primary/60">Nota de Exportación</p>
+                            <p className="text-[10px] font-bold leading-relaxed">
+                                El PDF incluirá esta sección maestro y todas sus sub-páginas técnicas asociadas. 
+                                Cada sección comenzará en una página nueva.
+                            </p>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-3">
+                        <Button 
+                            variant="ghost" 
+                            disabled={isExporting}
+                            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground h-11" 
+                            onClick={() => setIsExportModalOpen(false)}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button 
+                            disabled={isExporting} 
+                            onClick={handleExportPDF} 
+                            className="flex-1 font-black uppercase tracking-widest text-[10px] bg-primary h-11 text-background hover:bg-primary/90 rounded-xl shadow-lg shadow-primary/20"
+                        >
+                            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                            {isExporting ? 'Generando...' : 'Generar y Guardar'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

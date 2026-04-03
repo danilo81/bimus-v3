@@ -422,7 +422,7 @@ export default function SuppliesPage() {
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between  p-4 rounded-xl border border-muted/50 bg-card">
+            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between  p-4 rounded-xl border border-accent bg-card">
                 <div className="relative w-full lg:max-w-md bg-card">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input

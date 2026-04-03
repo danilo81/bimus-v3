@@ -9,9 +9,13 @@ interface Props {
 export async function GET(request: NextRequest, { params }: Props) {
     try {
         const { key } = await params;
+        const searchParams = request.nextUrl.searchParams;
+        const download = searchParams.get("download") === "true";
+        const filename = searchParams.get("filename") || "archivo";
+        
         const keyToFetch = decodeURIComponent(key);
 
-        if (!keyToFetch) {
+        if (!keyToFetch || keyToFetch === "undefined") {
             return NextResponse.json({ error: "File key is required" }, { status: 400 });
         }
 
@@ -47,8 +51,10 @@ export async function GET(request: NextRequest, { params }: Props) {
         if (response.ContentLength) {
             headers.set("Content-Length", response.ContentLength.toString());
         }
-        // Force inline display if it's common browser types, or download otherwise?
-        // For "visualizing", inline is better.
+        
+        if (download) {
+            headers.set("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+        }
 
         return new Response(response.Body as any, {
             status: 200,

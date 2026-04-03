@@ -116,7 +116,7 @@ export default function ProjectWarehousePage() {
                 setPurchaseOrders(pos.orders);
             }
             if (assets.success) {
-                setFixedAssets(assets.assets);
+                setFixedAssets(assets.assets || []);
             }
         } catch (error) {
             console.error(error);

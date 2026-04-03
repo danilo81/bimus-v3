@@ -31,7 +31,39 @@ export async function getContactDocumentUploadUrl(
     contentType: string,
     fileSize: number,
 ) {
-    await getCurrentUserId();
+    const userId = await getCurrentUserId();
+
+    // --- STORAGE LIMIT CHECK ---
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { storageLimit: true } as any
+    }) as any;
+
+    const limitStr = user?.storageLimit || '1GB';
+    let limitBytes = 1024 * 1024 * 1024;
+    const match = limitStr.match(/^(\d+(?:\.\d+)?)\s*([KMGT]B|[B])$/i);
+    if (match) {
+        const value = parseFloat(match[1]);
+        const unit = match[2].toUpperCase();
+        const multipliers: Record<string, number> = {
+            'B': 1, 'KB': 1024, 'MB': 1024 * 1024, 'GB': 1024 * 1024 * 1024, 'TB': 1024 * 1024 * 1024 * 1024
+        };
+        limitBytes = value * (multipliers[unit] || multipliers['GB']);
+    }
+
+    const libraryFilesSum = await prisma.libraryFile.aggregate({ where: { userId }, _sum: { size: true } });
+    const projectDocsSum = await (prisma.projectDocument.aggregate as any)({ where: { userId }, _sum: { size: true } }) as any;
+    const contactDocsSum = await (prisma.contactDocument.aggregate as any)({ 
+        where: { contact: { userId } }, 
+        _sum: { size: true } 
+    }) as any;
+
+    const totalUsed = (libraryFilesSum._sum.size || 0) + (projectDocsSum._sum.size || 0) + (contactDocsSum._sum.size || 0);
+
+    if (totalUsed + fileSize > limitBytes) {
+        throw new Error('Límite de almacenamiento cloud excedido (1GB)');
+    }
+    // ----------------------------
 
     const r2Key = `contacts/${contactId}/${uuidv4()}-${fileName}`;
 

@@ -12,6 +12,7 @@ model User {
   email                String              @unique
   password             String
   role                 String              @default("viewer")
+  storageLimit         String              @default("1GB")
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
   bimVersions          BimVersion[]
@@ -28,7 +29,7 @@ model User {
   warehouseMovements   WarehouseMovement[]
   purchaseOrders       PurchaseOrder[]
   libraryFiles         LibraryFile[]
-  libraryFiles         LibraryFile[]
+  projectDocuments     ProjectDocument[]
 }
 
 model Project {
@@ -495,11 +496,15 @@ model ProjectDocument {
   projectId  String
   name       String
   type       String
-  size       String
+  size       Int
   url        String
+  folder     String   @default("/")
+  isFolder   Boolean  @default(false)
   source     String   @default("local") // local, google_drive
   status     String   @default("uploaded")
   authorName String   @default("Usuario Bimus")
+  userId     String?
+  author     User?    @relation(fields: [userId], references: [id])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)

@@ -1308,6 +1308,15 @@ export function Navbar() {
                                                     <Label className="text-[10px] font-black uppercase tracking-widest text-primary">ID de Usuario</Label>
                                                     <Input defaultValue={user?.id} disabled className="h-12 bg-card border-accent font-mono text-[10px] opacity-30" />
                                                 </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                        <Globe className="h-3 w-3" /> Almacenamiento en la Nube
+                                                    </Label>
+                                                    <div className="h-12 bg-primary/5 border border-primary/20 rounded-md px-4 flex items-center justify-between">
+                                                        <span className="text-[11px] font-bold uppercase tracking-tight text-primary">{user?.storageLimit || '1GB'} (Límite Global)</span>
+                                                        <Badge variant="outline" className="border-primary/20 text-[9px] font-black">ACTIVO</Badge>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div className="pt-6 flex justify-end">
                                                 <Button className="bg-primary text-background font-black uppercase text-[10px] h-11 px-10 tracking-widest cursor-pointer">

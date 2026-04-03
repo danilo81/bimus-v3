@@ -5,9 +5,9 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import {
     getProjectById,
     getProjectDocuments,
-    registerDocument,
     deleteDocument,
-    getMyProjectPermissions
+    getMyProjectPermissions,
+    getStorageStats
 } from '@/actions';
 import {
     Folder,
@@ -53,6 +53,7 @@ import { useToast } from '../../../../hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../../components/ui/table';
 import { useAuth } from '../../../../hooks/use-auth';
 import { Progress } from '../../../../components/ui/progress';
+import { createProjectFolder } from '@/actions/projects/createProjectFolder';
 
 // Allowed MIME types and their display labels
 const ALLOWED_TYPES: Record<string, { ext: string; color: string; icon: string }> = {
@@ -98,10 +99,19 @@ export default function DocumentationPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [typeFilter, setTypeFilter] = useState<string>('all');
 
+    // Navigation and Hierarchy
+    const [currentFolder, setCurrentFolder] = useState("/");
+
+    // Folder Creation Modal
+    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
+    const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+
     // Upload state
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadingFileName, setUploadingFileName] = useState('');
+    const [storageStats, setStorageStats] = useState<any>(null);
 
     // Delete confirm
     const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
@@ -139,7 +149,15 @@ export default function DocumentationPage() {
         }
     }, [projectId]);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    const fetchStats = useCallback(async () => {
+        const res = await getStorageStats();
+        if (res.success) setStorageStats(res);
+    }, []);
+
+    useEffect(() => { 
+        fetchData(); 
+        fetchStats();
+    }, [fetchData, fetchStats]);
 
     // -------------------------------------------------------
     // Upload to R2 via presigned URL, then register in DB
@@ -158,14 +176,16 @@ export default function DocumentationPage() {
         setUploadingFileName(file.name);
 
         try {
-            // 1. Request presigned URL from API
             const presignRes = await fetch('/api/r2/upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     filename: file.name,
                     contentType: file.type || 'application/octet-stream',
-                    size: file.size
+                    size: file.size,
+                    libraryType: "project",
+                    projectId: projectId,
+                    folder: currentFolder
                 })
             });
 
@@ -174,7 +194,8 @@ export default function DocumentationPage() {
                 throw new Error(err.error || 'No se pudo obtener la URL de subida');
             }
 
-            const { presignedUrl, publicUrl } = await presignRes.json();
+            const resData = await presignRes.json();
+            const { presignedUrl, publicUrl, fileId } = resData;
             setUploadProgress(20);
 
             // 2. PUT file directly to R2
@@ -193,24 +214,12 @@ export default function DocumentationPage() {
                 xhr.send(file);
             });
 
-            setUploadProgress(95);
-
-            // 3. Register in DB
-            const typeMeta = getFileTypeMeta(file.type, file.name);
-            const reg = await registerDocument({
-                projectId,
-                name: file.name,
-                type: typeMeta.ext,
-                size: formatFileSize(file.size),
-                url: publicUrl,
-                source: 'local'
-            });
-
-            if (!reg.success) throw new Error(reg.error);
-
             setUploadProgress(100);
             toast({ title: 'Archivo subido', description: `"${file.name}" ha sido registrado correctamente.` });
-            setDocuments(prev => [reg.document, ...prev]);
+            
+            // Refresh list and stats
+            fetchData();
+            fetchStats();
         } catch (err: any) {
             toast({ title: 'Error al subir', description: err.message, variant: 'destructive' });
         } finally {
@@ -233,6 +242,7 @@ export default function DocumentationPage() {
                 toast({ title: 'Archivo eliminado', description: `"${deleteTarget.name}" fue eliminado.` });
                 setDocuments(prev => prev.filter(d => d.id !== deleteTarget.id));
                 setDeleteTarget(null);
+                fetchStats();
             } else {
                 toast({ title: 'Error', description: res.error, variant: 'destructive' });
             }
@@ -243,16 +253,84 @@ export default function DocumentationPage() {
         }
     };
 
+    const handleDownload = (url: string, filename: string) => {
+        try {
+            // Extract the R2 key from the public URL
+            let key = "";
+            const urlObj = new URL(url);
+            // pathname usually starts with /, so we remove it to get the key
+            key = urlObj.pathname.startsWith('/') ? urlObj.pathname.substring(1) : urlObj.pathname;
+            
+            if (!key || key === "undefined") {
+                throw new Error("Clave de archivo no encontrada");
+            }
+
+            // Route through our proxy API which handles CORS and adds Content-Disposition
+            const proxyUrl = `/api/r2/file/${encodeURIComponent(key)}?download=true&filename=${encodeURIComponent(filename)}`;
+            
+            // Simple navigation to the download endpoint triggers native browser download
+            window.location.href = proxyUrl;
+        } catch (err) {
+            console.error("Download redirection failed:", err);
+            // Absolute last resort fallback
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
+
+    const handleCreateFolder = async () => {
+        if (!newFolderName.trim() || !projectId) return;
+        setIsCreatingFolder(true);
+        try {
+            const res = await createProjectFolder(projectId, newFolderName.trim(), currentFolder);
+            if (res.success) {
+                toast({ title: 'Carpeta creada', description: `"${newFolderName}" ha sido creada.` });
+                setNewFolderName('');
+                setIsFolderModalOpen(false);
+                fetchData();
+            } else {
+                toast({ title: 'Error', description: res.error, variant: 'destructive' });
+            }
+        } catch (e: any) {
+            toast({ title: 'Error', description: e.message, variant: 'destructive' });
+        } finally {
+            setIsCreatingFolder(false);
+        }
+    };
+
+    const navigateToFolder = (folderPath: string) => {
+        setCurrentFolder(folderPath);
+        setSearchTerm('');
+    };
+
+    const breadcrumbs = useMemo(() => {
+        if (currentFolder === "/") return [{ name: "Raíz", path: "/" }];
+        const parts = currentFolder.split('/').filter(p => p);
+        const result = [{ name: "Raíz", path: "/" }];
+        let currentPath = "";
+        parts.forEach(p => {
+            currentPath += `/${p}`;
+            result.push({ name: p, path: `${currentPath}/` });
+        });
+        return result;
+    }, [currentFolder]);
+
     // -------------------------------------------------------
     // Filtered list
     // -------------------------------------------------------
     const filteredDocs = useMemo(() => {
         return documents.filter(d => {
+            const matchFolder = d.folder === currentFolder;
             const matchSearch = d.name.toLowerCase().includes(searchTerm.toLowerCase());
             const matchType = typeFilter === 'all' || d.type === typeFilter;
-            return matchSearch && matchType;
+            return matchFolder && matchSearch && matchType;
         });
-    }, [documents, searchTerm, typeFilter]);
+    }, [documents, searchTerm, typeFilter, currentFolder]);
 
     const docTypes = useMemo(() => {
         const types = new Set(documents.map(d => d.type));
@@ -260,14 +338,7 @@ export default function DocumentationPage() {
     }, [documents]);
 
     const totalSizeBytes = useMemo(() => {
-        return documents.reduce((acc, d) => {
-            const match = d.size?.match(/^([\d.]+)\s*(B|KB|MB|GB)/i);
-            if (!match) return acc;
-            const val = parseFloat(match[1]);
-            const unit = match[2].toUpperCase();
-            const multipliers: Record<string, number> = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 };
-            return acc + val * (multipliers[unit] || 1);
-        }, 0);
+        return documents.reduce((acc, d) => acc + (d.size || 0), 0);
     }, [documents]);
 
     // -------------------------------------------------------
@@ -332,11 +403,63 @@ export default function DocumentationPage() {
                                 }
                                 {isUploading ? 'Subiendo...' : 'Subir Archivo'}
                             </label>
+
+                            {/* New Folder Button */}
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-primary/20 text-primary font-black text-[10px] uppercase tracking-widest h-10 px-4"
+                                onClick={() => setIsFolderModalOpen(true)}
+                            >
+                                <Folder className="mr-2 h-4 w-4" />
+                                Nueva Carpeta
+                            </Button>
                         </>
                     )}
                 </div>
             </div>
 
+            {/* ── Breadcrumbs ── */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                {breadcrumbs.map((bc, idx) => (
+                    <div key={bc.path} className="flex items-center gap-2 shrink-0">
+                        {idx > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground/30" />}
+                        <button
+                            onClick={() => navigateToFolder(bc.path)}
+                            className={cn(
+                                "text-[10px] font-black uppercase tracking-widest transition-colors",
+                                bc.path === currentFolder ? "text-primary" : "text-muted-foreground/60 hover:text-primary"
+                            )}
+                        >
+                            {bc.name}
+                        </button>
+                    </div>
+                ))}
+            </div>
+
+            {/* ── Storage Stats Indicator ── */}
+            {storageStats && (
+                <div className="bg-card border border-accent rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4">
+                    <div className="flex-1 w-full space-y-1.5">
+                        <div className="flex justify-between items-end">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Almacenamiento en la Nube</p>
+                            <p className="text-xs font-bold text-primary">
+                                {formatFileSize(storageStats.used)} / {formatFileSize(storageStats.total)} 
+                                <span className="ml-2 text-muted-foreground opacity-50">({storageStats.percentage.toFixed(1)}%)</span>
+                            </p>
+                        </div>
+                        <Progress 
+                            value={storageStats.percentage} 
+                            className={cn(
+                                "h-2",
+                                storageStats.percentage > 90 ? "bg-red-500/20" : 
+                                storageStats.percentage > 70 ? "bg-amber-500/20" : "bg-primary/20"
+                            )}
+                        />
+                    </div>
+                </div>
+            )}
+            
             {/* ── Upload progress bar ── */}
             {isUploading && (
                 <div className="bg-card border border-accent rounded-xl p-4 space-y-2">
@@ -461,11 +584,19 @@ export default function DocumentationPage() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="bg-card border-accent text-primary">
-                                                    <DropdownMenuItem asChild className="text-xs flex items-center gap-2 cursor-pointer">
+                                                    <DropdownMenuItem asChild className="text-xs flex items-center gap-2 cursor-pointer focus:bg-primary/10">
                                                         <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                                                            <ExternalLink className="h-3 w-3" /> Ver / Descargar
+                                                            <ExternalLink className="h-3 w-3" /> Ver en Navegador
                                                         </a>
                                                     </DropdownMenuItem>
+                                                    {!doc.isFolder && (
+                                                        <DropdownMenuItem 
+                                                            className="text-xs flex items-center gap-2 cursor-pointer focus:bg-primary/10"
+                                                            onClick={() => handleDownload(doc.url, doc.name)}
+                                                        >
+                                                            <Download className="h-3 w-3" /> Descargar Archivo
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     {canEdit && (
                                                         <>
                                                             <DropdownMenuSeparator className="bg-accent" />
@@ -482,17 +613,37 @@ export default function DocumentationPage() {
                                         </div>
 
                                         <div className="p-4 bg-accent rounded-2xl group-hover:bg-primary/10 transition-colors">
-                                            <FileText className={cn('h-10 w-10', meta.color)} />
+                                            {doc.isFolder ? (
+                                                <Folder className="h-10 w-10 text-primary" />
+                                            ) : (
+                                                <FileText className={cn('h-10 w-10', meta.color)} />
+                                            )}
                                         </div>
 
                                         <div className="text-center w-full">
                                             <p className="text-[11px] font-bold truncate px-1" title={doc.name}>{doc.name}</p>
-                                            <Badge variant="outline" className={cn('text-[8px] font-black uppercase border-accent mt-1', meta.color)}>
-                                                {meta.ext}
-                                            </Badge>
-                                            {doc.size && <p className="text-[8px] text-muted-foreground mt-0.5">{doc.size}</p>}
+                                            {doc.isFolder ? (
+                                                <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary mt-1">CARPETA</Badge>
+                                            ) : (
+                                                <Badge variant="outline" className={cn('text-[8px] font-black uppercase border-accent mt-1', meta.color)}>
+                                                    {meta.ext}
+                                                </Badge>
+                                            )}
+                                            {!doc.isFolder && doc.size && <p className="text-[8px] text-muted-foreground mt-0.5">{formatFileSize(doc.size)}</p>}
                                         </div>
                                     </CardContent>
+                                    <div 
+                                        className="absolute inset-0 z-0" 
+                                        onClick={(e) => {
+                                            if (doc.isFolder) {
+                                                e.stopPropagation();
+                                                const newPath = currentFolder === "/" ? `/${doc.name}/` : `${currentFolder}${doc.name}/`;
+                                                navigateToFolder(newPath);
+                                            } else {
+                                                window.open(doc.url, '_blank');
+                                            }
+                                        }} 
+                                    />
                                 </Card>
                             );
                         })}
@@ -518,22 +669,37 @@ export default function DocumentationPage() {
                                         <TableRow
                                             key={doc.id}
                                             className="border-accent hover:bg-accent/30 transition-colors group cursor-pointer"
-                                            onClick={() => window.open(doc.url, '_blank')}
+                                            onClick={() => {
+                                                if (doc.isFolder) {
+                                                    const newPath = currentFolder === "/" ? `/${doc.name}/` : `${currentFolder}${doc.name}/`;
+                                                    navigateToFolder(newPath);
+                                                } else {
+                                                    window.open(doc.url, '_blank');
+                                                }
+                                            }}
                                         >
                                             <TableCell className="py-5 px-6">
                                                 <div className="flex items-center gap-3">
                                                     <div className="p-2 bg-accent rounded-xl shrink-0">
-                                                        <FileText className={cn('h-4 w-4', meta.color)} />
+                                                        {doc.isFolder ? (
+                                                            <Folder className="h-4 w-4 text-primary" />
+                                                        ) : (
+                                                            <FileText className={cn('h-4 w-4', meta.color)} />
+                                                        )}
                                                     </div>
                                                     <span className="text-sm font-bold text-primary truncate max-w-xs">{doc.name}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant="outline" className={cn('text-[9px] font-black uppercase border-accent', meta.color)}>
-                                                    {meta.ext}
-                                                </Badge>
+                                                {doc.isFolder ? (
+                                                    <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 text-primary">Carpeta</Badge>
+                                                ) : (
+                                                    <Badge variant="outline" className={cn('text-[9px] font-black uppercase border-accent', meta.color)}>
+                                                        {meta.ext}
+                                                    </Badge>
+                                                )}
                                             </TableCell>
-                                            <TableCell className="text-xs font-mono text-muted-foreground">{doc.size || '—'}</TableCell>
+                                            <TableCell className="text-xs font-mono text-muted-foreground">{!doc.isFolder && doc.size ? formatFileSize(doc.size) : '—'}</TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-1.5">
                                                     <User className="h-3 w-3 text-muted-foreground" />
@@ -558,9 +724,17 @@ export default function DocumentationPage() {
                                                     <DropdownMenuContent align="end" className="bg-card border-accent text-primary">
                                                         <DropdownMenuItem asChild className="text-xs flex items-center gap-2 cursor-pointer">
                                                             <a href={doc.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                                                                <ExternalLink className="h-3 w-3" /> Ver / Descargar
+                                                                <ExternalLink className="h-3 w-3" /> Ver en Navegador
                                                             </a>
                                                         </DropdownMenuItem>
+                                                        {!doc.isFolder && (
+                                                            <DropdownMenuItem 
+                                                                className="text-xs flex items-center gap-2 cursor-pointer"
+                                                                onClick={(e) => { e.stopPropagation(); handleDownload(doc.url, doc.name); }}
+                                                            >
+                                                                <Download className="h-3 w-3" /> Descargar Archivo
+                                                            </DropdownMenuItem>
+                                                        )}
                                                         {canEdit && (
                                                             <>
                                                                 <DropdownMenuSeparator className="bg-accent" />
@@ -636,6 +810,48 @@ export default function DocumentationPage() {
                         >
                             {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
                             {isDeleting ? 'Eliminando...' : 'Confirmar Eliminación'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Folder Creation Dialog ── */}
+            <Dialog open={isFolderModalOpen} onOpenChange={(open) => { if (!isCreatingFolder) setIsFolderModalOpen(open); }}>
+                <DialogContent className="bg-card border-accent text-primary max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                            <Folder className="h-5 w-5 text-primary" /> Nueva Carpeta
+                        </DialogTitle>
+                        <DialogDescription className="text-muted-foreground text-xs pt-1">
+                            Se creará en: <strong className="text-primary">{currentFolder}</strong>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <Input
+                            placeholder="Nombre de la carpeta..."
+                            value={newFolderName}
+                            onChange={(e) => setNewFolderName(e.target.value)}
+                            className="bg-accent border-transparent h-10 text-sm font-bold"
+                            onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+                            autoFocus
+                        />
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            className="border-accent flex-1 font-black text-[10px] uppercase tracking-widest h-10"
+                            onClick={() => setIsFolderModalOpen(false)}
+                            disabled={isCreatingFolder}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            className="bg-primary hover:bg-primary/80 text-background flex-1 font-black text-[10px] uppercase tracking-widest h-10"
+                            onClick={handleCreateFolder}
+                            disabled={isCreatingFolder || !newFolderName.trim()}
+                        >
+                            {isCreatingFolder ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
+                            Crear
                         </Button>
                     </DialogFooter>
                 </DialogContent>

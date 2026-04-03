@@ -48,23 +48,25 @@ export async function register(data: RegisterData): Promise<RegisterResult> {
 
         const hashedPassword = await bcrypt.hash(data.password, 10);
 
-        const newUser = await prisma.user.create({
+        const newUser = await (prisma.user.create as any)({
             data: {
                 name: data.name || null,
                 email: data.email,
                 password: hashedPassword,
                 role: role as any,
+                storageLimit: '1GB',
             },
             select: {
                 id: true,
                 email: true,
                 name: true,
                 role: true,
+                storageLimit: true,
                 createdAt: true,
                 updatedAt: true,
                 password: true,
             },
-        });
+        }) as User & { storageLimit: string };
 
 
         const cookieStore = await cookies();

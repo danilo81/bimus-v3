@@ -26,7 +26,8 @@ export async function createUser(data: Prisma.UserCreateInput): Promise<Omit<Use
                 email: data.email,
                 password: hashedPassword,
                 role: data.role,
-            },
+                storageLimit: (data as any).storageLimit || '1GB',
+            } as any,
         });
 
         const { password, ...userWithoutPassword } = newUser;

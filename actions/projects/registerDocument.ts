@@ -13,7 +13,7 @@ export async function registerDocument(data: {
     projectId: string;
     name: string;
     type: string;
-    size: string;
+    size: number;
     url: string;
     source: 'local' | 'google_drive';
 }) {
@@ -23,13 +23,15 @@ export async function registerDocument(data: {
 
         const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
 
-        const doc = await prisma.projectDocument.create({
+        const doc = await (prisma.projectDocument.create as any)({
             data: {
                 projectId: data.projectId,
                 name: data.name,
                 type: data.type,
                 size: data.size,
                 url: data.url,
+                folder: (data as any).folder || "/",
+                isFolder: (data as any).isFolder || false,
                 source: data.source,
                 status: data.source === 'local' ? 'uploaded' : 'linked',
                 authorName: user?.name || 'Usuario Bimus'

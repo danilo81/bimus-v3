@@ -37,6 +37,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dropzone, FileWithMetadata } from "@/components/ui/dropzone";
 import { cn } from "@/lib/utils";
+import { getStorageStats } from '@/actions';
+import { Progress } from '@/components/ui/progress';
 
 // Interface matching what the API now returns (from DB)
 interface CadAsset {
@@ -83,6 +85,7 @@ export default function CadLibraryPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+    const [storageStats, setStorageStats] = useState<any>(null);
     // If admin is viewing, the API will return files from multiple users
     const hasMultipleOwners = assets.some((a) => !a.isOwner);
 
@@ -118,8 +121,14 @@ export default function CadLibraryPage() {
         }
     };
 
+    const fetchStats = async () => {
+        const res = await getStorageStats();
+        if (res.success) setStorageStats(res);
+    };
+
     useEffect(() => {
         fetchAssets();
+        fetchStats();
     }, []);
 
     const handleDelete = async (key: string, name: string) => {
@@ -138,6 +147,7 @@ export default function CadLibraryPage() {
             if (response.ok) {
                 toast.success("Archivo eliminado correctamente");
                 setAssets((prev) => prev.filter((a) => a.key !== key));
+                fetchStats();
             } else {
                 toast.error(data.error ?? "Error al eliminar el archivo");
             }
@@ -159,7 +169,10 @@ export default function CadLibraryPage() {
         if (newlyFinished.length > 0) {
             newlyFinished.forEach((f) => processedUploads.current.add(f.id));
             // Small delay so the DB record is committed before we re-fetch
-            setTimeout(() => fetchAssets(), 800);
+            setTimeout(() => {
+                fetchAssets();
+                fetchStats();
+            }, 800);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -180,15 +193,6 @@ export default function CadLibraryPage() {
                         Gestión de Bloques y Detalles Técnicos
                     </p>
                 </div>
-                {hasMultipleOwners && (
-                    <Badge
-                        variant="outline"
-                        className="flex items-center gap-1.5 text-amber-400 border-amber-400/30 bg-amber-400/5 px-3 py-1.5"
-                    >
-                        <Shield className="h-3.5 w-3.5" />
-                        Vista Administrador — todos los archivos
-                    </Badge>
-                )}
             </div>
 
             {/* Toolbar */}
@@ -203,10 +207,38 @@ export default function CadLibraryPage() {
                     />
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">
-                        {assets.length} archivo{assets.length !== 1 ? "s" : ""}
-                    </span>
+                <div className="flex items-center gap-2 ">
+                    {/* --- STORAGE STATS --- */}
+                    {storageStats && (
+                        <div className="rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4 shrink-0">
+                            <div className="flex-1 w-full space-y-1.5">
+                                <div className="flex justify-between items-end">
+                                    <p className="text-xs font-bold text-primary">
+                                        {formatBytes(storageStats.used)} / {formatBytes(storageStats.total)}
+                                        <span className="ml-2 text-muted-foreground opacity-50">({storageStats.percentage.toFixed(1)}%)</span>
+                                    </p>
+                                </div>
+                                <Progress
+                                    value={storageStats.percentage}
+                                    className={cn(
+                                        "h-2",
+                                        storageStats.percentage > 90 ? "bg-red-500/20" :
+                                            storageStats.percentage > 70 ? "bg-amber-500/20" : "bg-primary/20"
+                                    )}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {hasMultipleOwners && (
+                        <Badge
+                            variant="outline"
+                            className="flex items-center gap-1.5 text-amber-400 border-amber-400/30 bg-amber-400/5 px-3 py-1.5"
+                        >
+                            <Shield className="h-3.5 w-3.5" />
+                            Vista Administrador — todos los archivos
+                        </Badge>
+                    )}
                     <Button
                         onClick={() => fetchAssets()}
                         variant="outline"
@@ -215,9 +247,8 @@ export default function CadLibraryPage() {
                         className="h-10 px-4"
                     >
                         <RefreshCw
-                            className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")}
+                            className={cn("h-4 w-4", isLoading && "animate-spin")}
                         />
-                        Actualizar
                     </Button>
                     <Button
                         onClick={() => {

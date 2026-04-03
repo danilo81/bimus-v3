@@ -60,13 +60,14 @@ export async function saveFileRecordToDB(data: { name: string, key: string, url:
     if (!session?.user?.id) throw new Error("No autorizado");
 
     try {
-        const newDoc = await prisma.projectDocument.create({
+        const newDoc = await (prisma.projectDocument.create as any)({
             data: {
                 name: data.name,
                 url: data.url,
-                size: data.size.toString(),
+                size: data.size, // Changed to number
                 type: data.mimeType,
                 projectId: data.projectId,
+                userId: session.user.id, // Track who uploaded it
                 authorName: session.user.name || "Usuario Bimus",
                 status: "uploaded",
                 source: "r2"

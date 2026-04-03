@@ -26,8 +26,9 @@ export async function login(credentials: Pick<User, 'email' | 'password'>): Prom
                 createdAt: true,
                 updatedAt: true,
                 password: true,
-            },
-        });
+                storageLimit: true,
+            } as any,
+        }) as (User & { storageLimit: string }) | null;
 
         if (!user) {
             return { success: false, error: 'Invalid email or password.' };

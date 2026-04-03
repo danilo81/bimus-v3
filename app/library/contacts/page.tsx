@@ -83,6 +83,8 @@ import { Textarea } from '../../../components/ui/textarea';
 import { cn } from '../../../lib/utils';
 import { Avatar, AvatarFallback } from '../../../components/ui/avatar';
 import { getContactDocumentUploadUrl, deleteContactDocument, getContactDocuments } from '@/actions/contacts/contact-documents';
+import { getStorageStats } from "@/actions/auth/getStorageStats";
+import { Progress } from "../../../components/ui/progress";
 import { useRef } from 'react';
 
 export default function ContactsPage() {
@@ -97,6 +99,7 @@ export default function ContactsPage() {
     const [isLoadingAccounting, setIsLoadingAccounting] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
+    const [storageStats, setStorageStats] = useState<{ used: number; total: number; percentage: number } | null>(null);
     const { toast } = useToast();
 
     const [formData, setFormData] = useState({
@@ -139,7 +142,26 @@ export default function ContactsPage() {
     useEffect(() => {
         setIsMounted(true);
         loadContacts();
+        fetchStorageStats();
     }, []);
+
+    async function fetchStorageStats() {
+        try {
+            const res = await getStorageStats();
+            setStorageStats({
+                used: res.used ?? 0,
+                total: res.total ?? 1024 * 1024 * 1024,
+                percentage: res.percentage ?? 0
+            });
+        } catch (e) {
+            console.error('Failed to fetch storage stats:', e);
+            setStorageStats({
+                used: 0,
+                total: 1024 * 1024 * 1024,
+                percentage: 0
+            });
+        }
+    }
 
     async function loadContacts() {
         setIsLoading(true);
@@ -213,6 +235,7 @@ export default function ContactsPage() {
 
             toast({ title: 'Documento subido', description: file.name });
             await loadDocuments(selectedContact.id);
+            fetchStorageStats();
         } catch (err: any) {
             toast({ title: 'Error', description: err.message, variant: 'destructive' });
         } finally {
@@ -228,6 +251,7 @@ export default function ContactsPage() {
             if (!result.success) throw new Error(result.error);
             toast({ title: 'Documento eliminado' });
             setContactDocuments(prev => prev.filter(d => d.id !== docId));
+            fetchStorageStats();
         } catch (err: any) {
             toast({ title: 'Error', description: err.message, variant: 'destructive' });
         }
@@ -526,8 +550,8 @@ export default function ContactsPage() {
 
             {/* Modal de Nuevo Contacto */}
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogContent className="min-w-7xl bg-card border-accent text-primary p-0 overflow-hidden shadow-2xl flex flex-col h-[95vh]">
-                    <ScrollArea className='h-150'>
+                <DialogContent className="min-w-7xl bg-card border-accent text-primary p-0 overflow-hidden flex flex-col  h-fit">
+                    <ScrollArea className='h-fit'>
                         <div className="flex flex-col h-full">
                             <DialogHeader className="p-8 border-b border-accent bg-white/2 flex flex-row items-center gap-6 shrink-0 space-y-0">
                                 <div className="h-12 w-12 rounded-sm bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-3xl font-black text-primary uppercase ">
@@ -547,7 +571,7 @@ export default function ContactsPage() {
 
                             <Tabs defaultValue="info" className="flex-1 flex flex-col overflow-hidden">
                                 <div className="px-8  shrink-0">
-                                    <TabsList className="h-14 bg-card p-0 gap-8" >
+                                    <TabsList className="h-14 p-0 gap-8 w-full bg-transparent" >
                                         <TabsTrigger value="info" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
                                             Información General
                                         </TabsTrigger>
@@ -556,6 +580,9 @@ export default function ContactsPage() {
                                         </TabsTrigger>
                                         <TabsTrigger value="locked2" disabled className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
                                             <Lock className="h-3 w-3 mr-2" /> Documentos
+                                        </TabsTrigger>
+                                        <TabsTrigger value="locked3" disabled className="  flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
+                                            <Lock className="h-3 w-3 mr-2" /> Contabilidad
                                         </TabsTrigger>
                                     </TabsList>
                                 </div>
@@ -897,6 +924,28 @@ export default function ContactsPage() {
                                                 <h3 className="text-xl font-black uppercase tracking-tight">Expediente Digital</h3>
                                                 <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mt-1">Contratos, identificaciones y certificados técnicos</p>
                                             </div>
+                                            {/* --- STORAGE STATS --- */}
+                                            {storageStats && (
+                                                <div className=" rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4 w-full md:max-w-md shrink-0">
+                                                    <div className="flex-1 w-full space-y-1.5">
+                                                        <div className="flex justify-between items-end">
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Almacenamiento Cloud</p>
+                                                            <p className="text-xs font-bold text-primary">
+                                                                {(storageStats.used / (1024 * 1024)).toFixed(1)} MB / {(storageStats.total / (1024 * 1024 * 1024)).toFixed(1)} GB
+                                                                <span className="ml-2 text-muted-foreground opacity-50">({storageStats.percentage.toFixed(1)}%)</span>
+                                                            </p>
+                                                        </div>
+                                                        <Progress
+                                                            value={storageStats.percentage}
+                                                            className={cn(
+                                                                "h-2",
+                                                                storageStats.percentage > 90 ? "bg-red-500/20" :
+                                                                    storageStats.percentage > 70 ? "bg-amber-500/20" : "bg-primary/20"
+                                                            )}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
                                             <Button
                                                 className="bg-primary text-background font-black text-[10px] uppercase h-10 px-6 border border-primary/20 cursor-pointer"
                                                 onClick={() => fileInputRef.current?.click()}

@@ -2,6 +2,7 @@
 export * from "@/actions/auth/login";
 export * from "@/actions/auth/logout";
 export * from "@/actions/auth/register";
+export * from "@/actions/auth/getStorageStats";
 // export * from "@/actions/auth/nueva-verificacion";
 // export * from "@/actions/auth/nuevo-password";
 // export * from "@/actions/auth/registrar";
@@ -106,6 +107,7 @@ export * from "@/actions/projects/updatePayroll";
 export * from "@/actions/projects/deletePayroll";
 export * from "@/actions/projects/getValuations";
 export * from "@/actions/projects/createValuation";
+export * from "@/actions/projects/exportTopicToPDF";
 
 
 export * from "@/actions/projects/getWarehouseStock";

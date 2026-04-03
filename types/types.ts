@@ -11,6 +11,7 @@ export interface User {
     name: string;
     email: string;
     role: UserRole;
+    storageLimit?: string; // e.g. "1GB"
 }
 
 export interface ProjectConfig {
@@ -288,8 +289,10 @@ export interface ProjectDocument {
     projectId: string;
     name: string;
     type: string;
-    size: string;
+    size: number;
     url: string;
+    folder: string;
+    isFolder: boolean;
     source: 'local' | 'google_drive';
     status: string;
     authorName: string;

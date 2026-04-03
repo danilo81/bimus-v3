@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import type { User } from '@prisma/client';
 import { UserRole } from '../../types/types';
 import { useToast } from '../../hooks/use-toast';
-import { ShieldCheck, Loader2, UserPlus, MoreHorizontal, Search, ExternalLink, Mail, User as UserIcon, X, Briefcase, LayoutGrid, Save, Wrench, Hammer, Users } from 'lucide-react';
+import { ShieldCheck, Loader2, UserPlus, MoreHorizontal, Search, ExternalLink, Mail, User as UserIcon, X, Briefcase, LayoutGrid, Save, Wrench, Hammer, Users, Globe } from 'lucide-react';
 import { getUsers, updateUserRole, createUser, getUserProjects } from '@/actions';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
@@ -37,6 +37,7 @@ export default function AdminPage() {
         email: '',
         password: '',
         role: 'viewer' as UserRole,
+        storageLimit: '1GB',
     });
 
     const mockTickets = [
@@ -141,7 +142,7 @@ export default function AdminPage() {
             toast({ title: "Usuario creado", description: `El usuario ${newUserData.name} ha sido creado.` });
             setUsers(prevUsers => [newUserData, ...prevUsers]);
             setIsCreateDialogOpen(false);
-            setNewUser({ name: '', email: '', password: '', role: 'viewer' });
+            setNewUser({ name: '', email: '', password: '', role: 'viewer', storageLimit: '1GB' });
         }
     };
 
@@ -233,6 +234,20 @@ export default function AdminPage() {
                                                 </SelectContent>
                                             </Select>
                                         </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase text-muted-foreground">Límite de Almacenamiento (Cloud)</Label>
+                                        <div className="relative">
+                                            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                                            <Input
+                                                value={newUser.storageLimit}
+                                                onChange={(e) => setNewUser(p => ({ ...p, storageLimit: e.target.value }))}
+                                                className="h-11 pl-10 text-sm font-bold uppercase"
+                                                placeholder="Ej: 1GB, 5GB, 10GB"
+                                                required
+                                            />
+                                        </div>
+                                        <p className="text-[8px] text-muted-foreground font-black uppercase tracking-widest mt-1 opacity-50">Define la cuota máxima de archivos en la nube para este usuario.</p>
                                     </div>
                                 </div>
                                 <DialogFooter className="p-6 bg-card border-t border-accent gap-3">
@@ -369,6 +384,9 @@ export default function AdminPage() {
                                     <DialogDescription className="flex items-center gap-3 mt-1.5">
                                         <Badge variant="outline" className="border-primary/20 px-2.5 py-0.5 text-[9px] font-black bg-primary/10 text-primary uppercase tracking-widest">
                                             {selectedUser.role}
+                                        </Badge>
+                                        <Badge variant="outline" className="border-emerald-500/20 px-2.5 py-0.5 text-[9px] font-black bg-emerald-500/10 text-emerald-500 uppercase tracking-widest flex items-center gap-1">
+                                            <Globe className="h-2.5 w-2.5" /> {(selectedUser as any).storageLimit || '1GB'}
                                         </Badge>
                                         <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
                                             <Mail className="h-3 w-3" /> {selectedUser.email}
