@@ -28,6 +28,7 @@ export interface ProjectConfig {
     mainCurrency?: string;
     secondaryCurrency?: string;
     workingDays?: number;
+    workingDaysSelection?: number[];
     projectId: string;
 }
 

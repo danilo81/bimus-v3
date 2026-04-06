@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Notification, Task, Contact, Project, ProjectConfig, TaskPriority, TaskStatus } from '@/types/types';
 import { getNotifications, markAsRead, deleteNotification } from '@/actions';
-import { getTasks, createTask, deleteTask, updateTask, getContacts, getUpcomingEvents } from '@/actions';
+import { getTasks, createTask, deleteTask, updateTask, getContacts, getUpcomingEvents, createCalendarEvent } from '@/actions';
 import { getProjectById, getProjects, updateProject as updateProjectAction, addContactToProject, removeContactFromProject, inviteCollaborator, updateProjectContactPermissions, getMyProjectPermissions, getInboxSummary } from '@/actions';
 
 import { ScrollArea } from '../../components/ui/scroll-area';
@@ -32,11 +32,13 @@ import { Textarea } from '../../components/ui/textarea';
 import { useToast } from '../../hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { Switch } from '../../components/ui/switch';
+import { Checkbox } from "../../components/ui/checkbox";
 import { useProjectPermissions } from '../../contexts/project-permissions-context';
 
 import { AiChatModal } from '@/components/layout/modals/IAChatModal';
 import { useSensors, useSensor, PointerSensor, DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import Logo from '../logo';
+
 
 const PERMISSION_MODULES = [
     { id: 'board', label: 'Dashboard Board', icon: Activity },
@@ -140,7 +142,8 @@ export function Navbar() {
         guaranteeRetention: 7,
         mainCurrency: 'BS',
         secondaryCurrency: 'USD',
-        workingDays: 6
+        workingDays: 6,
+        workingDaysSelection: [1, 2, 3, 4, 5, 6]
     });
 
     const [inboxSummary, setInboxSummary] = useState({
@@ -234,7 +237,8 @@ export function Navbar() {
                                 ...data.config,
                                 mainCurrency: data.config.mainCurrency || 'BS',
                                 secondaryCurrency: data.config.secondaryCurrency || 'USD',
-                                workingDays: data.config.workingDays || 6
+                                workingDays: data.config.workingDays || 6,
+                                workingDaysSelection: data.config.workingDaysSelection || [1, 2, 3, 4, 5, 6]
                             });
                         }
                         if (data.levels) {
@@ -523,14 +527,12 @@ export function Navbar() {
 
         setIsSubmittingEvent(true);
         try {
-            const result = await createTask({
+            const result = await createCalendarEvent({
                 title: newEventForm.title.trim(),
                 description: newEventForm.description || '',
-                status: 'pendiente',
-                priority: 'media',
-                dueDate: newEventForm.dueDate,
-                assignee: user?.name || 'Usuario',
-                projectId: newEventForm.projectId
+                date: newEventForm.dueDate,
+                type: 'evento',
+                project: newEventForm.projectId
             });
 
             if (result?.success) {
@@ -600,6 +602,7 @@ export function Navbar() {
             if (result.success) {
                 toast({ title: "Miembro añadido" });
                 fetchProjectContext();
+                window.location.reload();
             } else {
                 throw new Error(result.error);
             }
@@ -1143,6 +1146,22 @@ export function Navbar() {
                             </ScrollArea>
 
                             <div className="p-3 bg-card border-t border-accent text-center flex flex-col gap-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button 
+                                        variant="outline" 
+                                        className="text-[9px] font-black uppercase tracking-widest h-9 border-accent hover:bg-primary/10 hover:text-primary cursor-pointer"
+                                        onClick={() => setIsCreateOpen(true)}
+                                    >
+                                        <PlusCircle className="mr-2 h-3.5 w-3.5" /> Tarea
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        className="text-[9px] font-black uppercase tracking-widest h-9 border-accent hover:bg-primary/10 hover:text-primary cursor-pointer"
+                                        onClick={() => setIsNewEventOpen(true)}
+                                    >
+                                        <Calendar className="mr-2 h-3.5 w-3.5" /> Evento
+                                    </Button>
+                                </div>
                                 <Button variant="default" className="w-full text-[10px] font-black uppercase tracking-widest h-9 hover:bg-primary/80 bg-primary text-background cursor-pointer" onClick={() => router.push('/workspace')}>
                                     Abrir Área de Trabajo
                                 </Button>
@@ -1601,6 +1620,38 @@ export function Navbar() {
                                     </div>
 
                                     <div className="space-y-6">
+                                        <h3 className="text-[10px] font-black uppercase text-primary tracking-[0.2em] border-b border-accent pb-2">Días Laborables</h3>
+                                        <div className="flex flex-wrap gap-4">
+                                            {[
+                                                { id: 1, label: 'Lun' },
+                                                { id: 2, label: 'Mar' },
+                                                { id: 3, label: 'Mie' },
+                                                { id: 4, label: 'Jue' },
+                                                { id: 5, label: 'Vie' },
+                                                { id: 6, label: 'Sab' },
+                                                { id: 0, label: 'Dom' }
+                                            ].map((day) => (
+                                                <div key={day.id} className="flex items-center space-x-2 bg-secondary/30 p-3 rounded-xl border border-accent/50 hover:border-primary/30 transition-all">
+                                                    <Checkbox
+                                                        id={`day-${day.id}`}
+                                                        checked={configParams.workingDaysSelection?.includes(day.id)}
+                                                        onCheckedChange={(checked: boolean) => {
+                                                            const current = configParams.workingDaysSelection || [];
+                                                            const next = checked
+                                                                ? [...current, day.id].sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b))
+                                                                : current.filter(id => id !== day.id);
+                                                            setConfigParams(prev => ({ ...prev, workingDaysSelection: next }));
+                                                        }}
+                                                    />
+                                                    <Label htmlFor={`day-${day.id}`} className="text-[10px] font-black uppercase tracking-widest cursor-pointer select-none">
+                                                        {day.label}
+                                                    </Label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
                                         <h3 className="text-[10px] font-black uppercase text-primary tracking-[0.2em] border-b border-accent pb-2">Configuración Monetaria</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div className="space-y-2">
@@ -1848,6 +1899,107 @@ export function Navbar() {
                     </DialogContent>
                 </Dialog>
             )}
+
+            {/* Modal Crear Tarea */}
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <DialogContent className="max-w-md bg-card border-accent text-primary p-0 overflow-hidden">
+                    <form onSubmit={handleSubmit}>
+                        <DialogHeader className="p-6 bg-card border-b border-accent shrink-0 flex flex-row items-center space-y-0 gap-3">
+                            <CheckSquare className="h-6 w-6 text-primary" />
+                            <div>
+                                <DialogTitle className="text-xl font-bold uppercase tracking-tight">Crear Nueva Tarea</DialogTitle>
+                                <DialogDescription className="text-muted-foreground text-[10px] font-black uppercase mt-1">Asigna actividades a tu equipo</DialogDescription>
+                            </div>
+                        </DialogHeader>
+                        <div className="p-6 space-y-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Título de la Tarea</Label>
+                                <Input id="title" value={formData.title} onChange={handleInputChange} placeholder="EJ: REVISIÓN DE PLANOS" required className="h-11 bg-card border-accent uppercase font-bold text-xs" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Proyecto</Label>
+                                    <Select value={formData.projectId} onValueChange={(val) => handleSelectChange('projectId', val)}>
+                                        <SelectTrigger className="h-11 bg-card border-accent uppercase font-black text-[9px]"><SelectValue placeholder="SELECCIONAR" /></SelectTrigger>
+                                        <SelectContent className="bg-card text-primary border-white/10">
+                                            {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.title?.toUpperCase()}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Prioridad</Label>
+                                    <Select value={formData.priority} onValueChange={(val) => handleSelectChange('priority', val)}>
+                                        <SelectTrigger className="h-11 bg-card border-accent uppercase font-black text-[9px]"><SelectValue /></SelectTrigger>
+                                        <SelectContent className="bg-card text-primary border-white/10">
+                                            <SelectItem value="alta">ALTA</SelectItem>
+                                            <SelectItem value="media">MEDIA</SelectItem>
+                                            <SelectItem value="baja">BAJA</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Fecha de Vencimiento</Label>
+                                <Input id="dueDate" type="date" value={formData.dueDate} onChange={handleInputChange} className="h-11 bg-card border-accent font-mono text-xs" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Descripción</Label>
+                                <Textarea id="description" value={formData.description} onChange={handleInputChange} placeholder="DETALLES ADICIONALES..." className="bg-card border-accent text-xs uppercase font-medium min-h-[100px]" />
+                            </div>
+                        </div>
+                        <DialogFooter className="p-6 border-t border-accent bg-card">
+                            <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)} className="text-[10px] font-black uppercase tracking-widest">CANCELAR</Button>
+                            <Button type="submit" disabled={isSubmitting} className="bg-primary text-background font-black uppercase text-[10px] h-11 px-8 tracking-widest">
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} CREAR TAREA
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal Crear Evento */}
+            <Dialog open={isNewEventOpen} onOpenChange={setIsNewEventOpen}>
+                <DialogContent className="max-w-md bg-card border-accent text-primary p-0 overflow-hidden">
+                    <form onSubmit={handleCreateEvent}>
+                        <DialogHeader className="p-6 bg-card border-b border-accent shrink-0 flex flex-row items-center space-y-0 gap-3">
+                            <Calendar className="h-6 w-6 text-primary" />
+                            <div>
+                                <DialogTitle className="text-xl font-bold uppercase tracking-tight">Nuevo Evento</DialogTitle>
+                                <DialogDescription className="text-muted-foreground text-[10px] font-black uppercase mt-1">Registra hitos o reuniones</DialogDescription>
+                            </div>
+                        </DialogHeader>
+                        <div className="p-6 space-y-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Título del Evento</Label>
+                                <Input value={newEventForm.title} onChange={(e) => setNewEventForm(prev => ({ ...prev, title: e.target.value }))} placeholder="EJ: REUNIÓN DE COORDINACIÓN" required className="h-11 bg-card border-accent uppercase font-bold text-xs" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Proyecto</Label>
+                                <Select value={newEventForm.projectId} onValueChange={(val) => setNewEventForm(prev => ({ ...prev, projectId: val }))}>
+                                    <SelectTrigger className="h-11 bg-card border-accent uppercase font-black text-[9px]"><SelectValue placeholder="SELECCIONAR" /></SelectTrigger>
+                                    <SelectContent className="bg-card text-primary border-white/10">
+                                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.title?.toUpperCase()}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Fecha del Evento</Label>
+                                <Input type="date" value={newEventForm.dueDate} onChange={(e) => setNewEventForm(prev => ({ ...prev, dueDate: e.target.value }))} required className="h-11 bg-card border-accent font-mono text-xs" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Descripción</Label>
+                                <Textarea value={newEventForm.description} onChange={(e) => setNewEventForm(prev => ({ ...prev, description: e.target.value }))} placeholder="DETALLES DEL EVENTO..." className="bg-card border-accent text-xs uppercase font-medium min-h-[100px]" />
+                            </div>
+                        </div>
+                        <DialogFooter className="p-6 border-t border-accent bg-card">
+                            <Button type="button" variant="ghost" onClick={() => setIsNewEventOpen(false)} className="text-[10px] font-black uppercase tracking-widest">CANCELAR</Button>
+                            <Button type="submit" disabled={isSubmittingEvent} className="bg-primary text-background font-black uppercase text-[10px] h-11 px-8 tracking-widest">
+                                {isSubmittingEvent ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} REGISTRAR EVENTO
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </nav>
     );
 }

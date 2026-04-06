@@ -478,11 +478,11 @@ export default function ContactsPage() {
                     <p className="text-[10px] font-black uppercase tracking-widest">Sincronizando Directorio...</p>
                 </div>
             ) : filteredContacts.length > 0 ? (
-                <Card className="border-accent overflow-hidden bg-card p-0 min-h-[60vh] w-full">
-                    <ScrollArea className="h-150">
+                <Card className="border-accent overflow-y-auto bg-card p-0 max-h-[60vh] w-full">
+                    <ScrollArea className="">
                         <CardContent className="p-0">
                             <Table className="tracking-widest">
-                                <TableHeader className="bg-muted/50">
+                                <TableHeader className="bg-accent">
                                     <TableRow className="hover:bg-transparent">
                                         <TableHead className="py-5 px-8 text-[12px] font-black uppercase tracking-widest text-muted-foreground">Contacto / Empresa</TableHead>
                                         <TableHead className="text-[12px] font-black uppercase tracking-widest text-muted-foreground text-center">Tipo</TableHead>
@@ -910,7 +910,7 @@ export default function ContactsPage() {
                                                     </div>
                                                 ))
                                             ) : (
-                                                <div className="py-24 flex flex-col items-center justify-center border border-dashed border-white/5 rounded-3xl bg-white/1 opacity-20 gap-4">
+                                                <div className="py-24 flex flex-col items-center justify-center opacity-20 rounded-3xl gap-4">
                                                     <Wallet className="h-12 w-12" />
                                                     <p className="text-[10px] font-black uppercase tracking-[0.3em]">Sin cuentas bancarias vinculadas</p>
                                                 </div>
@@ -974,7 +974,7 @@ export default function ContactsPage() {
                                                 <p className="text-[10px] font-black uppercase">Cargando documentos...</p>
                                             </div>
                                         ) : contactDocuments.length === 0 ? (
-                                            <div className="py-24 flex flex-col items-center justify-center border border-dashed border-white/5 rounded-3xl bg-white/1 opacity-20 gap-4">
+                                            <div className="py-24 flex flex-col items-center justify-center  rounded-3xl opacity-20 gap-4">
                                                 <FileText className="h-12 w-12" />
                                                 <p className="text-[10px] font-black uppercase tracking-[0.3em]">Sin documentos adjuntos</p>
                                             </div>

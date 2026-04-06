@@ -24,13 +24,13 @@ import {
     updatePayroll,
     deletePayroll,
     getValuations,
-    createValuation
+    createValuation,
+    updateValuation,
+    deleteValuation
 } from '@/actions';
 import {
     ChevronLeft,
-    Package,
     PlusCircle,
-    ArrowUpCircle,
     X,
     Loader2,
     Activity,
@@ -43,8 +43,7 @@ import {
     Trash2,
     Edit3,
     CheckCircle,
-    FileImage,
-    ShoppingCart
+    FileImage
 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import {
@@ -55,7 +54,7 @@ import {
     DialogHeader,
     DialogTitle
 } from '../../../../components/ui/dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { Input } from '../../../../components/ui/input';
 import {
     Select,
@@ -73,7 +72,6 @@ import { Checkbox } from '../../../../components/ui/checkbox';
 import { getContacts } from '@/actions';
 import { cn } from '../../../../lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/tabs"
-import { Separator } from '@/components/ui/separator';
 
 export default function OperationsPage() {
     const params = useParams();
@@ -102,13 +100,17 @@ export default function OperationsPage() {
     const [payrollEndDate, setPayrollEndDate] = useState(new Date().toISOString().split('T')[0]);
     const [payrollEntries, setPayrollEntries] = useState<any[]>([]);
 
-    // Planilla de Avance (Valuaciones)
+    //  Planilla de Avance (Valuaciones)
     const [valuations, setValuations] = useState<any[]>([]);
     const [isNewValuationOpen, setIsNewValuationOpen] = useState(false);
     const [isSubmittingValuation, setIsSubmittingValuation] = useState(false);
     const [valuationDescription, setValuationDescription] = useState('');
     const [valuationDate, setValuationDate] = useState(new Date().toISOString().split('T')[0]);
     const [valuationEntries, setValuationEntries] = useState<any[]>([]);
+    const [editingValuationId, setEditingValuationId] = useState<string | null>(null);
+    const [isDeleteValuationConfirmOpen, setIsDeleteValuationConfirmOpen] = useState(false);
+    const [valuationToDeleteId, setValuationToDeleteId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState('ordendecambio');
 
     // Cálculos de Órdenes de Cambio
     const changeOrders = useMemo(() => project?.changeOrders || [], [project]);
@@ -174,34 +176,9 @@ export default function OperationsPage() {
         }
     };
 
-    const [isBalanceOpen, setIsBalanceOpen] = useState(false);
-    const [isWarehouseEntryOpen, setIsWarehouseEntryOpen] = useState(false);
-    const [isStockOpen, setIsStockOpen] = useState(false);
-    const [isWarehouseExitOpen, setIsWarehouseExitOpen] = useState(false);
-    const [isSelectStockForExitOpen, setIsSelectStockForExitOpen] = useState(false);
-
     //  Search and Overrides
-    const [pedidosSearchTerm, setPedidosSearchTerm] = useState('');
-    const [cotizacionesSearchTerm, setCotizacionesSearchTerm] = useState('');
-    const [stockSearchTerm, setStockSearchTerm] = useState('');
-    const [requestedOverrides, setRequestedOverrides] = useState<Record<string, number>>({});
-    const [quotationOverrides, setQuotationOverrides] = useState<Record<string, { price: number, supplierId: string }>>({});
+
     const [allContacts, setAllContacts] = useState<Contact[]>([]);
-
-    const [currentPOItems, setCurrentPOItems] = useState<any[]>([]);
-    const [selectedPOItemIds, setSelectedPOItemIds] = useState<string[]>([]);
-    const [poQuantityOverrides, setPOQuantityOverrides] = useState<Record<string, number>>({});
-    const [poPaymentType, setPOPaymentType] = useState<'debito' | 'credito'>('debito');
-    const [poDueDate, setPODueDate] = useState(new Date().toISOString().split('T')[0]);
-
-    const [selectedPOForEntry, setSelectedPOForEntry] = useState<any | null>(null);
-    const [currentWarehouseItems, setCurrentWarehouseItems] = useState<any[]>([]);
-    const [warehouseEntryOverrides, setWarehouseEntryOverrides] = useState<Record<string, number>>({});
-    const [isInspectionOpen, setIsInspectionOpen] = useState(false);
-
-    const [selectedStockExitIds, setSelectedStockExitIds] = useState<string[]>([]);
-    const [currentExitItems, setCurrentExitItems] = useState<any[]>([]);
-    const [exitAssignments, setExitAssignments] = useState<Record<string, { itemId: string, levelId: string, quantity: number }>>({});
 
     // Site Log State
     const [isNewLogOpen, setIsNewLogOpen] = useState(false);
@@ -269,7 +246,7 @@ export default function OperationsPage() {
 
         if (!cleanId || cleanId === 'undefined') return;
 
-        setIsLoading(true);
+        if (!project) setIsLoading(true);
         try {
             const [found, requests, txs, pos, stock] = await Promise.all([
                 getProjectById(cleanId as string),
@@ -322,124 +299,11 @@ export default function OperationsPage() {
         }
     }, [isCotizacionesOpen, isPOOpen, allContacts.length, fetchAllContacts]);
 
-    const projectSupplies = useMemo(() => {
-        if (!project || !project.items) return [];
-        const supplyMap: Record<string, any> = {};
 
-        project.items.forEach((pi: any) => {
-            const itemQty = pi.quantity || 0;
-            const supplies = pi.item?.supplies || [];
-            supplies.forEach((itemSupply: any) => {
-                const s = itemSupply.supply;
-                if (s.typology !== 'Material') return;
-                const requiredQty = itemQty * (itemSupply.quantity || 0);
-                if (supplyMap[s.id]) {
-                    supplyMap[s.id].totalRequired += requiredQty;
-                } else {
-                    supplyMap[s.id] = { id: s.id, description: s.description, unit: s.unit, price: s.price, supplierId: s.supplierId, totalRequired: requiredQty, costs: s.costs || [] };
-                }
-            });
-        });
 
-        return Object.values(supplyMap).map((s: any) => {
-            const pendingRequests = supplyRequests.filter(r => r.supplyId === s.id && r.status === 'pendiente').reduce((acc, r) => acc + (r.quantity || 0), 0);
-            const everRequested = supplyRequests.filter(r => r.supplyId === s.id).reduce((acc, r) => acc + (r.quantity || 0), 0);
-            const currentOverride = requestedOverrides[s.id] || 0;
-            const totalRequestedEver = everRequested + currentOverride;
-            const quotation = quotationOverrides[s.id] || { price: s.price, supplierId: s.supplierId || 'none' };
 
-            return {
-                ...s,
-                totalRequested: pendingRequests,
-                totalRequestedEver: totalRequestedEver,
-                balance: s.totalRequired - totalRequestedEver,
-                quotedPrice: quotation.price,
-                quotedSupplierId: quotation.supplierId,
-                mockStock: warehouseStock[s.id]?.currentStock || 0
-            };
-        }).sort((a, b) => a.description.localeCompare(b.description));
-    }, [project, requestedOverrides, quotationOverrides, supplyRequests, warehouseStock]);
 
-    const handleExitAssignmentChange = (id: string, field: 'itemId' | 'levelId' | 'quantity', value: string) => {
-        setExitAssignments(prev => ({ ...prev, [id]: { ...(prev[id] || { itemId: 'none', levelId: 'none', quantity: 0 }), [field]: field === 'quantity' ? parseFloat(value) || 0 : value } }));
-    };
 
-    const getSupplyComputeForLevel = (supplyId: string, levelId: string): number => {
-        if (!project?.items || levelId === 'none') return 0;
-        let total = 0;
-        for (const pi of project.items) {
-            const levelQty = pi.levelQuantities?.find((lq: any) => lq.levelId === levelId)?.quantity ?? 0;
-            if (levelQty === 0) continue;
-            const itemSupply = pi.item?.supplies?.find((s: any) => s.supplyId === supplyId);
-            if (!itemSupply) continue;
-            total += levelQty * (itemSupply.quantity || 0);
-        }
-        return total;
-    };
-
-    const handleConfirmWarehouseExit = async () => {
-        if (!project || currentExitItems.length === 0) return;
-
-        //  Validaciones de negocio
-        for (const item of currentExitItems) {
-            const assignment = exitAssignments[item.id];
-            if (!assignment || assignment.quantity <= 0) continue;
-
-            //  Validar contra cómputo de nivel
-            if (assignment.levelId !== 'none') {
-                const computeLimit = getSupplyComputeForLevel(item.id, assignment.levelId);
-                if (assignment.quantity > (computeLimit + 0.001)) {
-                    toast({
-                        title: "Exceso de Despacho",
-                        description: `La cantidad de "${item.description}" supera el cómputo del nivel (${computeLimit.toFixed(2)} ${item.unit}).`,
-                        variant: "destructive"
-                    });
-                    return;
-                }
-            }
-
-            //  Validar contra stock físico
-            if (assignment.quantity > item.mockStock) {
-                toast({
-                    title: "Stock Insuficiente",
-                    description: `No hay suficiente stock de "${item.description}" (${item.mockStock.toFixed(2)} disponible).`,
-                    variant: "destructive"
-                });
-                return;
-            }
-        }
-
-        const itemsToSave = currentExitItems.map(item => {
-            const assignment = exitAssignments[item.id];
-            return {
-                supplyId: item.id,
-                quantity: assignment?.quantity || 0,
-                itemId: assignment?.itemId === 'none' ? undefined : assignment?.itemId,
-                levelId: assignment?.levelId === 'none' ? undefined : assignment?.levelId,
-            };
-        }).filter(i => i.quantity > 0);
-
-        try {
-            const result = await createWarehouseExit({ projectId: project.id, items: itemsToSave });
-            if (result.success) {
-                toast({ title: "Salida Procesada" });
-                setIsWarehouseExitOpen(false);
-                fetchProject();
-            }
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    const handleToggleStockExitItem = (id: string) => {
-        setSelectedStockExitIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-    };
-
-    const confirmSelectedStockForExit = () => {
-        const itemsToExit = projectSupplies.filter(s => selectedStockExitIds.includes(s.id)).map(s => ({ ...s, currentStock: s.mockStock }));
-        setCurrentExitItems(itemsToExit);
-        setIsSelectStockForExitOpen(false);
-    };
 
     const handleCreateSiteLog = async () => {
         if (!project || !newLogType || !newLogContent) return;
@@ -666,7 +530,6 @@ export default function OperationsPage() {
 
         // Reconstruct entries with dailyAttendance
         const reconstructedEntries = payroll.entries.map((entry: any) => {
-            const dailyAttendance: Record<string, number> = {};
             // Since we don't store daily breakdown in DB yet, we distribute daysWorked equally or just as 1s
             // Improvement: If we had daily breakdown in DB, we'd load it here.
             // For now, we'll try to maintain consistency.
@@ -772,40 +635,114 @@ export default function OperationsPage() {
         const totalNeto = totalBruto - totalRetention;
 
         try {
-            const res = await createValuation({
-                projectId: cleanId as string,
-                description: valuationDescription,
-                date: valuationDate,
-                retentionAmount: totalRetention,
-                retentionPercentage: retentionPercent,
-                netAmount: totalNeto,
-                updateProgress: false, // Progress was already updated in Construction Module
-                items: valuationEntries.map((e: any) => ({
-                    projectItemId: e.projectItemId,
-                    quantity: e.quantity,
-                    price: e.price,
-                    amount: e.amount
-                }))
-            });
+            let res;
+            if (editingValuationId) {
+                res = await updateValuation(editingValuationId, {
+                    description: valuationDescription,
+                    date: valuationDate,
+                    retentionAmount: totalRetention,
+                    retentionPercentage: retentionPercent,
+                    netAmount: totalNeto,
+                    items: valuationEntries.map((e: any) => ({
+                        projectItemId: e.projectItemId,
+                        quantity: e.quantity,
+                        price: e.price,
+                        amount: e.amount
+                    }))
+                });
+            } else {
+                res = await createValuation({
+                    projectId: cleanId as string,
+                    description: valuationDescription,
+                    date: valuationDate,
+                    retentionAmount: totalRetention,
+                    retentionPercentage: retentionPercent,
+                    netAmount: totalNeto,
+                    updateProgress: true, // Auto-increment progress when creating manually from Operations
+                    items: valuationEntries.map((e: any) => ({
+                        projectItemId: e.projectItemId,
+                        quantity: e.quantity,
+                        price: e.price,
+                        amount: e.amount
+                    }))
+                });
+            }
 
             if (res.success) {
-                toast({ title: "Planilla de Avance Guardada", description: "Se ha registrado el avance y actualizado el presupuesto." });
+                toast({ 
+                    title: editingValuationId ? "Planilla de Avance Actualizada" : "Planilla de Avance Guardada", 
+                    description: editingValuationId ? "Se han recalculado los totales y el progreso." : "Se ha registrado el avance y actualizado el presupuesto." 
+                });
                 setIsNewValuationOpen(false);
+                setEditingValuationId(null);
                 setValuationEntries([]);
                 setValuationDescription('');
                 fetchProject();
             } else {
-                toast({ title: "Error", description: res.error, variant: "destructive" });
+                toast({ title: "Error", description: (res as any).error, variant: "destructive" });
             }
-        } catch (e) {
-            toast({ title: "Error", variant: "destructive" });
+        } catch (e: any) {
+            toast({ title: "Error", description: e.message, variant: "destructive" });
         } finally {
             setIsSubmittingValuation(false);
         }
     };
 
+    const handleDeleteValuation = async (id: string) => {
+        setIsSubmittingValuation(true);
+        try {
+            const result = await deleteValuation(id);
+            if (result.success) {
+                toast({ title: "Planilla Eliminada", description: "El progreso de los ítems ha sido revertido." });
+                setIsDeleteValuationConfirmOpen(false);
+                setValuationToDeleteId(null);
+                fetchProject();
+            } else {
+                toast({ title: "Error", description: result.error, variant: "destructive" });
+            }
+        } catch (error: any) {
+            toast({ title: "Error", description: error.message, variant: "destructive" });
+        } finally {
+            setIsSubmittingValuation(false);
+        }
+    };
+
+    const handleEditValuation = (val: any) => {
+        setEditingValuationId(val.id);
+        setValuationDescription(val.description || '');
+        setValuationDate(new Date(val.date).toISOString().split('T')[0]);
+        
+        // Reconstruct entries with metadata
+        const reconstructedEntries = val.items.map((vi: any) => {
+            const projectItem = project.items.find((item: any) => item.id === vi.projectItemId);
+            
+            // Re-calculate alreadyCertified without THIS valuation to show correct "reportedProgress" context
+            const certifiedOthers = valuations.filter(v => v.id !== val.id).reduce((acc: number, v: any) => {
+                const item = v.items.find((i: any) => i.projectItemId === vi.projectItemId);
+                return acc + (item?.quantity || 0);
+            }, 0);
+
+            return {
+                projectItemId: vi.projectItemId,
+                description: projectItem?.item?.description || 'N/A',
+                unit: projectItem?.item?.unit || 'N/A',
+                totalQuantity: projectItem?.quantity || 0,
+                previousProgress: certifiedOthers,
+                reportedProgress: projectItem?.progress || 0,
+                quantity: vi.quantity,
+                price: vi.price,
+                amount: vi.amount
+            };
+        });
+
+        setValuationEntries(reconstructedEntries);
+        setIsNewValuationOpen(true);
+    };
+
     const handleOpenNewValuation = () => {
         if (!project || !project.items) return;
+        setEditingValuationId(null);
+        setValuationDescription('');
 
         // Calculate pending certification for each item
         const newEntries = project.items.filter((item: any) => (item.progress || 0) > 0).map((item: any) => {
@@ -858,16 +795,16 @@ export default function OperationsPage() {
     }
 
     return (
-        <div className="flex flex-col min-h-screen text-primary p-4 md:p-8 space-y-6">
-            <Tabs defaultValue="ordendecambio" className="w-full">
+        <div className="flex flex-col  text-primary p-4 md:p-8 space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="bg-card border border-accent h-12 p-0 rounded-xl overflow-hidden mb-6 flex flex-wrap md:flex-nowrap">
-                    <TabsTrigger value="ordendecambio" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r border-accent text-xs md:text-sm">
+                    <TabsTrigger value="ordendecambio" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                         <Calculator className="mr-2 h-4 w-4" /> ORDEN DE CAMBIO
                     </TabsTrigger>
-                    <TabsTrigger value="inspecciones" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r border-accent text-xs md:text-sm">
+                    <TabsTrigger value="inspecciones" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                         <Coins className="mr-2 h-4 w-4" /> INSPECCIONES
                     </TabsTrigger>
-                    <TabsTrigger value="librodeobra" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r border-accent text-xs md:text-sm">
+                    <TabsTrigger value="librodeobra" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                         <CalendarDays className="mr-2 h-4 w-4" /> LIBRO DE OBRA
                     </TabsTrigger>
                     <TabsTrigger value="planillapersonal" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none text-xs md:text-sm">
@@ -878,43 +815,43 @@ export default function OperationsPage() {
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="ordendecambio">
-                    <Card className="bg-card border-accent text-primary overflow-hidden p-6">
-                        <CardHeader className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0 pb-7 border-b border-accent">
-
+                    <Card className="bg-card border-accent text-primary overflow-y-auto flex flex-col h-fit gap-0">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-accent/2 border-b border-accent">
                             <div className="flex items-center gap-4">
+                                <div className="p-2 bg-primary/20 rounded-lg">
+                                    <Calculator className="h-5 w-5 text-primary" />
+                                </div>
                                 <div>
-                                    <h1 className="text-2xl font-bold flex items-center gap-3 font-headline">
-                                        <Calculator className="h-7 w-7 text-primary" /> Órdenes de Cambio
-                                    </h1>
-                                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Registros de modificaciones al contrato y alcance</p>
+                                    <CardTitle className="text-sm font-black uppercase tracking-widest">Órdenes de Cambio</CardTitle>
+                                    <CardDescription className="text-[10px] font-bold uppercase text-muted-foreground mt-1">Registros de modificaciones al contrato y alcance.</CardDescription>
                                 </div>
                             </div>
 
                         </CardHeader>
 
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                            <Card className="bg-card border-accent backdrop-blur-md">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-fit p-6">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Aprobadas</h3>
                                     <p className="text-2xl font-mono text-emerald-400 font-bold">$ {statsOC.totalApproved.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                                     <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">{statsOC.approvedCount} registros consolidados</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-card border-accent backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Sobrecostos Pendientes</h3>
                                     <p className="text-2xl font-mono text-amber-400 font-bold">$ {statsOC.totalPending.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                                     <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">{statsOC.pendingCount} órdenes por revisar</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-card border-accent backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Deducciones</h3>
                                     <p className="text-2xl font-mono text-destructive font-bold">$ {statsOC.totalDeductions.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                                     <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">{statsOC.deductionCount} registros aplicados</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-card border-accent backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-primary mb-2">Impacto Neto</h3>
                                     <p className="text-2xl font-mono text-primary font-bold">$ {(statsOC.totalApproved + statsOC.totalDeductions).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
@@ -923,7 +860,7 @@ export default function OperationsPage() {
                             </Card>
                         </div>
 
-                        <Card className="bg-card border-accent backdrop-blur-md overflow-hidden p-0">
+                        <Card className="bg-card border-accent backdrop-blur-md overflow-hidden m-6 p-0">
                             <Table>
                                 <TableHeader className="bg-accent">
                                     <TableRow className="border-accent hover:bg-transparent">
@@ -945,7 +882,7 @@ export default function OperationsPage() {
                                         </TableRow>
                                     ) : (
                                         changeOrders.map((orden: any) => (
-                                            <TableRow key={orden.id} className="border-accent hover:bg-accent transition-colors group cursor-pointer">
+                                            <TableRow key={orden.id} className="border-accent hover:bg-muted/40 transition-colors group cursor-pointer ">
                                                 <TableCell className="px-6 py-4">
                                                     <span className="font-mono text-xs font-bold text-primary">{orden.number || 'N/A'}</span>
                                                 </TableCell>
@@ -961,7 +898,7 @@ export default function OperationsPage() {
                                                 <TableCell>
                                                     <Badge
                                                         variant="secondary"
-                                                        className={cn("text-[9px] font-black uppercase tracking-widest shadow-sm",
+                                                        className={cn("text-[9px] font-black uppercase tracking-widest ",
                                                             orden.status === 'Aprobada' ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/20" :
                                                                 orden.status === 'pendiente' ? "bg-amber-500/20 text-amber-400 border-amber-500/20" :
                                                                     "bg-red-500/20 text-red-500 border-red-500/20"
@@ -971,7 +908,7 @@ export default function OperationsPage() {
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <span className={cn("font-mono text-sm font-bold", orden.amount < 0 ? "text-destructive" : "text-white")}>
+                                                    <span className={cn("font-mono text-sm font-bold", orden.amount < 0 ? "text-destructive" : "text-primary")}>
                                                         {orden.amount < 0 ? "- $" : "$"} {Math.abs(orden.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                                     </span>
                                                 </TableCell>
@@ -1020,7 +957,7 @@ export default function OperationsPage() {
                 </TabsContent>
 
                 {/* ===== DELETE CHANGE ORDER CONFIRMATION DIALOG ===== */}
-                <Dialog open={isDeleteOCConfirmOpen} onOpenChange={(open) => { if (!isDeletingOC) { setIsDeleteOCConfirmOpen(open); if (!open) setOcToDelete(null); }}}>
+                <Dialog open={isDeleteOCConfirmOpen} onOpenChange={(open) => { if (!isDeletingOC) { setIsDeleteOCConfirmOpen(open); if (!open) setOcToDelete(null); } }}>
                     <DialogContent className="bg-card border-accent text-primary max-w-md">
                         <DialogHeader>
                             <DialogTitle className="text-lg font-bold flex items-center gap-2">
@@ -1070,17 +1007,18 @@ export default function OperationsPage() {
                 </Dialog>
 
                 <TabsContent value="inspecciones">
-                    <div className="flex flex-col min-h-screen text-primary p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
-                        <div className="flex items-center gap-4">
-                            <Button variant="ghost" size="icon" className="hover:bg-white/10" onClick={() => router.back()}>
-                                <ChevronLeft className="h-6 w-6" />
-                            </Button>
-                            <div>
-                                <h1 className="text-2xl font-bold flex items-center gap-3 font-headline">
-                                    <ClipboardList className="h-7 w-7 text-primary" /> Inspecciones de Calidad
-                                </h1>
-                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Control y liberación de ítems constructivos</p>
+                    <Card className="bg-card border-accent text-primary overflow-y-auto flex flex-col h-fit gap-0">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-accent/2 border-b border-accent">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2 bg-primary/20 rounded-lg">
+                                    <Coins className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-sm font-black uppercase tracking-widest">Inspecciones de Calidad</CardTitle>
+                                    <CardDescription className="text-[10px] font-bold uppercase text-muted-foreground mt-1">Registros de modificaciones al contrato y alcance.</CardDescription>
+                                </div>
                             </div>
+
                             <div className="ml-auto">
                                 <Button
                                     onClick={() => setIsNewInspectionOpen(true)}
@@ -1089,17 +1027,18 @@ export default function OperationsPage() {
                                     <PlusCircle className="mr-2 h-4 w-4" /> Nueva Inspección
                                 </Button>
                             </div>
-                        </div>
+                        </CardHeader>
 
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
+
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-fit p-6">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Total Inspecciones</h3>
-                                    <p className="text-2xl font-mono text-white font-bold">{project?.inspectionRecords?.length || 0}</p>
+                                    <p className="text-2xl font-mono text-primary font-bold">{project?.inspectionRecords?.length || 0}</p>
                                     <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">Registros de control</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Aprobadas</h3>
                                     <p className="text-2xl font-mono text-emerald-400 font-bold">
@@ -1108,7 +1047,7 @@ export default function OperationsPage() {
                                     <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">Sin observaciones críticas</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Parciales / Observadas</h3>
                                     <p className="text-2xl font-mono text-amber-500 font-bold">
@@ -1117,7 +1056,7 @@ export default function OperationsPage() {
                                     <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">Requieren correcciones</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Rechazadas</h3>
                                     <p className="text-2xl font-mono text-destructive font-bold">
@@ -1128,16 +1067,16 @@ export default function OperationsPage() {
                             </Card>
                         </div>
 
-                        <Card className="bg-black/40 border-white/10 backdrop-blur-md overflow-hidden">
+                        <Card className="bg-card border-accent backdrop-blur-md overflow-hidden m-6 p-0">
                             <Table>
-                                <TableHeader className="bg-white/5">
-                                    <TableRow className="border-white/5 hover:bg-transparent">
-                                        <TableHead className="text-[10px] font-black uppercase py-4 px-6 text-white w-24">Fecha</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-white">Item de Proyecto</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-white">Nivel/Sector</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-center text-white">Estado</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-right text-white">Controles</TableHead>
-                                        <TableHead className="w-12 text-center text-white"></TableHead>
+                                <TableHeader className="bg-accent">
+                                    <TableRow className="border-accent hover:bg-transparent">
+                                        <TableHead className="text-[10px] font-black uppercase py-4 px-6 text-primary w-24">Fecha</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-primary">Item de Proyecto</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-primary">Nivel/Sector</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-center text-primary">Estado</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-right text-primary">Controles</TableHead>
+                                        <TableHead className="w-12 text-center text-primary"></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -1156,7 +1095,7 @@ export default function OperationsPage() {
                                                     </span>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className="text-xs font-bold text-white block truncate max-w-sm">
+                                                    <span className="text-xs font-bold text-primary block truncate max-w-sm">
                                                         {record.projectItem?.item?.description || 'N/A'}
                                                     </span>
                                                 </TableCell>
@@ -1168,7 +1107,7 @@ export default function OperationsPage() {
                                                 <TableCell className="text-center">
                                                     <Badge
                                                         variant="secondary"
-                                                        className={cn("text-[8px] font-black uppercase tracking-widest shadow-sm",
+                                                        className={cn("text-[8px] font-black uppercase tracking-widest ",
                                                             record.status === 'aprobado' ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/20" :
                                                                 record.status === 'parcial' ? "bg-amber-500/20 text-amber-500 border-amber-500/20" :
                                                                     "bg-red-500/20 text-red-500 border-red-500/20"
@@ -1178,16 +1117,13 @@ export default function OperationsPage() {
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <span className="font-mono text-xs text-white">
+                                                    <span className="font-mono text-xs text-primary">
                                                         {record.checks?.filter((c: any) => c.passed).length} / {record.checks?.length}
                                                     </span>
                                                     <span className="text-[9px] text-muted-foreground uppercase tracking-widest block">Pasados</span>
                                                 </TableCell>
                                                 <TableCell className="pr-4 text-center">
                                                     <div className="flex items-center justify-center gap-1">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground group-hover:text-white transition-colors">
-                                                            <Info className="h-4 w-4" />
-                                                        </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
@@ -1222,7 +1158,7 @@ export default function OperationsPage() {
 
                         {/* Modal para Crear Inspección */}
                         <Dialog open={isNewInspectionOpen} onOpenChange={setIsNewInspectionOpen}>
-                            <DialogContent className="max-w-3xl bg-[#0a0a0a] border-white/10 text-white shadow-2xl overflow-y-auto max-h-[90vh]">
+                            <DialogContent className="max-w-3xl bg-card border-accent  text-primary overflow-y-auto max-h-[90vh]">
                                 <DialogHeader>
                                     <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-lg font-black">
                                         <ClipboardList className="h-5 w-5 text-primary" />
@@ -1239,12 +1175,12 @@ export default function OperationsPage() {
                                             Ítem de Proyecto a Inspeccionar
                                         </label>
                                         <Select value={inspectionItemId} onValueChange={setInspectionItemId}>
-                                            <SelectTrigger className="w-full bg-black/50 border-white/10 text-xs font-bold h-12">
+                                            <SelectTrigger className="w-full bg-card border-accent text-xs font-bold h-12">
                                                 <SelectValue placeholder="Seleccione un ítem del proyecto..." />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-[#0a0a0a] border-white/10 text-white max-h-[300px]">
+                                            <SelectContent className="bg-card border-accent text-primary max-h-[300px]">
                                                 {project?.items?.map((pi: any) => (
-                                                    <SelectItem key={pi.id} value={pi.id} className="text-xs uppercase font-bold text-white/80 focus:bg-primary/20 truncate">
+                                                    <SelectItem key={pi.id} value={pi.id} className="text-xs uppercase font-bold text-primary/80 focus:bg-card truncate">
                                                         {pi.item?.description} <span className="opacity-50 lowercase ml-2">({pi.item?.chapter})</span>
                                                     </SelectItem>
                                                 ))}
@@ -1254,12 +1190,12 @@ export default function OperationsPage() {
 
                                     {selectedProjItem?.item?.qualityControls && selectedProjItem.item.qualityControls.length > 0 && (
                                         <div className="space-y-4">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 border-b border-white/10 pb-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 border-b border-accent pb-2">
                                                 <CheckCircle className="h-4 w-4" /> Lista de Verificación (Controles de Calidad)
                                             </label>
                                             <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
                                                 {selectedProjItem.item.qualityControls.map((qc: any) => (
-                                                    <div key={qc.id} className="p-4 bg-white/5 border border-white/10 rounded-xl flex flex-col md:flex-row gap-4 items-start">
+                                                    <div key={qc.id} className="p-4 bg-card border border-accent rounded-xl flex flex-col md:flex-row gap-4 items-start">
                                                         <div className="flex items-start gap-3 flex-1">
                                                             <Checkbox
                                                                 id={`qc-${qc.id}`}
@@ -1293,7 +1229,7 @@ export default function OperationsPage() {
                                                                     ...prev,
                                                                     [qc.id]: { ...prev[qc.id], observation: e.target.value }
                                                                 }))}
-                                                                className="h-9 bg-black/50 text-xs border-white/5"
+                                                                className="h-9 bg-card border-accent text-xs"
                                                             />
                                                         </div>
                                                     </div>
@@ -1303,7 +1239,7 @@ export default function OperationsPage() {
                                     )}
 
                                     {selectedProjItem && (!selectedProjItem.item?.qualityControls || selectedProjItem.item.qualityControls.length === 0) && (
-                                        <div className="p-8 text-center bg-white/5 border border-dashed border-white/10 rounded-xl">
+                                        <div className="p-8 text-center bg-card border border-accent rounded-xl">
                                             <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">
                                                 Este ítem no tiene controles de calidad asociados en su catálogo.
                                             </p>
@@ -1315,7 +1251,7 @@ export default function OperationsPage() {
                                             <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                                 <FileImage className="h-4 w-4" /> Evidencia Fotográfica
                                             </label>
-                                            <div className="border-2 border-dashed border-white/10 p-6 rounded-xl flex items-center justify-center bg-black/40 relative hover:bg-black/60 transition-colors">
+                                            <div className="border-2 border-dashed border-accent p-6 rounded-xl flex items-center justify-center bg-card relative hover:bg-card transition-colors">
                                                 <input
                                                     type="file"
                                                     multiple
@@ -1324,7 +1260,7 @@ export default function OperationsPage() {
                                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                                 />
                                                 <div className="text-center pointer-events-none">
-                                                    <FileImage className="h-8 w-8 text-white/30 mx-auto mb-2" />
+                                                    <FileImage className="h-8 w-8 text-primary mx-auto mb-2" />
                                                     <p className="text-xs text-muted-foreground font-bold">
                                                         {inspectionImages.length > 0
                                                             ? `${inspectionImages.length} imágenes seleccionadas`
@@ -1343,7 +1279,7 @@ export default function OperationsPage() {
                                     <Button
                                         onClick={handleCreateInspection}
                                         disabled={!inspectionItemId || isSubmittingInspection}
-                                        className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest h-11 px-8"
+                                        className="bg-primary hover:bg-primary/90 text-background font-black text-[10px] uppercase tracking-widest h-11 px-8"
                                     >
                                         {isSubmittingInspection ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                                         Guardar Inspección
@@ -1354,7 +1290,7 @@ export default function OperationsPage() {
 
                         {/* Modal para Editar Inspección */}
                         <Dialog open={!!editingInspectionId} onOpenChange={(open) => !open && setEditingInspectionId(null)}>
-                            <DialogContent className="max-w-3xl bg-[#0a0a0a] border-white/10 text-white shadow-2xl overflow-y-auto max-h-[90vh]">
+                            <DialogContent className="max-w-3xl bg-card border-accent text-primary overflow-y-auto max-h-[90vh]">
                                 <DialogHeader>
                                     <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-lg font-black">
                                         <Edit3 className="h-5 w-5 text-primary" />
@@ -1366,20 +1302,20 @@ export default function OperationsPage() {
                                 </DialogHeader>
 
                                 <div className="space-y-6 pt-4">
-                                    <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
+                                    <div className="p-4 bg-card border border-accent rounded-xl">
                                         <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Ítem Inspeccionado</p>
-                                        <p className="text-sm font-bold text-white">{selectedEditInspection?.projectItem?.item?.description || 'N/A'}</p>
+                                        <p className="text-sm font-bold text-primary">{selectedEditInspection?.projectItem?.item?.description || 'N/A'}</p>
                                         <p className="text-[9px] text-muted-foreground uppercase">{selectedEditInspection?.level?.name || 'General'}</p>
                                     </div>
 
                                     {selectedEditInspection?.projectItem?.item?.qualityControls && (
                                         <div className="space-y-4">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 border-b border-white/10 pb-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 border-b border-accent pb-2">
                                                 <CheckCircle className="h-4 w-4" /> Lista de Verificación
                                             </label>
                                             <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
                                                 {selectedEditInspection.projectItem.item.qualityControls.map((qc: any) => (
-                                                    <div key={qc.id} className="p-4 bg-white/5 border border-white/10 rounded-xl flex flex-col md:flex-row gap-4 items-start">
+                                                    <div key={qc.id} className="p-4 bg-card border border-accent rounded-xl flex flex-col md:flex-row gap-4 items-start">
                                                         <div className="flex items-start gap-3 flex-1">
                                                             <Checkbox
                                                                 id={`edit-qc-${qc.id}`}
@@ -1404,7 +1340,7 @@ export default function OperationsPage() {
                                                                     ...prev,
                                                                     [qc.id]: { ...prev[qc.id], observation: e.target.value }
                                                                 }))}
-                                                                className="h-9 bg-black/50 text-xs border-white/5"
+                                                                className="h-9 bg-card text-xs border-accent"
                                                             />
                                                         </div>
                                                     </div>
@@ -1421,7 +1357,7 @@ export default function OperationsPage() {
                                     <Button
                                         onClick={handleEditInspection}
                                         disabled={isSubmittingEditInspection}
-                                        className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest h-11 px-8"
+                                        className="bg-primary hover:bg-primary/90 text-background font-black text-[10px] uppercase tracking-widest h-11 px-8"
                                     >
                                         {isSubmittingEditInspection ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Edit3 className="h-4 w-4 mr-2" />}
                                         Actualizar Inspección
@@ -1429,19 +1365,19 @@ export default function OperationsPage() {
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
-                    </div>
+                    </Card>
                 </TabsContent>
                 <TabsContent value="planillapersonal">
-                    <div className="flex flex-col min-h-screen text-primary p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
-                        <div className="flex items-center gap-4">
-                            <Button variant="ghost" size="icon" className="hover:bg-white/10" onClick={() => router.back()}>
-                                <ChevronLeft className="h-6 w-6" />
-                            </Button>
-                            <div>
-                                <h1 className="text-2xl font-bold flex items-center gap-3 font-headline">
-                                    <ClipboardList className="h-7 w-7 text-primary" /> Planilla de Personal (Payrolls)
-                                </h1>
-                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Gestión de jornadas y pagos al personal de campo</p>
+                    <Card className="bg-card border-accent text-primary overflow-y-auto flex flex-col h-fit gap-0">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4  border-b border-accent">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2 bg-primary/20 rounded-lg">
+                                    <ClipboardList className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-sm font-black uppercase tracking-widest">Planilla de Personal</CardTitle>
+                                    <CardDescription className="text-[10px] font-bold uppercase text-muted-foreground mt-1">Registros de modificaciones al contrato y alcance.</CardDescription>
+                                </div>
                             </div>
                             <div className="ml-auto">
                                 <Button
@@ -1455,16 +1391,15 @@ export default function OperationsPage() {
                                     <PlusCircle className="mr-2 h-4 w-4" /> Nueva Planilla
                                 </Button>
                             </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
+                        </CardHeader>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-fit p-6">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Total Planillas</h3>
-                                    <p className="text-2xl font-mono text-white font-bold">{payrolls.length}</p>
+                                    <p className="text-2xl font-mono text-primary font-bold">{payrolls.length}</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Monto Acumulado</h3>
                                     <p className="text-2xl font-mono text-emerald-400 font-bold">
@@ -1472,7 +1407,7 @@ export default function OperationsPage() {
                                     </p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Personal Registrado</h3>
                                     <p className="text-2xl font-mono text-primary font-bold">{project.team?.length || 0}</p>
@@ -1480,30 +1415,30 @@ export default function OperationsPage() {
                             </Card>
                         </div>
 
-                        <Card className="bg-black/40 border-white/10 backdrop-blur-md overflow-hidden">
+                        <Card className="bg-card border-accent backdrop-blur-md overflow-hidden m-6 p-0">
                             <Table>
-                                <TableHeader className="bg-white/5">
-                                    <TableRow className="border-white/5 hover:bg-transparent">
-                                        <TableHead className="text-[10px] font-black uppercase py-4 px-6 text-white">Periodo</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-white">Estado</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-center text-white">Personal</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-right text-white">Total Pagado</TableHead>
-                                        <TableHead className="w-24 text-center text-white">Acciones</TableHead>
+                                <TableHeader className="bg-accent">
+                                    <TableRow className="border-accent hover:bg-transparent">
+                                        <TableHead className="text-[10px] font-black uppercase py-4 px-6 text-primary">Periodo</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-primary">Estado</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-center text-primary">Personal</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-right text-primary">Total Pagado</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-right text-primary pr-6">Acciones</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {payrolls.length === 0 ? (
-                                        <TableRow className="border-white/5 hover:bg-transparent">
+                                        <TableRow className="border-accent hover:bg-transparent">
                                             <TableCell colSpan={5} className="text-center py-12 text-muted-foreground uppercase text-[10px] font-bold tracking-widest">
                                                 No hay planillas registradas.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         payrolls.map((payroll: any) => (
-                                            <TableRow key={payroll.id} className="border-white/5 hover:bg-white/5 transition-colors">
+                                            <TableRow key={payroll.id} className="border-accent hover:bg-transparent transition-colors">
                                                 <TableCell className="px-6 py-4">
                                                     <div className="flex flex-col">
-                                                        <span className="text-xs font-bold text-white">
+                                                        <span className="text-xs font-bold text-primary">
                                                             {new Date(payroll.startDate).toLocaleDateString()} - {new Date(payroll.endDate).toLocaleDateString()}
                                                         </span>
                                                         <span className="text-[9px] text-muted-foreground uppercase">Registrado el {new Date(payroll.createdAt).toLocaleDateString()}</span>
@@ -1515,7 +1450,7 @@ export default function OperationsPage() {
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <span className="font-mono text-xs text-white">
+                                                    <span className="font-mono text-xs text-primary">
                                                         {payroll.entries?.length || 0} personas
                                                     </span>
                                                 </TableCell>
@@ -1524,12 +1459,12 @@ export default function OperationsPage() {
                                                         $ {payroll.totalAmount.toLocaleString()}
                                                     </span>
                                                 </TableCell>
-                                                <TableCell className="pr-4 text-center">
+                                                <TableCell className="pr-4 text-center flex justify-end">
                                                     <div className="flex items-center justify-center gap-2">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-white"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-primary"
                                                             onClick={() => handleEditPayroll(payroll)}
                                                         >
                                                             <Edit3 className="h-4 w-4" />
@@ -1553,19 +1488,19 @@ export default function OperationsPage() {
                                 </TableBody>
                             </Table>
                         </Card>
-                    </div>
+                    </Card>
                 </TabsContent>
                 <TabsContent value="planillaavance">
-                    <div className="flex flex-col min-h-screen text-primary p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
-                        <div className="flex items-center gap-4">
-                            <Button variant="ghost" size="icon" className="hover:bg-white/10" onClick={() => router.back()}>
-                                <ChevronLeft className="h-6 w-6" />
-                            </Button>
-                            <div>
-                                <h1 className="text-2xl font-bold flex items-center gap-3 font-headline">
-                                    <Activity className="h-7 w-7 text-primary" /> Planilla de Avance (Valuations)
-                                </h1>
-                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Certificación y registro histórico de avance de obra</p>
+                    <Card className="bg-card border-accent text-primary overflow-y-auto flex flex-col h-fit gap-0">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-accent/2 border-b border-accent">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2 bg-primary/20 rounded-lg">
+                                    <Activity className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-sm font-black uppercase tracking-widest">Planilla de Avance</CardTitle>
+                                    <CardDescription className="text-[10px] font-bold uppercase text-muted-foreground mt-1">Certificación y registro histórico de avance de obra</CardDescription>
+                                </div>
                             </div>
                             <div className="ml-auto">
                                 <Button
@@ -1575,16 +1510,16 @@ export default function OperationsPage() {
                                     <PlusCircle className="mr-2 h-4 w-4" /> Nueva Valuación
                                 </Button>
                             </div>
-                        </div>
+                        </CardHeader>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-fit p-6">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Total Valuaciones</h3>
-                                    <p className="text-2xl font-mono text-white font-bold">{valuations.length}</p>
+                                    <p className="text-2xl font-mono text-primary font-bold">{valuations.length}</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Avance Certificado</h3>
                                     <p className="text-2xl font-mono text-emerald-400 font-bold">
@@ -1592,7 +1527,7 @@ export default function OperationsPage() {
                                     </p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
+                            <Card className="bg-card border-accent backdrop-blur-md h-fit p-0">
                                 <CardContent className="p-6">
                                     <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Última Valuación</h3>
                                     <p className="text-2xl font-mono text-primary font-bold">
@@ -1602,38 +1537,38 @@ export default function OperationsPage() {
                             </Card>
                         </div>
 
-                        <Card className="bg-black/40 border-white/10 backdrop-blur-md overflow-hidden">
+                        <Card className="bg-card border-accent backdrop-blur-md overflow-hidden m-6 p-0">
                             <Table>
-                                <TableHeader className="bg-white/5">
-                                    <TableRow className="border-white/5 hover:bg-transparent">
-                                        <TableHead className="text-[10px] font-black uppercase py-4 px-6 text-white">Nro. / Código</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-white">Descripción / Periodo</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-center text-white">Ítems</TableHead>
-                                        <TableHead className="text-[10px] font-black uppercase text-right text-white">Total Valuado</TableHead>
-                                        <TableHead className="w-12 text-center text-white"></TableHead>
+                                <TableHeader className="bg-accent">
+                                    <TableRow className="border-accent hover:bg-accent">
+                                        <TableHead className="text-[10px] font-black uppercase py-4 px-6 text-primary">Nro. / Código</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-primary">Descripción / Periodo</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-center text-primary">Ítems</TableHead>
+                                        <TableHead className="text-[10px] font-black uppercase text-right text-primary">Total Valuado</TableHead>
+                                        <TableHead className="w-12 text-center text-primary"></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {valuations.length === 0 ? (
-                                        <TableRow className="border-white/5 hover:bg-transparent">
+                                        <TableRow className="border-accent hover:bg-transparent">
                                             <TableCell colSpan={5} className="text-center py-12 text-muted-foreground uppercase text-[10px] font-bold tracking-widest">
                                                 No hay valuaciones de avance registradas.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         valuations.map((val: any) => (
-                                            <TableRow key={val.id} className="border-white/5 hover:bg-white/5 transition-colors">
+                                            <TableRow key={val.id} className="border-accent hover:bg-accent/5 transition-colors">
                                                 <TableCell className="px-6 py-4">
                                                     <span className="font-mono text-xs font-bold text-primary">{val.number}</span>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex flex-col">
-                                                        <span className="text-xs font-bold text-white uppercase">{val.description || 'Sin descripción'}</span>
+                                                        <span className="text-xs font-bold text-primary uppercase">{val.description || 'Sin descripción'}</span>
                                                         <span className="text-[9px] text-muted-foreground uppercase tracking-widest mt-1">Fecha: {new Date(val.date).toLocaleDateString()}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <span className="font-mono text-xs text-white">
+                                                    <span className="font-mono text-xs text-primary">
                                                         {val.items?.length || 0} ítems
                                                     </span>
                                                 </TableCell>
@@ -1643,9 +1578,27 @@ export default function OperationsPage() {
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="pr-4 text-center">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-white">
-                                                        <Activity className="h-4 w-4" />
-                                                    </Button>
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
+                                                            onClick={() => handleEditValuation(val)}
+                                                        >
+                                                            <Edit3 className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-red-500 transition-colors"
+                                                            onClick={() => {
+                                                                setValuationToDeleteId(val.id);
+                                                                setIsDeleteValuationConfirmOpen(true);
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -1653,262 +1606,269 @@ export default function OperationsPage() {
                                 </TableBody>
                             </Table>
                         </Card>
-                    </div>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="librodeobra">
-                    <div className="flex flex-col min-h-screen text-primary p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
-                        <div className="flex items-center gap-4">
-                            <Button variant="ghost" size="icon" className="hover:bg-white/10" onClick={() => router.back()}>
-                                <ChevronLeft className="h-6 w-6" />
-                            </Button>
-                            <div>
-                                <h1 className="text-2xl font-bold flex items-center gap-3 font-headline">
-                                    <CalendarDays className="h-7 w-7 text-primary" /> Libro de Obra (Site Diary)
-                                </h1>
-                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Registro diario de actividades, clima e incidentes de obra</p>
-                            </div>
-                            <div className="ml-auto">
-                                <Button
-                                    onClick={() => setIsNewLogOpen(true)}
-                                    className="bg-primary hover:bg-primary/80 text-background border border-primary font-black text-[10px] uppercase tracking-widest h-10 px-5"
-                                >
-                                    <PlusCircle className="mr-2 h-4 w-4" /> Nueva Entrada
-                                </Button>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
-                                <CardContent className="p-6">
-                                    <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Total Entradas</h3>
-                                    <p className="text-2xl font-mono text-white font-bold">{project?.siteLogs?.length || 0}</p>
-                                    <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">Desde inicio de obra</p>
-                                </CardContent>
-                            </Card>
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
-                                <CardContent className="p-6">
-                                    <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Último Reporte</h3>
-                                    <p className="text-2xl font-mono text-emerald-400 font-bold text-ellipsis overflow-hidden whitespace-nowrap">
-                                        {project?.siteLogs?.[0] ? new Date(project.siteLogs[0].date).toLocaleDateString() : 'N/A'}
-                                    </p>
-                                    <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest truncate">
-                                        Por: {project?.siteLogs?.[0]?.author?.name || '---'}
-                                    </p>
-                                </CardContent>
-                            </Card>
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
-                                <CardContent className="p-6">
-                                    <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Incidentes</h3>
-                                    <p className="text-2xl font-mono text-amber-500 font-bold">
-                                        {(project?.siteLogs || []).filter((l: any) => l.type === 'Incidente').length}
-                                    </p>
-                                    <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">Histórico de la obra</p>
-                                </CardContent>
-                            </Card>
-                            <Card className="bg-black/40 border-white/5 backdrop-blur-md">
-                                <CardContent className="p-6">
-                                    <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Clima</h3>
-                                    <p className="text-2xl font-mono text-sky-400 font-bold">
-                                        {(project?.siteLogs || []).filter((l: any) => l.type === 'Clima').length}
-                                    </p>
-                                    <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">Entradas climáticas</p>
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        <div className="space-y-4">
-                            {(project?.siteLogs || []).length === 0 ? (
-                                <div className="text-center py-20 border border-dashed border-white/5 rounded-3xl opacity-50 bg-white/1">
-                                    <CalendarDays className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Sin entradas registradas aún.</p>
+                    <Card className="bg-card border-accent text-primary overflow-y-auto flex flex-col h-fit gap-0">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-card border-b border-accent">
+                            <div className="flex items-center gap-4 w-full">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2 bg-primary/20 rounded-lg">
+                                        <CalendarDays className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <CardTitle className="text-sm font-black uppercase tracking-widest">Libro de Obra</CardTitle>
+                                        <CardDescription className="text-[10px] font-bold uppercase text-muted-foreground mt-1">Registro diario de actividades, clima e incidentes de obra</CardDescription>
+                                    </div>
                                 </div>
-                            ) : (
-                                (project?.siteLogs || []).map((log: any) => (
-                                    <Card key={log.id} className="bg-black/40 border-white/10 backdrop-blur-md overflow-hidden hover:border-primary/50 transition-colors">
-                                        <CardContent className="p-0 flex flex-col md:flex-row">
-                                            <div className={cn("p-6 md:w-48 shrink-0 flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/5",
-                                                log.type === 'Incidente' ? "bg-red-500/5 text-red-500" :
-                                                    log.type === 'Clima' ? "bg-sky-500/5 text-sky-400" :
-                                                        "bg-white/2"
-                                            )}>
-                                                <div>
-                                                    <Badge variant="outline" className={cn("text-[9px] font-black uppercase tracking-widest border-white/20 mb-3",
-                                                        log.type === 'Incidente' ? "bg-red-500/20 text-red-400" :
-                                                            log.type === 'Clima' ? "bg-sky-500/20 text-sky-400" :
-                                                                "bg-primary/20 text-primary border-primary/20"
-                                                    )}>
-                                                        {log.type}
-                                                    </Badge>
-                                                    <div className="font-mono text-[10px] text-muted-foreground">
-                                                        {new Date(log.date).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+
+                                <div className="ml-auto">
+                                    <Button
+                                        onClick={() => setIsNewLogOpen(true)}
+                                        className="bg-primary hover:bg-primary/80 text-background border border-primary font-black text-[10px] uppercase tracking-widest h-10 px-5"
+                                    >
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Nueva Entrada
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardHeader>
+
+                        <div className="p-6 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                <Card className="bg-card border-accent backdrop-blur-md p-0 m-0 h-fit">
+                                    <CardContent className="p-6">
+                                        <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Total Entradas</h3>
+                                        <p className="text-2xl font-mono text-primary font-bold">{project?.siteLogs?.length || 0}</p>
+                                        <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">Desde inicio de obra</p>
+                                    </CardContent>
+                                </Card>
+                                <Card className="bg-card border-accent backdrop-blur-md  p-0 m-0 h-fit">
+                                    <CardContent className="p-6">
+                                        <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Último Reporte</h3>
+                                        <p className="text-2xl font-mono text-emerald-400 font-bold text-ellipsis overflow-hidden whitespace-nowrap">
+                                            {project?.siteLogs?.[0] ? new Date(project.siteLogs[0].date).toLocaleDateString() : 'N/A'}
+                                        </p>
+                                        <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest truncate">
+                                            Por: {project?.siteLogs?.[0]?.author?.name || '---'}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                                <Card className="bg-card border-accent backdrop-blur-md  p-0 m-0 h-fit">
+                                    <CardContent className="p-6">
+                                        <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Incidentes</h3>
+                                        <p className="text-2xl font-mono text-amber-500 font-bold">
+                                            {(project?.siteLogs || []).filter((l: any) => l.type === 'Incidente').length}
+                                        </p>
+                                        <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">Histórico de la obra</p>
+                                    </CardContent>
+                                </Card>
+                                <Card className="bg-card border-accent backdrop-blur-md  p-0 m-0 h-fit">
+                                    <CardContent className="p-6">
+                                        <h3 className="text-[10px] font-black tracking-widest uppercase text-muted-foreground mb-2">Clima</h3>
+                                        <p className="text-2xl font-mono text-sky-400 font-bold">
+                                            {(project?.siteLogs || []).filter((l: any) => l.type === 'Clima').length}
+                                        </p>
+                                        <p className="text-[9px] text-muted-foreground mt-2 uppercase tracking-widest">Entradas climáticas</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            <div className="space-y-4">
+                                {(project?.siteLogs || []).length === 0 ? (
+                                    <div className="text-center py-20 border border-dashed border-accent rounded-3xl opacity-50 bg-card">
+                                        <CalendarDays className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Sin entradas registradas aún.</p>
+                                    </div>
+                                ) : (
+                                    (project?.siteLogs || []).map((log: any) => (
+                                        <Card key={log.id} className="bg-card border-accent backdrop-blur-md overflow-hidden hover:border-primary/50 transition-colors  p-0  h-fit">
+                                            <CardContent className="p-0 flex flex-col md:flex-row">
+                                                <div className={cn("p-6 md:w-48 shrink-0 flex flex-col justify-between border-b md:border-b-0 md:border-r border-accent",
+                                                    log.type === 'Incidente' ? "bg-red-500/5 text-red-500" :
+                                                        log.type === 'Clima' ? "bg-sky-500/5 text-sky-400" :
+                                                            log.type === 'Recepción' ? "bg-green-500/5 text-green-500" :
+                                                                "bg-white/2"
+                                                )}>
+                                                    <div>
+                                                        <Badge variant="outline" className={cn("text-[9px] font-black uppercase tracking-widest border-accent mb-3",
+                                                            log.type === 'Incidente' ? "bg-red-500/20 text-red-400" :
+                                                                log.type === 'Clima' ? "bg-sky-500/20 text-sky-400" :
+                                                                    log.type === 'Recepción' ? "bg-green-500/20 text-green-400" :
+                                                                        "bg-primary/20 text-primary border-primary/20"
+                                                        )}>
+                                                            {log.type}
+                                                        </Badge>
+                                                        <div className="font-mono text-[10px] text-muted-foreground">
+                                                            {new Date(log.date).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+                                                        </div>
+                                                        <div className="font-bold text-xs mt-1 text-primary truncate" title={log.author?.name}>
+                                                            {log.author?.name || 'Desconocido'}
+                                                        </div>
                                                     </div>
-                                                    <div className="font-bold text-xs mt-1 text-white truncate" title={log.author?.name}>
-                                                        {log.author?.name || 'Desconocido'}
+
+                                                </div>
+                                                <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                                                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                                                        {log.content}
+                                                    </p>
+                                                    <div className="flex justify-end ">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                setEditingLogId(log.id);
+                                                                setEditLogType(log.type);
+                                                                setEditLogContent(log.content);
+                                                            }}
+                                                            className="h-8 text-[9px] font-black uppercase tracking-widest hover:bg-primary/40"
+                                                        >
+                                                            <Edit3 className="h-3.5 w-3.5 mr-2" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleDeleteSiteLog(log.id)}
+                                                            className="h-8 text-[9px] font-black uppercase tracking-widest hover:bg-red-500/10 hover:text-red-400"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                                        </Button>
                                                     </div>
                                                 </div>
-                                                <div className="font-mono text-[9px] mt-4 opacity-50 truncate" title={log.id}>{log.id}</div>
-                                            </div>
-                                            <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                                                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                                                    {log.content}
-                                                </p>
-                                                <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => {
-                                                            setEditingLogId(log.id);
-                                                            setEditLogType(log.type);
-                                                            setEditLogContent(log.content);
-                                                        }}
-                                                        className="h-8 text-[9px] font-black uppercase tracking-widest hover:bg-white/10"
-                                                    >
-                                                        <Edit3 className="h-3.5 w-3.5 mr-2" /> Editar
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => handleDeleteSiteLog(log.id)}
-                                                        className="h-8 text-[9px] font-black uppercase tracking-widest hover:bg-red-500/10 hover:text-red-400"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Eliminar
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))
-                            )}
+                                            </CardContent>
+                                        </Card>
+                                    ))
+                                )}
+                            </div>
+
+                            {/* Modal para Editar Entrada */}
+                            <Dialog open={!!editingLogId} onOpenChange={(open) => !open && setEditingLogId(null)}>
+                                <DialogContent className="max-w-2xl bg-card border-accent text-primary ">
+                                    <DialogHeader>
+                                        <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-lg font-black">
+                                            <Edit3 className="h-5 w-5 text-primary" />
+                                            Modificar Entrada
+                                        </DialogTitle>
+                                        <DialogDescription className="text-[10px] uppercase tracking-widest font-bold mt-1">
+                                            Edite el tipo de novedad o modifique el registro.
+                                        </DialogDescription>
+                                    </DialogHeader>
+
+                                    <div className="space-y-6 pt-4">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                Tipo de Registro
+                                            </label>
+                                            <Select value={editLogType} onValueChange={setEditLogType}>
+                                                <SelectTrigger className="w-full bg-card border-accent text-xs font-bold uppercase h-12 text-primary">
+                                                    <SelectValue placeholder="Seleccione el tipo..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-card border-accent text-primary">
+                                                    <SelectItem value="Avance" className="text-xs uppercase font-bold text-primary focus:bg-primary/20">Avance de Obra</SelectItem>
+                                                    <SelectItem value="Recepción" className="text-xs uppercase font-bold text-emerald-400 focus:bg-emerald-500/20">Recepción de Material</SelectItem>
+                                                    <SelectItem value="Clima" className="text-xs uppercase font-bold text-sky-400 focus:bg-sky-500/20">Afectación por Clima</SelectItem>
+                                                    <SelectItem value="Incidente" className="text-xs uppercase font-bold text-destructive focus:bg-destructive/20">Incidente / Alerta</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                Descripción Detallada
+                                            </label>
+                                            <textarea
+                                                value={editLogContent}
+                                                onChange={(e) => setEditLogContent(e.target.value)}
+                                                placeholder="Detalle exactamente lo ocurrido, avance medido o motivo del incidente..."
+                                                className="w-full h-32 p-4 bg-card border border-accent rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none outline-none text-primary placeholder:text-muted-foreground/30"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <DialogFooter className="pt-6">
+                                        <Button variant="ghost" onClick={() => setEditingLogId(null)} className="text-[10px] font-black uppercase tracking-widest h-11 px-6">
+                                            Cancelar
+                                        </Button>
+                                        <Button
+                                            onClick={handleEditSiteLog}
+                                            disabled={!editLogContent.trim() || isSubmittingEditLog}
+                                            className="bg-primary hover:bg-primary/90 text-background font-black text-[10px] uppercase tracking-widest h-11 px-8"
+                                        >
+                                            {isSubmittingEditLog ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Edit3 className="h-4 w-4 mr-2" />}
+                                            Modificar Registro
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+
+                            {/* Modal para Crear Nueva Entrada */}
+                            <Dialog open={isNewLogOpen} onOpenChange={setIsNewLogOpen}>
+                                <DialogContent className="max-w-2xl bg-card border-accent text-primary">
+                                    <DialogHeader>
+                                        <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-lg font-black">
+                                            <PlusCircle className="h-5 w-5 text-primary" />
+                                            Nueva Entrada de Libro de Obra
+                                        </DialogTitle>
+                                        <DialogDescription className="text-[10px] uppercase tracking-widest font-bold mt-1">
+                                            Registra novedades, incidentes o el estado actual de la obra.
+                                        </DialogDescription>
+                                    </DialogHeader>
+
+                                    <div className="space-y-6 pt-4">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                Tipo de Registro
+                                            </label>
+                                            <Select value={newLogType} onValueChange={setNewLogType}>
+                                                <SelectTrigger className="w-full bg-card border-accent text-xs font-bold uppercase h-12">
+                                                    <SelectValue placeholder="Seleccione el tipo..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-card border-accent text-primary">
+                                                    <SelectItem value="Avance" className="text-xs uppercase font-bold text-primary focus:bg-primary/20">Avance de Obra</SelectItem>
+                                                    <SelectItem value="Recepción" className="text-xs uppercase font-bold text-emerald-400 focus:bg-emerald-500/20">Recepción de Material</SelectItem>
+                                                    <SelectItem value="Clima" className="text-xs uppercase font-bold text-sky-400 focus:bg-sky-500/20">Afectación por Clima</SelectItem>
+                                                    <SelectItem value="Incidente" className="text-xs uppercase font-bold text-destructive focus:bg-destructive/20">Incidente / Alerta</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                Descripción Detallada
+                                            </label>
+                                            <textarea
+                                                value={newLogContent}
+                                                onChange={(e) => setNewLogContent(e.target.value)}
+                                                placeholder="Detalle exactamente lo ocurrido, avance medido o motivo del incidente..."
+                                                className="w-full h-32 p-4 bg-card border border-accent rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none outline-none text-primary placeholder:text-muted-foreground/30"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <DialogFooter className="pt-6">
+                                        <Button variant="ghost" onClick={() => setIsNewLogOpen(false)} className="text-[10px] font-black uppercase tracking-widest h-11 px-6">
+                                            Cancelar
+                                        </Button>
+                                        <Button
+                                            onClick={handleCreateSiteLog}
+                                            disabled={!newLogContent.trim() || isSubmittingLog}
+                                            className="bg-primary hover:bg-primary/90 text-background font-black text-[10px] uppercase tracking-widest h-11 px-8"
+                                        >
+                                            {isSubmittingLog ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CalendarDays className="h-4 w-4 mr-2" />}
+                                            Guardar Registro
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
                         </div>
-
-                        {/* Modal para Editar Entrada */}
-                        <Dialog open={!!editingLogId} onOpenChange={(open) => !open && setEditingLogId(null)}>
-                            <DialogContent className="max-w-2xl bg-[#0a0a0a] border-white/10 text-white shadow-2xl">
-                                <DialogHeader>
-                                    <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-lg font-black">
-                                        <Edit3 className="h-5 w-5 text-primary" />
-                                        Modificar Entrada
-                                    </DialogTitle>
-                                    <DialogDescription className="text-[10px] uppercase tracking-widest font-bold mt-1">
-                                        Edite el tipo de novedad o modifique el registro.
-                                    </DialogDescription>
-                                </DialogHeader>
-
-                                <div className="space-y-6 pt-4">
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                            Tipo de Registro
-                                        </label>
-                                        <Select value={editLogType} onValueChange={setEditLogType}>
-                                            <SelectTrigger className="w-full bg-black/50 border-white/10 text-xs font-bold uppercase h-12">
-                                                <SelectValue placeholder="Seleccione el tipo..." />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-[#0a0a0a] border-white/10 text-white">
-                                                <SelectItem value="Avance" className="text-xs uppercase font-bold text-primary focus:bg-primary/20">Avance de Obra</SelectItem>
-                                                <SelectItem value="Recepción" className="text-xs uppercase font-bold text-emerald-400 focus:bg-emerald-500/20">Recepción de Material</SelectItem>
-                                                <SelectItem value="Clima" className="text-xs uppercase font-bold text-sky-400 focus:bg-sky-500/20">Afectación por Clima</SelectItem>
-                                                <SelectItem value="Incidente" className="text-xs uppercase font-bold text-destructive focus:bg-destructive/20">Incidente / Alerta</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                            Descripción Detallada
-                                        </label>
-                                        <textarea
-                                            value={editLogContent}
-                                            onChange={(e) => setEditLogContent(e.target.value)}
-                                            placeholder="Detalle exactamente lo ocurrido, avance medido o motivo del incidente..."
-                                            className="w-full h-32 p-4 bg-black/50 border border-white/10 rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none outline-none text-white/90 placeholder:text-muted-foreground/30"
-                                        />
-                                    </div>
-                                </div>
-
-                                <DialogFooter className="pt-6">
-                                    <Button variant="ghost" onClick={() => setEditingLogId(null)} className="text-[10px] font-black uppercase tracking-widest h-11 px-6">
-                                        Cancelar
-                                    </Button>
-                                    <Button
-                                        onClick={handleEditSiteLog}
-                                        disabled={!editLogContent.trim() || isSubmittingEditLog}
-                                        className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest h-11 px-8"
-                                    >
-                                        {isSubmittingEditLog ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Edit3 className="h-4 w-4 mr-2" />}
-                                        Modificar Registro
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-
-                        {/* Modal para Crear Nueva Entrada */}
-                        <Dialog open={isNewLogOpen} onOpenChange={setIsNewLogOpen}>
-                            <DialogContent className="max-w-2xl bg-[#0a0a0a] border-white/10 text-white shadow-2xl">
-                                <DialogHeader>
-                                    <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-lg font-black">
-                                        <PlusCircle className="h-5 w-5 text-primary" />
-                                        Nueva Entrada de Libro de Obra
-                                    </DialogTitle>
-                                    <DialogDescription className="text-[10px] uppercase tracking-widest font-bold mt-1">
-                                        Registra novedades, incidentes o el estado actual de la obra.
-                                    </DialogDescription>
-                                </DialogHeader>
-
-                                <div className="space-y-6 pt-4">
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                            Tipo de Registro
-                                        </label>
-                                        <Select value={newLogType} onValueChange={setNewLogType}>
-                                            <SelectTrigger className="w-full bg-black/50 border-white/10 text-xs font-bold uppercase h-12">
-                                                <SelectValue placeholder="Seleccione el tipo..." />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-[#0a0a0a] border-white/10 text-white">
-                                                <SelectItem value="Avance" className="text-xs uppercase font-bold text-primary focus:bg-primary/20">Avance de Obra</SelectItem>
-                                                <SelectItem value="Recepción" className="text-xs uppercase font-bold text-emerald-400 focus:bg-emerald-500/20">Recepción de Material</SelectItem>
-                                                <SelectItem value="Clima" className="text-xs uppercase font-bold text-sky-400 focus:bg-sky-500/20">Afectación por Clima</SelectItem>
-                                                <SelectItem value="Incidente" className="text-xs uppercase font-bold text-destructive focus:bg-destructive/20">Incidente / Alerta</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                            Descripción Detallada
-                                        </label>
-                                        <textarea
-                                            value={newLogContent}
-                                            onChange={(e) => setNewLogContent(e.target.value)}
-                                            placeholder="Detalle exactamente lo ocurrido, avance medido o motivo del incidente..."
-                                            className="w-full h-32 p-4 bg-black/50 border border-white/10 rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none outline-none text-white/90 placeholder:text-muted-foreground/30"
-                                        />
-                                    </div>
-                                </div>
-
-                                <DialogFooter className="pt-6">
-                                    <Button variant="ghost" onClick={() => setIsNewLogOpen(false)} className="text-[10px] font-black uppercase tracking-widest h-11 px-6">
-                                        Cancelar
-                                    </Button>
-                                    <Button
-                                        onClick={handleCreateSiteLog}
-                                        disabled={!newLogContent.trim() || isSubmittingLog}
-                                        className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest h-11 px-8"
-                                    >
-                                        {isSubmittingLog ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CalendarDays className="h-4 w-4 mr-2" />}
-                                        Guardar Registro
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
+                    </Card>
                 </TabsContent>
             </Tabs>
 
             {/* Modal para Nueva Planilla Personal */}
             <Dialog open={isNewPayrollOpen} onOpenChange={setIsNewPayrollOpen}>
-                <DialogContent className="min-w-7xl w-full bg-[#0a0a0a] border-white/10 text-white shadow-2xl overflow-hidden max-h-[95vh] flex flex-col p-0 gap-0">
-                    <div className="p-6 border-b border-white/5 shrink-0 bg-black/40 backdrop-blur-xl">
+                <DialogContent className="min-w-7xl w-full bg-card border-accent text-primary overflow-hidden max-h-[95vh] flex flex-col p-0 gap-0">
+                    <div className="p-6 border-b border-accent shrink-0 bg-card">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-lg font-black">
                                 {editingPayrollId ? (
@@ -1925,14 +1885,14 @@ export default function OperationsPage() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/5 p-6 rounded-2xl border border-white/5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-card p-6 rounded-2xl border border-accent">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Fecha Inicio</label>
                                 <Input
                                     type="date"
                                     value={payrollStartDate}
                                     onChange={(e) => setPayrollStartDate(e.target.value)}
-                                    className="bg-black/50 border-white/10 text-xs font-bold h-11"
+                                    className="bg-card border-accent text-primary text-xs font-bold h-11"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -1941,13 +1901,13 @@ export default function OperationsPage() {
                                     type="date"
                                     value={payrollEndDate}
                                     onChange={(e) => setPayrollEndDate(e.target.value)}
-                                    className="bg-black/50 border-white/10 text-xs font-bold h-11"
+                                    className="bg-card border-accent text-primary text-xs font-bold h-11"
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                            <div className="flex items-center justify-between border-b border-accent pb-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
                                     <Activity className="h-4 w-4" /> Detalle de Jornales
                                 </label>
@@ -1955,10 +1915,10 @@ export default function OperationsPage() {
                                     const contact = (project?.team || []).find((c: any) => c.id === val);
                                     if (contact) handleAddPersonToPayroll(contact);
                                 }}>
-                                    <SelectTrigger className="w-64 bg-white/5 border-white/10 text-[10px] font-black uppercase h-9">
+                                    <SelectTrigger className="w-64 bg-card border-accent text-primary text-[10px] font-black uppercase h-9">
                                         <SelectValue placeholder="Añadir Personal del Equipo" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-[#0a0a0a] border-white/10 text-white">
+                                    <SelectContent className="bg-card border-accent text-primary text-[10px] font-bold uppercase">
                                         {(project?.team || []).filter((m: any) => m.type === 'personal').map((member: any) => (
                                             <SelectItem key={member.id} value={member.id} className="text-[10px] font-bold uppercase">
                                                 <div className="flex flex-col">
@@ -1971,20 +1931,20 @@ export default function OperationsPage() {
                                 </Select>
                             </div>
 
-                            <div className="rounded-2xl border border-white/10 overflow-hidden relative bg-black/20">
+                            <div className="rounded-2xl border border-accent overflow-hidden relative bg-card">
                                 <div className="overflow-auto max-h-[50vh]">
                                     <Table className="min-w-full border-separate border-spacing-0">
-                                        <TableHeader className="sticky top-0 z-30 bg-[#111] shadow-xl">
-                                            <TableRow className="border-b border-white/10 hover:bg-transparent">
-                                                <TableHead className="text-[10px] font-black uppercase text-primary min-w-[220px] sticky left-0 top-0 z-40 bg-[#111] border-r border-white/10 px-6 py-4">
+                                        <TableHeader className="sticky top-0 z-30 bg-card">
+                                            <TableRow className="border-b border-accent hover:bg-transparent">
+                                                <TableHead className="text-[10px] font-black uppercase text-primary min-w-[220px] sticky left-0 top-0 z-40 bg-card border-r border-accent px-6 py-4 border-b">
                                                     Personal / Cargo
                                                 </TableHead>
                                                 {datesInRange.map(date => {
                                                     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                                                     return (
                                                         <TableHead key={date.toISOString()} className={cn(
-                                                            "text-[8px] font-black uppercase text-center px-2 min-w-[65px] border-b border-white/5 py-3 transition-colors",
-                                                            isWeekend ? "bg-red-500/10 text-red-400" : "text-muted-foreground hover:text-white"
+                                                            "text-[8px] font-black uppercase text-center px-2 min-w-[65px] border-b border-accent py-3 transition-colors",
+                                                            isWeekend ? "bg-red-500/10 text-red-400" : "text-muted-foreground hover:text-primary"
                                                         )}>
                                                             <div className="flex flex-col gap-0.5">
                                                                 <span className="opacity-50">{date.toLocaleDateString('es-ES', { weekday: 'short' })}</span>
@@ -1993,10 +1953,10 @@ export default function OperationsPage() {
                                                         </TableHead>
                                                     );
                                                 })}
-                                                <TableHead className="text-[10px] font-black uppercase text-center text-white min-w-[90px] border-l border-white/10 bg-[#111] sticky right-40 z-30">Días</TableHead>
-                                                <TableHead className="text-[10px] font-black uppercase text-right text-white min-w-[110px] bg-[#111] sticky right-20 z-30">Jornal ($)</TableHead>
-                                                <TableHead className="text-[10px] font-black uppercase text-right text-primary min-w-[130px] bg-[#111] sticky right-0 z-30 px-6">Subtotal</TableHead>
-                                                <TableHead className="w-10 bg-[#111]"></TableHead>
+                                                <TableHead className="text-[10px] font-black uppercase text-center text-primary min-w-[90px] border-l border-accent bg-card sticky right-40 z-30 border-b">Días</TableHead>
+                                                <TableHead className="text-[10px] font-black uppercase text-right text-primary min-w-[110px] bg-card sticky right-20 z-30 border-accent border-b">Jornal ($)</TableHead>
+                                                <TableHead className="text-[10px] font-black uppercase text-right text-primary min-w-[130px] bg-card sticky right-0 z-30 px-6 border-accent border-b">Subtotal</TableHead>
+                                                <TableHead className="w-10 bg-card"></TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -2011,8 +1971,8 @@ export default function OperationsPage() {
                                                 </TableRow>
                                             ) : (
                                                 payrollEntries.map((entry: any) => (
-                                                    <TableRow key={entry.contactId} className="border-white/5 group hover:bg-white/2 transition-colors">
-                                                        <TableCell className="text-xs font-black text-white sticky left-0 bg-[#0a0a0a] z-10 border-r border-white/10 px-6 group-hover:bg-white/5">
+                                                    <TableRow key={entry.contactId} className="border-accent group hover:bg-white/2 transition-colors">
+                                                        <TableCell className="text-xs font-black text-primary sticky left-0 bg-card z-10 border-r border-accent px-6 group-hover:bg-white/5">
                                                             {entry.name}
                                                         </TableCell>
                                                         {datesInRange.map(date => {
@@ -2020,7 +1980,7 @@ export default function OperationsPage() {
                                                             const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                                                             return (
                                                                 <TableCell key={dateStr} className={cn(
-                                                                    "text-center px-1 border-r border-white/5",
+                                                                    "text-center px-1 border-r border-accent",
                                                                     isWeekend && "bg-red-500/2"
                                                                 )}>
                                                                     <Input
@@ -2030,23 +1990,23 @@ export default function OperationsPage() {
                                                                         max="1"
                                                                         value={entry.dailyAttendance[dateStr] || 0}
                                                                         onChange={(e) => handleDailyAttendanceChange(entry.contactId, dateStr, parseFloat(e.target.value) || 0)}
-                                                                        className="w-12 mx-auto h-8 bg-black/50 text-center text-[11px] font-black border-white/5 hover:border-primary/50 focus:border-primary transition-all p-0 rounded-md"
+                                                                        className="w-12 mx-auto h-8 bg-card text-center text-[11px] font-black border-accent hover:border-primary focus:border-primary transition-all p-0 rounded-md"
                                                                     />
                                                                 </TableCell>
                                                             );
                                                         })}
-                                                        <TableCell className="text-center font-mono text-xs font-black text-white bg-black/20 border-l border-white/10 sticky right-40 z-10">
+                                                        <TableCell className="text-center font-mono text-xs font-black text-primary bg-card border-l border-accent sticky right-40 z-10">
                                                             {entry.daysWorked.toFixed(1)}
                                                         </TableCell>
-                                                        <TableCell className="text-right bg-black/20 sticky right-20 z-10">
+                                                        <TableCell className="text-right bg-card sticky right-20 z-10">
                                                             <Input
                                                                 type="number"
                                                                 value={entry.dailyRate}
                                                                 onChange={(e) => handlePayrollEntryChange(entry.contactId, 'dailyRate', parseFloat(e.target.value) || 0)}
-                                                                className="w-24 ml-auto h-8 bg-black/50 text-right text-xs font-black border-white/5 hover:border-primary rounded-md"
+                                                                className="w-24 ml-auto h-8 bg-card text-right text-xs font-black border-accent hover:border-primary rounded-md"
                                                             />
                                                         </TableCell>
-                                                        <TableCell className="text-right font-mono text-xs font-black text-primary bg-black/20 sticky right-0 z-10 px-6">
+                                                        <TableCell className="text-right font-mono text-xs font-black text-primary bg-card border-l border-accent sticky right-0 z-10 px-6">
                                                             $ {entry.totalAmount.toLocaleString()}
                                                         </TableCell>
                                                         <TableCell className="pr-4">
@@ -2064,16 +2024,16 @@ export default function OperationsPage() {
                         </div>
                     </div>
 
-                    <div className="p-6 border-t border-white/5 bg-black/40 backdrop-blur-xl shrink-0">
+                    <div className="p-6 border-t border-accent bg-card backdrop-blur-xl shrink-0">
                         <DialogFooter className="flex items-center justify-between w-full">
                             <div className="flex items-center gap-6">
                                 <div className="text-left border-l-2 border-primary pl-4">
                                     <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Total General</p>
                                     <p className="text-2xl font-mono font-black text-primary">$ {payrollGrandTotal.toLocaleString()}</p>
                                 </div>
-                                <div className="text-left border-l border-white/10 pl-4 hidden md:block">
+                                <div className="text-left border-l border-accent pl-4 hidden md:block">
                                     <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Personal</p>
-                                    <p className="text-lg font-mono font-bold text-white">{payrollEntries.length}</p>
+                                    <p className="text-lg font-mono font-bold text-primary">{payrollEntries.length}</p>
                                 </div>
                             </div>
                             <div className="flex gap-3">
@@ -2086,7 +2046,7 @@ export default function OperationsPage() {
                                 <Button
                                     onClick={handleSavePayroll}
                                     disabled={payrollEntries.length === 0 || isSubmittingPayroll}
-                                    className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest h-12 px-10 shadow-lg shadow-primary/20"
+                                    className="bg-primary hover:bg-primary/90 text-background font-black text-[10px] uppercase tracking-widest h-12 px-10 "
                                 >
                                     {isSubmittingPayroll ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                                     {editingPayrollId ? 'Actualizar Planilla' : 'Completar Planilla'}
@@ -2099,7 +2059,7 @@ export default function OperationsPage() {
 
             {/* Modal de Confirmación de Eliminación de Planilla */}
             <Dialog open={isDeletePayrollConfirmOpen} onOpenChange={setIsDeletePayrollConfirmOpen}>
-                <DialogContent className="max-w-md bg-[#0a0a0a] border-white/10 text-white shadow-2xl">
+                <DialogContent className="max-w-md bg-card border-accent text-primary shadow-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-lg font-black text-red-500">
                             <AlertCircle className="h-5 w-5" />
@@ -2116,7 +2076,7 @@ export default function OperationsPage() {
                         <Button
                             onClick={() => payrollToDeleteId && handleDeletePayroll(payrollToDeleteId)}
                             disabled={isSubmittingPayroll}
-                            className="bg-red-500 hover:bg-red-600 text-white font-black text-[10px] uppercase tracking-widest h-11 px-8"
+                            className="bg-red-500 hover:bg-red-600 text-background font-black text-[10px] uppercase tracking-widest h-11 px-8"
                         >
                             {isSubmittingPayroll ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
                             Eliminar Permanentemente
@@ -2126,23 +2086,23 @@ export default function OperationsPage() {
             </Dialog>
             {/* Modal Nueva Planilla de Avance */}
             <Dialog open={isNewValuationOpen} onOpenChange={setIsNewValuationOpen}>
-                <DialogContent className="min-w-7xl bg-[#0a0a0a] border-white/10 text-white shadow-2xl p-0 overflow-hidden flex flex-col h-[90vh]">
-                    <div className="p-6 border-b border-white/5 shrink-0 bg-black/40 backdrop-blur-xl">
+                <DialogContent className="min-w-7xl bg-card border-accent text-primary p-0 overflow-hidden flex flex-col h-[90vh]">
+                    <div className="p-6 border-b border-accent shrink-0 bg-card">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-lg font-black">
-                                <Activity className="h-5 w-5 text-primary" />
-                                Nueva Planilla de Avance
+                                {editingValuationId ? <Edit3 className="h-5 w-5 text-primary" /> : <Activity className="h-5 w-5 text-primary" />}
+                                {editingValuationId ? 'Editar Planilla de Avance' : 'Nueva Planilla de Avance'}
                             </DialogTitle>
                             <DialogDescription className="text-[10px] uppercase tracking-widest font-bold mt-1">
-                                Seleccione las partidas y especifique el avance ejecutado para esta certificación.
+                                {editingValuationId ? 'Modifique los ítems y cantidades certificados en esta planilla.' : 'Seleccione las partidas y especifique el avance ejecutado para esta certificación.'}
                             </DialogDescription>
                         </DialogHeader>
                     </div>
 
                     <div className="flex-1 overflow-hidden flex">
                         {/* Selector de Partidas */}
-                        <div className="w-1/3 border-r border-white/5 flex flex-col bg-black/20">
-                            <div className="p-4 border-b border-white/5">
+                        <div className="w-1/3 border-r border-accent flex flex-col bg-card">
+                            <div className="p-4 border-b border-accent">
                                 <label className="text-[10px] font-black uppercase text-muted-foreground mb-3 block tracking-widest">Añadir Partidas al Avance</label>
                                 <Select onValueChange={(val) => {
                                     const item = project.items.find((i: any) => i.id === val);
@@ -2159,13 +2119,13 @@ export default function OperationsPage() {
                                         }]);
                                     }
                                 }}>
-                                    <SelectTrigger className="bg-white/5 border-white/10 text-xs h-11 uppercase font-bold">
+                                    <SelectTrigger className="bg-card border-accent text-primary text-xs h-11 uppercase font-bold">
                                         <SelectValue placeholder="Seleccionar Partida..." />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-[#0a0a0a] border-white/10 text-white max-h-[300px]">
+                                    <SelectContent className="bg-card border-accent text-primary max-h-[300px]">
                                         <ScrollArea className="h-full">
                                             {project?.items?.map((item: any) => (
-                                                <SelectItem key={item.id} value={item.id} className="text-xs font-bold py-3 border-b border-white/5 hover:bg-white/5 cursor-pointer uppercase">
+                                                <SelectItem key={item.id} value={item.id} className="text-xs font-bold py-3 border-b border-accent hover:bg-accent cursor-pointer uppercase">
                                                     {item.item.description}
                                                 </SelectItem>
                                             ))}
@@ -2181,7 +2141,7 @@ export default function OperationsPage() {
                                         value={valuationDescription}
                                         onChange={(e) => setValuationDescription(e.target.value)}
                                         placeholder="Ej: Avance de Obra Semana 45..."
-                                        className="h-11 bg-white/5 border-white/10 text-xs text-white"
+                                        className="h-11 bg-card border-accent text-primary "
                                     />
                                 </div>
                                 <div>
@@ -2190,32 +2150,32 @@ export default function OperationsPage() {
                                         type="date"
                                         value={valuationDate}
                                         onChange={(e) => setValuationDate(e.target.value)}
-                                        className="h-11 bg-white/5 border-white/10 text-xs text-white uppercase font-mono"
+                                        className="h-11 bg-card border-accent text-primary  uppercase font-mono"
                                     />
                                 </div>
                             </div>
                         </div>
 
                         {/* Listado de Avance */}
-                        <div className="flex-1 bg-black/40 flex flex-col">
+                        <div className="flex-1 bg-card flex flex-col">
                             <ScrollArea className="flex-1">
                                 <div className="p-0">
                                     <Table>
-                                        <TableHeader className="sticky top-0 bg-[#0a0a0a] z-10">
-                                            <TableRow className="border-white/5">
-                                                <TableHead className="text-[9px] font-black uppercase text-white py-4 pl-6">Partida / PU</TableHead>
-                                                <TableHead className="text-[9px] font-black uppercase text-center text-white">Computado</TableHead>
-                                                <TableHead className="text-[9px] font-black uppercase text-center text-white">Previo Cert.</TableHead>
-                                                <TableHead className="text-[9px] font-black uppercase text-center text-white w-28">Avance (Cant.)</TableHead>
-                                                <TableHead className="text-[9px] font-black uppercase text-right text-white">Total Bruto</TableHead>
-                                                <TableHead className="text-[9px] font-black uppercase text-right text-white">Retención ({project?.config?.guaranteeRetention || 7}%)</TableHead>
-                                                <TableHead className="text-[9px] font-black uppercase text-right text-white">Total Líquido</TableHead>
+                                        <TableHeader className="sticky top-0 bg-card z-10">
+                                            <TableRow className="border-accent">
+                                                <TableHead className="text-[9px] font-black uppercase text-primary py-4 pl-6">Partida / PU</TableHead>
+                                                <TableHead className="text-[9px] font-black uppercase text-center text-primary">Computado</TableHead>
+                                                <TableHead className="text-[9px] font-black uppercase text-center text-primary">Previo Cert.</TableHead>
+                                                <TableHead className="text-[9px] font-black uppercase text-center text-primary w-28">Avance (Cant.)</TableHead>
+                                                <TableHead className="text-[9px] font-black uppercase text-right text-primary">Total Bruto</TableHead>
+                                                <TableHead className="text-[9px] font-black uppercase text-right text-primary">Retención ({project?.config?.guaranteeRetention || 7}%)</TableHead>
+                                                <TableHead className="text-[9px] font-black uppercase text-right text-primary">Total Líquido</TableHead>
                                                 <TableHead className="w-10"></TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {valuationEntries.length === 0 ? (
-                                                <TableRow className="border-white/5 hover:bg-transparent">
+                                                <TableRow className="border-accent hover:bg-transparent">
                                                     <TableCell colSpan={8} className="text-center py-20 opacity-30 italic text-[10px] uppercase font-bold tracking-[0.3em]">
                                                         No hay avances pendientes de certificación.
                                                     </TableCell>
@@ -2228,14 +2188,14 @@ export default function OperationsPage() {
                                                     const neto = subtotal - retention;
 
                                                     return (
-                                                        <TableRow key={idx} className="border-white/5 hover:bg-white/5 group">
+                                                        <TableRow key={idx} className="border-accent hover:bg-transparent">
                                                             <TableCell className="pl-6 py-4">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-[11px] font-black uppercase text-white truncate max-w-[180px]">{entry.description}</span>
+                                                                    <span className="text-[11px] font-black uppercase text-primary truncate max-w-[180px]">{entry.description}</span>
                                                                     <span className="text-[9px] text-muted-foreground uppercase flex items-center gap-1 mt-1 font-mono font-bold">$ {entry.price.toLocaleString()} / {entry.unit}</span>
                                                                 </div>
                                                             </TableCell>
-                                                            <TableCell className="text-center font-mono text-xs font-bold text-white/50">
+                                                            <TableCell className="text-center font-mono text-xs font-bold text-primary">
                                                                 {entry.totalQuantity.toLocaleString()}
                                                             </TableCell>
                                                             <TableCell className="text-center">
@@ -2254,11 +2214,11 @@ export default function OperationsPage() {
                                                                             i === idx ? { ...item, quantity: val, amount: val * item.price } : item
                                                                         ));
                                                                     }}
-                                                                    className="h-10 bg-white/5 border-white/10 text-center font-mono font-black text-primary text-xs"
+                                                                    className="h-10 bg-card border-accent text-center font-mono font-black text-primary text-xs"
                                                                 />
                                                             </TableCell>
                                                             <TableCell className="text-right">
-                                                                <span className="font-mono text-xs font-bold text-white">
+                                                                <span className="font-mono text-xs font-bold text-primary">
                                                                     $ {subtotal.toLocaleString()}
                                                                 </span>
                                                             </TableCell>
@@ -2273,7 +2233,7 @@ export default function OperationsPage() {
                                                                 </span>
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Button onClick={() => setValuationEntries(prev => prev.filter((_, i) => i !== idx))} variant="ghost" size="icon" className="h-7 w-7 text-white/20 hover:text-red-500 hover:bg-transparent">
+                                                                <Button onClick={() => setValuationEntries(prev => prev.filter((_, i) => i !== idx))} variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-red-500 hover:bg-transparent">
                                                                     <X className="h-4 w-4" />
                                                                 </Button>
                                                             </TableCell>
@@ -2288,12 +2248,12 @@ export default function OperationsPage() {
                         </div>
                     </div>
 
-                    <div className="p-6 border-t border-white/5 bg-black/40 backdrop-blur-xl shrink-0">
+                    <div className="p-6 border-t border-accent bg-card backdrop-blur-xl shrink-0">
                         <DialogFooter className="flex items-center justify-between w-full">
                             <div className="flex items-center gap-8">
-                                <div className="text-left border-l-2 border-white/20 pl-4">
+                                <div className="text-left border-l-2 border-accent pl-4">
                                     <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Subtotal Bruto</p>
-                                    <p className="text-lg font-mono font-bold text-white/70">
+                                    <p className="text-lg font-mono font-bold text-primary">
                                         $ {valuationEntries.reduce((acc, e) => acc + (e.amount || 0), 0).toLocaleString()}
                                     </p>
                                 </div>
@@ -2317,14 +2277,43 @@ export default function OperationsPage() {
                                 <Button
                                     onClick={handleSaveValuation}
                                     disabled={valuationEntries.length === 0 || isSubmittingValuation}
-                                    className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest h-12 px-10 shadow-lg shadow-primary/20"
+                                    className="bg-primary hover:bg-primary/90 text-background font-black text-[10px] uppercase tracking-widest h-12 px-10 "
                                 >
                                     {isSubmittingValuation ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                                    Finalizar Valuación
+                                    {editingValuationId ? 'Actualizar Valuación' : 'Finalizar Valuación'}
                                 </Button>
                             </div>
                         </DialogFooter>
                     </div>
+                </DialogContent>
+            </Dialog>
+            
+            {/* Modal de Confirmación de Eliminación de Valuación */}
+            <Dialog open={isDeleteValuationConfirmOpen} onOpenChange={setIsDeleteValuationConfirmOpen}>
+                <DialogContent className="max-w-md bg-card border-accent text-primary shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-lg font-black text-red-500">
+                            <AlertCircle className="h-5 w-5" />
+                            Confirmar Eliminación
+                        </DialogTitle>
+                        <DialogDescription className="text-xs font-bold mt-2">
+                            ¿Estás seguro de que deseas eliminar esta planilla? <br /><br />
+                            <strong className="text-red-400">IMPORTANTE: Esta acción revertirá el progreso de los ítems en el módulo de construcción y no se puede deshacer.</strong>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="mt-6 flex gap-3">
+                        <Button variant="ghost" onClick={() => setIsDeleteValuationConfirmOpen(false)} className="text-[10px] font-black uppercase tracking-widest h-11 px-6 hover:bg-white/5">
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={() => valuationToDeleteId && handleDeleteValuation(valuationToDeleteId)}
+                            disabled={isSubmittingValuation}
+                            className="bg-red-500 hover:bg-red-600 text-background font-black text-[10px] uppercase tracking-widest h-11 px-8"
+                        >
+                            {isSubmittingValuation ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                            Eliminar y Revertir Progreso
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>

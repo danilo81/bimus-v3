@@ -38,7 +38,8 @@ import {
     UserCircle,
     Terminal,
     CheckCircle2,
-    LayoutGrid
+    LayoutGrid,
+    Inbox
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -316,34 +317,10 @@ export default function ModelPage() {
     ];
 
     return (
-        <div className="flex flex-col min-h-screen  text-primary p-4 md:p-8 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="hover:bg-white/10"
-                        onClick={() => router.back()}
-                    >
-                        <ChevronLeft className="h-6 w-6" />
-                    </Button>
-                    <div>
-                        <h1 className="text-2xl font-bold flex items-center gap-3 font-headline uppercase tracking-tight">
-                            <Box className="h-7 w-7 text-primary" /> Modelo:
-                        </h1>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Gestión de activos digitales y control de versiones BIM</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold uppercase tracking-widest px-6 h-9">
-                        <Download className="mr-2 h-4 w-4" /> Exportar Inventario
-                    </Button>
-                </div>
-            </div>
-
+        <div className="flex flex-col h-fit text-primary p-4 md:p-8 space-y-6">
             <Tabs defaultValue="modelo" className="w-full">
-                <TabsList className="bg-white/5 border border-white/10 h-12 p-0 rounded-xl overflow-hidden mb-6 flex flex-wrap md:flex-nowrap">
-                    <TabsTrigger value="modelo" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-white rounded-none border-r border-white/10 text-xs md:text-sm font-black uppercase tracking-widest">
+                <TabsList className="bg-card border border-accent h-12 p-0 rounded-xl overflow-hidden mb-6 flex flex-wrap md:flex-nowrap">
+                    <TabsTrigger value="modelo" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm font-black uppercase tracking-widest">
                         <Box className="mr-2 h-4 w-4" /> MODELO & VERSIONES
                     </TabsTrigger>
                     <TabsTrigger
@@ -352,14 +329,36 @@ export default function ModelPage() {
                     >
                         <HardDrive className="mr-2 h-4 w-4" /> ASSETS
                     </TabsTrigger>
+                    <TabsTrigger
+                        value="assets"
+                        className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-white rounded-none border-r border-white/10 text-xs md:text-sm font-black uppercase tracking-widest"
+                    >
+                        <HardDrive className="mr-2 h-4 w-4" /> Incidencias
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="assets"
+                        className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-white rounded-none border-r border-white/10 text-xs md:text-sm font-black uppercase tracking-widest"
+                    >
+                        <HardDrive className="mr-2 h-4 w-4" /> Submittals
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="modelo">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[75vh]">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[75vh] ">
                         {/* Sidebar de Versiones (Timeline) */}
                         <div className="lg:col-span-3 flex flex-col gap-4">
-                            <Card className="bg-card border-accent flex-1 overflow-hidden flex flex-col">
+                            <Card className="bg-card border-accent flex-1 overflow-hidden flex flex-col h-fit gap-0 ">
                                 <CardHeader className="p-4 bg-accent/2 border-b border-accent space-y-4">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                        <div className="flex items-center gap-4 bg-card w-fit">
+                                            <div>
+                                                <h1 className="text-2xl font-bold flex items-center gap-3 font-headline uppercase tracking-tight">
+                                                    <Box className="h-7 w-7 text-primary" /> Modelo:
+                                                </h1>
+                                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Gestión de activos digitales y control de versiones BIM</p>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <GitBranch className="h-4 w-4 text-primary" />
@@ -368,10 +367,10 @@ export default function ModelPage() {
                                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsNewBranchOpen(true)}><Plus className="h-4 w-4" /></Button>
                                     </div>
                                     <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
-                                        <SelectTrigger className="h-10 bg-card border-accent uppercase font-black text-[10px]">
+                                        <SelectTrigger className="h-10 bg-card border-accent uppercase font-black text-[10px] w-full">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-card text-primary border-accent">
+                                        <SelectContent className="bg-card text-primary border-accent w-full">
                                             {branches.map(b => (
                                                 <SelectItem key={b.id} value={b.id} className="text-[10px] font-bold uppercase">{b.name} {b.isMain && '(MAIN)'}</SelectItem>
                                             ))}
@@ -415,7 +414,7 @@ export default function ModelPage() {
 
                                 <div className="p-4 bg-accent/2 border-t border-accent">
                                     <Button
-                                        className="w-full bg-primary text-background font-black text-[10px] uppercase h-10 tracking-widest shadow-xl"
+                                        className="w-full bg-primary text-background font-black text-[10px] uppercase h-10 tracking-widest "
                                         onClick={() => setIsNewCommitOpen(true)}
                                     >
                                         <GitCommit className="mr-2 h-4 w-4" /> Registrar Versión
@@ -430,7 +429,7 @@ export default function ModelPage() {
                                 <CardHeader className="p-4 bg-accent/2 border-b border-accent flex flex-row items-center justify-between">
                                     <div>
                                         <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2">
-                                            <Terminal className="h-4 w-4 text-primary" /> Terminal del Modelo BIM
+                                            <Terminal className="h-4 w-4 text-primary" /> Control de versiones
                                         </CardTitle>
                                         <CardDescription className="text-[9px] font-bold uppercase text-muted-foreground mt-1">Viendo Rama: <span className="text-primary">{activeBranch?.name}</span></CardDescription>
                                     </div>
@@ -440,15 +439,7 @@ export default function ModelPage() {
                                     </div>
                                 </CardHeader>
                                 <CardContent className="flex-1 p-0 relative group">
-                                    {/* <BimViewer branchName={activeBranch?.name} /> */}
 
-                                    <div className="absolute bottom-6 right-6 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <div className="bg-accent/20 backdrop-blur-md border border-accent p-2 rounded-xl flex gap-1 shadow-2xl">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/20 hover:text-primary"><LayoutGrid className="h-4 w-4" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/20 hover:text-primary"><Layers className="h-4 w-4" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/20 hover:text-primary"><Box className="h-4 w-4" /></Button>
-                                        </div>
-                                    </div>
                                 </CardContent>
                             </Card>
                         </div>
@@ -459,38 +450,40 @@ export default function ModelPage() {
                     <Card className="bg-card border-accent text-primary overflow-hidden">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7 bg-accent/2 border-b border-accent">
                             <div>
-                                <CardTitle className="text-lg font-bold uppercase tracking-tight">Activos Digitales</CardTitle>
-                                <CardDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mt-1">Planos, nubes de puntos y modelos vinculados.</CardDescription>
+                                <h1 className="text-2xl font-bold flex items-center gap-3 font-headline uppercase tracking-tight">
+                                    <Inbox className="h-7 w-7 text-primary" /> Activos Digitales
+                                </h1>
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Planos, nubes de puntos y modelos vinculados.</p>
                             </div>
-                            <Button size="sm" className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest h-9 px-6 ">
+                            <Button size="sm" className="bg-primary hover:bg-primary/90 text-background font-black text-[10px] uppercase tracking-widest h-9 px-6 ">
                                 <Plus className="mr-2 h-4 w-4" /> Subir Asset
                             </Button>
                         </CardHeader>
                         <CardContent className="space-y-4 pt-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {mockAssets.map((asset) => (
-                                    <Card key={asset.id} className="bg-black/40 border-white/5 hover:border-primary/50 transition-all group overflow-hidden">
+                                    <Card key={asset.id} className="bg-card border-accent hover:border-primary/50 transition-all group overflow-hidden">
                                         <CardContent className="p-4 flex flex-col gap-3">
                                             <div className="flex items-start justify-between">
                                                 <div className="p-2 bg-primary/20 rounded-lg group-hover:scale-110 transition-transform">
                                                     <FileText className="h-6 w-6 text-primary" />
                                                 </div>
-                                                <Badge variant="outline" className="text-[9px] border-white/10 text-muted-foreground font-black uppercase">
+                                                <Badge variant="outline" className="text-[9px] border-accent text-muted-foreground font-black uppercase">
                                                     {asset.type}
                                                 </Badge>
                                             </div>
                                             <div className="space-y-1">
-                                                <h4 className="text-sm font-bold truncate text-white uppercase tracking-tight">{asset.name}</h4>
+                                                <h4 className="text-sm font-bold truncate text-primary uppercase tracking-tight">{asset.name}</h4>
                                                 <div className="flex justify-between text-[9px] text-muted-foreground font-bold uppercase tracking-tighter">
                                                     <span>{asset.size}</span>
                                                     <span className="text-primary">{asset.version}</span>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-2 mt-2 pt-2 border-t border-white/5">
-                                                <Button variant="ghost" size="sm" className="flex-1 h-7 text-[10px] uppercase font-black hover:bg-primary hover:text-black">
+                                            <div className="flex gap-2 mt-2 pt-2 border-t border-accent">
+                                                <Button variant="ghost" size="sm" className="flex-1 h-7 text-[10px] uppercase font-black hover:bg-primary hover:text-background">
                                                     <Eye className="h-3 w-3 mr-1" /> Ver
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-white/5 hover:bg-white/10">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-accent hover:bg-accent/10">
                                                     <Download className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
@@ -715,12 +708,12 @@ export default function ModelPage() {
 
             {/* Nueva Versión (Commit) Modal */}
             <Dialog open={isNewCommitOpen} onOpenChange={setIsNewCommitOpen}>
-                <DialogContent className="max-w-md bg-[#0a0a0a] border-white/10 text-white p-0 overflow-hidden shadow-2xl">
-                    <DialogHeader className="p-6 bg-white/2 border-b border-white/5">
+                <DialogContent className="max-w-md bg-card border-accent text-primary p-0 overflow-hidden">
+                    <DialogHeader className="p-6 bg-card border-b border-accent">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-emerald-500/20 rounded-lg"><GitCommit className="h-6 w-6 text-emerald-500" /></div>
                             <div>
-                                <DialogTitle className="text-xl font-bold uppercase">Registrar Versión (Commit)</DialogTitle>
+                                <DialogTitle className="text-xl font-bold uppercase">Registrar Versión </DialogTitle>
                                 <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">Documente los cambios realizados en el modelo</DialogDescription>
                             </div>
                         </div>
@@ -731,7 +724,7 @@ export default function ModelPage() {
                             <Input
                                 value={commitMessage}
                                 onChange={(e) => setCommitMessage(e.target.value)}
-                                className="h-11 bg-white/5 border-white/10 uppercase font-bold text-sm"
+                                className="h-11 bg-card border-accent uppercase font-bold text-sm"
                                 placeholder="Ej: Ajuste de espesor de losa..."
                             />
                         </div>
@@ -739,279 +732,12 @@ export default function ModelPage() {
                             <p className="text-[9px] text-emerald-500 font-bold uppercase leading-relaxed">Esta acción generará un Hash único de auditoría y quedará registrada en la bitácora técnica de obra.</p>
                         </div>
                     </div>
-                    <DialogFooter className="p-6 border-t border-white/5 bg-black/20">
+                    <DialogFooter className="p-6 border-t border-accent bg-card">
                         <Button variant="ghost" onClick={() => setIsNewCommitOpen(false)}>Cancelar</Button>
-                        <Button onClick={handleCreateCommit} disabled={isSaving || !commitMessage.trim()} className="bg-emerald-500 hover:bg-emerald-600 text-black font-black text-[10px] uppercase px-8 shadow-xl">
+                        <Button onClick={handleCreateCommit} disabled={isSaving || !commitMessage.trim()} className="bg-emerald-500 hover:bg-emerald-600 text-background font-black text-[10px] uppercase px-8">
                             {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="mr-2 h-4 w-4" />} Confirmar Commit
                         </Button>
                     </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Asignar Equipo Modal */}
-            <Dialog open={isAssignModalOpen} onOpenChange={setIsAssignModalOpen}>
-                <DialogContent className="sm:max-w-175 bg-[#0a0a0a] border-white/10 text-white p-0 overflow-hidden shadow-2xl flex flex-col h-[80vh]">
-                    <DialogHeader className="p-6 border-b border-white/5 bg-white/2 shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/20 rounded-lg border border-primary/20 shadow-inner">
-                                <Truck className="h-6 w-6 text-primary" />
-                            </div>
-                            <div>
-                                <DialogTitle className="text-xl font-bold uppercase tracking-tight">Librería de Equipos y Maquinaria</DialogTitle>
-                                <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">Seleccione los activos para asignar a la obra actual</DialogDescription>
-                            </div>
-                        </div>
-                    </DialogHeader>
-
-                    <div className="p-6 space-y-4 flex-1 overflow-hidden flex flex-col">
-                        <div className="relative shrink-0">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Buscar equipo por nombre, marca o código..."
-                                className="pl-10 h-11 bg-white/5 border-white/10 text-[10px] font-bold uppercase tracking-widest"
-                                value={assetSearchTerm}
-                                onChange={(e) => setAssetSearchTerm(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="border border-white/10 rounded-xl overflow-hidden flex-1 bg-black/40">
-                            <ScrollArea className="h-full">
-                                <Table>
-                                    <TableHeader className="bg-white/5 sticky top-0 z-10 backdrop-blur-md">
-                                        <TableRow className="hover:bg-transparent border-white/10">
-                                            <TableHead className="text-[10px] font-black uppercase py-4 px-6 w-32">Código</TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase">Equipo / Activo</TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase">Marca</TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase text-right pr-6 w-24">Acción</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {libraryAssets
-                                            .filter(a => a.name.toLowerCase().includes(assetSearchTerm.toLowerCase()) || a.code.toLowerCase().includes(assetSearchTerm.toLowerCase()))
-                                            .length > 0 ? (
-                                            libraryAssets
-                                                .filter(a => a.name.toLowerCase().includes(assetSearchTerm.toLowerCase()) || a.code.toLowerCase().includes(assetSearchTerm.toLowerCase()))
-                                                .map((asset) => (
-                                                    <TableRow key={asset.id} className="border-white/5 hover:bg-white/5 transition-colors group">
-                                                        <TableCell className="px-6 py-4">
-                                                            <span className="text-[10px] font-mono font-black text-primary uppercase bg-primary/5 px-2 py-1 rounded border border-primary/10">
-                                                                {asset.code}
-                                                            </span>
-                                                        </TableCell>
-                                                        <TableCell className="text-xs font-bold text-white uppercase group-hover:text-primary transition-colors">{asset.name}</TableCell>
-                                                        <TableCell className="text-[10px] text-muted-foreground uppercase font-bold">{asset.brand}</TableCell>
-                                                        <TableCell className="text-right pr-6">
-                                                            <Button
-                                                                size="sm"
-                                                                className="h-8 w-8 p-0 bg-primary hover:bg-primary/90 text-black rounded-lg active:scale-90 transition-all"
-                                                                onClick={() => handleAssignAsset(asset.id)}
-                                                                disabled={isSaving}
-                                                            >
-                                                                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                                                            </Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell colSpan={4} className="text-center py-20 text-muted-foreground text-[10px] font-black uppercase opacity-30">
-                                                    No se encontraron activos disponibles en la librería.
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </ScrollArea>
-                        </div>
-                    </div>
-
-                    <DialogFooter className="p-6 border-t border-white/5 bg-black shrink-0">
-                        <Button variant="ghost" onClick={() => setIsAssignModalOpen(false)} className="w-full text-[10px] font-black uppercase tracking-widest h-12 hover:bg-white/5">Cerrar Terminal de Equipos</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* APU Detail Dialog */}
-            <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-                <DialogContent className="sm:max-w-250 w-full max-h-[95vh] overflow-hidden bg-card border-muted/50 p-0 flex flex-col shadow-2xl">
-                    {selectedItem && apuCalculations && (
-                        <div className="flex flex-col h-full overflow-hidden">
-                            <div className="p-6 border-b border-white/5 bg-black/20 flex flex-row items-center gap-4 shrink-0">
-                                <div className="p-2 bg-primary/20 rounded-lg border border-primary/20">
-                                    <Box className="h-6 w-6 text-primary" />
-                                </div>
-                                <div className="flex-1">
-                                    <DialogTitle className="text-xl font-bold uppercase tracking-tight text-white leading-none">
-                                        Análisis APU (Modelo BIM)
-                                    </DialogTitle>
-                                    <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-2">
-                                        Análisis de precios unitarios y parámetros de control
-                                    </DialogDescription>
-                                </div>
-                                <Button variant="ghost" size="icon" onClick={() => setIsDetailOpen(false)} className="text-muted-foreground hover:text-white">
-                                    <X className="h-5 w-5" />
-                                </Button>
-                            </div>
-
-                            <Tabs defaultValue="informacion" className="flex-1 flex flex-col overflow-hidden">
-                                <div className="px-6 bg-black/10 border-b border-white/5 shrink-0">
-                                    <TabsList className="h-14 bg-transparent p-0 gap-8" variant="line">
-                                        <TabsTrigger value="informacion" className="h-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-white">
-                                            Análisis Costos
-                                        </TabsTrigger>
-                                        <TabsTrigger value="calidad" className="h-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-white">
-                                            Control de Calidad
-                                        </TabsTrigger>
-                                    </TabsList>
-                                </div>
-
-                                <ScrollArea className="flex-1">
-                                    <div className="flex-1">
-                                        <TabsContent value="informacion" className="m-0 p-6 space-y-8 outline-none">
-                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                                <div className="lg:col-span-7 space-y-6">
-                                                    <div className="space-y-4">
-                                                        <div className="flex items-center gap-2">
-                                                            <Box className="h-4 w-4 text-primary" />
-                                                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Datos generales</h3>
-                                                        </div>
-                                                        <div className="grid grid-cols-1 gap-4">
-                                                            <div className="space-y-2">
-                                                                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Capítulo</Label>
-                                                                <div className="bg-background/50 border border-white/5 rounded-md h-11 px-3 flex items-center text-white uppercase text-xs font-bold shadow-inner">
-                                                                    {selectedItem.item.chapter}
-                                                                </div>
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Descripción ítem</Label>
-                                                                <div className="bg-background/50 border border-white/5 rounded-md h-11 px-3 flex items-center text-white uppercase text-xs font-bold shadow-inner">
-                                                                    {selectedItem.item.description}
-                                                                </div>
-                                                            </div>
-                                                            <div className="grid grid-cols-2 gap-4">
-                                                                <div className="space-y-2">
-                                                                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Unidad</Label>
-                                                                    <div className="bg-background/50 border border-white/5 rounded-md h-11 px-3 flex items-center text-white uppercase text-xs font-bold shadow-inner">
-                                                                        {selectedItem.item.unit}
-                                                                    </div>
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Cantidad Modelo</Label>
-                                                                    <div className="bg-background/50 border border-white/5 rounded-md h-11 px-3 flex items-center text-white font-mono font-bold shadow-inner">
-                                                                        {selectedItem.quantity.toFixed(2)}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="lg:col-span-5">
-                                                    <div className="bg-[#1a1f2e] border border-blue-500/20 rounded-2xl p-6 h-full flex flex-col justify-between shadow-xl">
-                                                        <div className="space-y-3">
-                                                            {[
-                                                                { label: 'Total de Materiales', value: apuCalculations.matSub },
-                                                                { label: 'Mano de Obra', value: apuCalculations.labSub },
-                                                                { label: 'Cargas Sociales', value: apuCalculations.cSociales },
-                                                                { label: 'IVA', value: apuCalculations.ivaMO },
-                                                                { label: 'Equipo', value: apuCalculations.equSub },
-                                                                { label: 'Desgaste', value: apuCalculations.toolWear },
-                                                                { label: 'Gastos Administrativos', value: apuCalculations.adm },
-                                                                { label: 'Utilidades', value: apuCalculations.utility },
-                                                                { label: 'IT', value: apuCalculations.it },
-                                                            ].map((item, idx) => (
-                                                                <div key={idx}>
-                                                                    <div className="flex justify-between items-center">
-                                                                        <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground/80">{item.label}</span>
-                                                                        <span className="text-white font-mono font-bold text-xs">${item.value.toFixed(2)}</span>
-                                                                    </div>
-                                                                    <Separator className="my-2 border-white/5" />
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                        <div className="flex items-start justify-end gap-8 pt-4">
-                                                            <div className="text-right">
-                                                                <p className="text-[10px] font-black text-primary uppercase tracking-widest">COSTO DIRECTO</p>
-                                                                <p className="text-xl font-bold text-white">${apuCalculations.directCost.toFixed(2)}</p>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <p className="text-[10px] font-black text-primary uppercase tracking-widest">TOTAL APU</p>
-                                                                <p className="text-xl font-bold text-white">${apuCalculations.totalUnit.toFixed(2)}</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <Separator className="border-white/10" />
-
-                                            <div className="space-y-4">
-                                                <div className="bg-black/40 border border-white/5 rounded-2xl overflow-hidden min-h-75 shadow-inner">
-                                                    <Table>
-                                                        <TableHeader className="bg-white/5 sticky top-0 z-10 backdrop-blur-md">
-                                                            <TableRow className="border-white/5 hover:bg-transparent">
-                                                                <TableHead className="text-[10px] font-black uppercase text-muted-foreground px-6 py-4">Tipo</TableHead>
-                                                                <TableHead className="text-[10px] font-black uppercase text-muted-foreground">Descripción</TableHead>
-                                                                <TableHead className="text-[10px] font-black uppercase text-muted-foreground text-center">Unidad</TableHead>
-                                                                <TableHead className="text-[10px] font-black uppercase text-muted-foreground text-right">P. Unitario</TableHead>
-                                                                <TableHead className="text-[10px] font-black uppercase text-muted-foreground text-center">Cantidad</TableHead>
-                                                                <TableHead className="text-[10px] font-black uppercase text-right px-6">Subtotal</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {apuCalculations.supplies.map((s: any, idx: number) => (
-                                                                <TableRow key={idx} className="border-white/5 hover:bg-white/2 group transition-colors">
-                                                                    <TableCell className="px-6 py-4">
-                                                                        <div className="p-2 bg-white/5 rounded-lg border border-white/10 w-fit shadow-inner">
-                                                                            {s.typology === 'Material' || s.typology === 'Insumo' ? (
-                                                                                <Package className="h-4 w-4 text-primary" />
-                                                                            ) : (
-                                                                                <UsersIcon className="h-4 w-4 text-emerald-500" />
-                                                                            )}
-                                                                        </div>
-                                                                    </TableCell>
-                                                                    <TableCell className="text-xs font-bold text-white uppercase">{s.description}</TableCell>
-                                                                    <TableCell className="text-[10px] text-muted-foreground font-black text-center uppercase tracking-widest">{s.unit}</TableCell>
-                                                                    <TableCell className="text-right text-[10px] font-mono font-bold text-muted-foreground">${s.price.toFixed(2)}</TableCell>
-                                                                    <TableCell className="text-center">
-                                                                        <div className="w-24 h-9 bg-black/40 border border-white/10 rounded flex items-center justify-center font-mono text-xs text-white mx-auto shadow-inner">
-                                                                            {s.quantity.toFixed(4)}
-                                                                        </div>
-                                                                    </TableCell>
-                                                                    <TableCell className="text-right font-mono font-bold text-white px-6">${s.subtotal.toFixed(2)}</TableCell>
-                                                                </TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
-                                                </div>
-                                            </div>
-                                        </TabsContent>
-
-                                        <TabsContent value="calidad" className="m-0 p-6 space-y-6 outline-none">
-                                            <div className="h-full min-h-75 flex flex-col items-center justify-center text-muted-foreground text-center gap-4 bg-black/20 rounded-2xl border border-dashed border-white/5 shadow-inner">
-                                                <Box className="h-16 w-16 opacity-5" />
-                                                <p className="font-bold text-white uppercase text-xs tracking-[0.2em]">Protocolo de Calidad vinculado al Modelo</p>
-                                                <p className="text-[10px] uppercase font-black tracking-widest opacity-30">Los criterios de aceptación se gestionan en la librería maestro.</p>
-                                            </div>
-                                        </TabsContent>
-                                    </div>
-                                </ScrollArea>
-
-                                <div className="p-6 border-t border-white/5 bg-black/20 flex justify-end items-center gap-4 shrink-0 shadow-2xl">
-                                    <Button
-                                        variant="ghost"
-                                        onClick={() => setIsDetailOpen(false)}
-                                        className="text-[10px] font-black uppercase tracking-widest hover:bg-white/5 text-muted-foreground hover:text-white"
-                                    >
-                                        CERRAR DETALLE
-                                    </Button>
-                                    <Button className="bg-primary hover:bg-primary/90 text-black font-black text-[10px] uppercase tracking-widest px-8 h-11 shadow-xl shadow-primary/10">
-                                        <Download className="mr-2 h-4 w-4" /> EXPORTAR ANÁLISIS
-                                    </Button>
-                                </div>
-                            </Tabs>
-                        </div>
-                    )}
                 </DialogContent>
             </Dialog>
         </div>

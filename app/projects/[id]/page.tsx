@@ -68,7 +68,8 @@ export default function ProjectDetailPage() {
         guaranteeRetention: 7,
         mainCurrency: 'BS',
         secondaryCurrency: 'USD',
-        workingDays: 6
+        workingDays: 6,
+        workingDaysSelection: [1, 2, 3, 4, 5, 6]
     });
 
     const [localLevels, setLevels] = useState<{ id?: string, name: string }[]>([]);
@@ -97,7 +98,8 @@ export default function ProjectDetailPage() {
                         ...found.config,
                         mainCurrency: found.config.mainCurrency || 'BS',
                         secondaryCurrency: found.config.secondaryCurrency || 'USD',
-                        workingDays: found.config.workingDays || 6
+                        workingDays: found.config.workingDays || 6,
+                        workingDaysSelection: found.config.workingDaysSelection || [1, 2, 3, 4, 5, 6]
                     });
                 }
                 if (found.levels) {
@@ -216,19 +218,11 @@ export default function ProjectDetailPage() {
 
                 {/* FINANCIAL DASHBOARD SECTION */}
                 <section className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                    <div className="flex items-center justify-between mb-8">
-                        <div className="space-y-1">
-                            <h3 className="text-xs font-black uppercase tracking-[0.3em] text-primary/40">Balance Financiero</h3>
-                            <p className="text-2xl font-black uppercase tracking-tighter">Estado de Presupuesto</p>
-                        </div>
-                        <div className="p-3 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-xl">
-                            <TrendingUp className="h-6 w-6 text-primary" />
-                        </div>
-                    </div>
+
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* CONSOLIDATED BUDGET */}
-                        <Card className="bg-white/5 border-white/10 backdrop-blur-2xl rounded-[32px] overflow-hidden group hover:border-primary/20 transition-all duration-500">
+                        <Card className="bg-card border-accent backdrop-blur-2xl rounded-[32px] overflow-hidden group hover:border-primary/20 transition-all duration-500">
                             <CardHeader className="pb-2">
                                 <CardDescription className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Presupuesto Consolidado</CardDescription>
                                 <CardTitle className="text-3xl font-black tracking-tighter font-mono">
@@ -237,16 +231,16 @@ export default function ProjectDetailPage() {
                             </CardHeader>
                             <CardContent>
                                 <div className="flex items-center gap-2 mt-4">
-                                    <div className="h-1.5 flex-1 bg-white/5 rounded-full overflow-hidden">
-                                        <div className="h-full bg-white/20 w-full" />
+                                    <div className="h-1.5 flex-1 bg-card rounded-full overflow-hidden">
+                                        <div className="h-full bg-primary w-full" />
                                     </div>
-                                    <span className="text-[9px] font-black uppercase opacity-40">Original</span>
+                                    <span className="text-[9px] font-black uppercase text-primary/60">Original</span>
                                 </div>
                             </CardContent>
                         </Card>
 
                         {/* ADJUSTMENTS / CHANGE ORDERS */}
-                        <Card className="bg-white/5 border-white/10 backdrop-blur-2xl rounded-[32px] overflow-hidden group hover:border-amber-500/20 transition-all duration-500">
+                        <Card className="bg-card border-accent backdrop-blur-2xl rounded-[32px] overflow-hidden group hover:border-amber-500/20 transition-all duration-500">
                             <CardHeader className="pb-2">
                                 <CardDescription className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500/60 flex items-center justify-between">
                                     Órdenes de Cambio
@@ -260,9 +254,9 @@ export default function ProjectDetailPage() {
                             <CardContent>
                                 <div className="flex items-center gap-2 mt-4">
                                     <div className="h-1.5 flex-1 bg-amber-500/10 rounded-full overflow-hidden">
-                                        <div 
-                                            className="h-full bg-amber-500 transition-all duration-1000" 
-                                            style={{ width: `${Math.min(100, Math.abs((totals.changes / totals.original) * 100))}%` }} 
+                                        <div
+                                            className="h-full bg-amber-500 transition-all duration-1000"
+                                            style={{ width: `${Math.min(100, Math.abs((totals.changes / totals.original) * 100))}%` }}
                                         />
                                     </div>
                                     <span className="text-[9px] font-black uppercase text-amber-500">
@@ -273,19 +267,19 @@ export default function ProjectDetailPage() {
                         </Card>
 
                         {/* CURRENT BUDGET */}
-                        <Card className="bg-primary text-background border-transparent rounded-[32px] overflow-hidden group hover:scale-[1.02] transition-all duration-500 shadow-2xl shadow-primary/20">
+                        <Card className="bg-card text-primary border-transparent rounded-[32px] overflow-hidden group hover:scale-[1.02] transition-all duration-500 ">
                             <CardHeader className="pb-2">
-                                <CardDescription className="text-[10px] font-black uppercase tracking-[0.2em] text-background/60">Presupuesto Actual</CardDescription>
+                                <CardDescription className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60">Presupuesto Actual</CardDescription>
                                 <CardTitle className="text-4xl font-black tracking-tighter font-mono">
                                     {configParams.mainCurrency} {totals.current.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="flex items-center gap-2 mt-4">
-                                    <div className="h-1.5 flex-1 bg-background/20 rounded-full overflow-hidden">
-                                        <div className="h-full bg-background w-full" />
+                                    <div className="h-1.5 flex-1 bg-card rounded-full overflow-hidden">
+                                        <div className="h-full bg-primary w-full" />
                                     </div>
-                                    <span className="text-[9px] font-black uppercase text-background/60">Final Estimado</span>
+                                    <span className="text-[9px] font-black uppercase text-primary/60">Final Estimado</span>
                                 </div>
                             </CardContent>
                         </Card>
@@ -293,19 +287,19 @@ export default function ProjectDetailPage() {
 
                     {/* PROJECT DETAILS GRID */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-12">
-                        <div className="p-6 bg-white/5 border border-white/5 rounded-3xl space-y-2">
+                        <div className="p-6 bg-card border border-accent rounded-3xl space-y-2">
                             <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">Área Total</p>
                             <p className="text-xl font-black">{project?.area} M²</p>
                         </div>
-                        <div className="p-6 bg-white/5 border border-white/5 rounded-3xl space-y-2">
+                        <div className="p-6 bg-card border border-accent rounded-3xl space-y-2">
                             <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">Fecha Inicio</p>
                             <p className="text-xl font-black">{project?.startDate ? new Date(project.startDate).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase() : 'NO DEF.'}</p>
                         </div>
-                        <div className="p-6 bg-white/5 border border-white/5 rounded-3xl space-y-2">
+                        <div className="p-6 bg-card border border-accent rounded-3xl space-y-2">
                             <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">Capítulos</p>
                             <p className="text-xl font-black">{Array.from(new Set(project?.items?.map((i: any) => i.item.chapter))).length}</p>
                         </div>
-                        <div className="p-6 bg-white/5 border border-white/5 rounded-3xl space-y-2">
+                        <div className="p-6 bg-card border border-accent rounded-3xl space-y-2">
                             <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">Niveles</p>
                             <p className="text-xl font-black">{project?.levels?.length || 0} Plantas</p>
                         </div>

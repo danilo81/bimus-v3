@@ -485,8 +485,8 @@ export default function ProjectShopPage() {
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                 <TabsList className="bg-card border border-accent h-12 p-1 rounded-xl w-fit">
-                    <TabsTrigger value="pedidos" className="text-[10px] font-black uppercase tracking-widest px-8 h-full data-[state=active]:bg-card data-[state=active]:text-primary"><ClipboardList className="h-3.5 w-3.5 mr-2" /> Pedidos de Obra</TabsTrigger>
-                    <TabsTrigger value="ordenes" className="text-[10px] font-black uppercase tracking-widest px-8 h-full data-[state=active]:bg-card data-[state=active]:text-primary"><FileCheck className="h-3.5 w-3.5 mr-2" /> Órdenes de Compra</TabsTrigger>
+                    <TabsTrigger value="pedidos" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm"><ClipboardList className="h-3.5 w-3.5 mr-2" /> Pedidos de Obra</TabsTrigger>
+                    <TabsTrigger value="ordenes" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm"><FileCheck className="h-3.5 w-3.5 mr-2" /> Órdenes de Compra</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="pedidos" className="space-y-6">

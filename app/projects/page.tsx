@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { CreateProjectData, Project } from '../../types/types';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Plus, LayoutGrid, List, Search, MoreVertical, Loader2, Building2, ChevronRight, MapPin, Ruler, Trash2, ArrowRight, UserPlus, Calendar, Mail, Send, X, Upload } from 'lucide-react';
+import { Plus, LayoutGrid, List, Search, MoreVertical, Loader2, Building2, ChevronRight, MapPin, Ruler, Trash2, ArrowRight, UserPlus, Calendar, Mail, Send, X, Upload, ArrowLeftRight } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
@@ -43,7 +43,7 @@ import {
     DropdownMenuTrigger
 } from '../../components/ui/dropdown-menu';
 import { useToast } from '../../hooks/use-toast';
-import { createProject, deleteProject, getProjects, inviteCollaborator, leaveProject } from '@/actions';
+import { createProject, deleteProject, getProjects, inviteCollaborator, leaveProject, transferProject } from '@/actions';
 import { useAuth } from '../../hooks/use-auth';
 import { cn } from '../../lib/utils';
 
@@ -68,8 +68,11 @@ function ProjectsPageContent() {
     const [view, setView] = useState<'grid' | 'list'>('grid');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [selectedProjectForInvite, setSelectedProjectForInvite] = useState<Project | null>(null);
+    const [selectedProjectForTransfer, setSelectedProjectForTransfer] = useState<Project | null>(null);
     const [inviteEmail, setInviteEmail] = useState('');
+    const [transferEmail, setTransferEmail] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
     const searchParams = useSearchParams();
@@ -201,6 +204,36 @@ function ProjectsPageContent() {
             toast({
                 variant: "destructive",
                 title: "Error al invitar",
+                description: error.message,
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleTransferSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedProjectForTransfer || !transferEmail) return;
+        if (!confirm(`¿Estás seguro de que deseas transferir la propiedad del proyecto "${selectedProjectForTransfer.title}" a ${transferEmail}? Una vez transferido, perderás los privilegios de autor.`)) return;
+        setIsSubmitting(true);
+
+        try {
+            const result = await transferProject(selectedProjectForTransfer.id, transferEmail);
+            if (result.success) {
+                toast({
+                    title: "Proyecto Transferido",
+                    description: `La propiedad del proyecto ha sido transferida exitosamente a ${transferEmail}.`,
+                });
+                setIsTransferModalOpen(false);
+                setTransferEmail('');
+                await fetchProjects();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Error al transferir",
                 description: error.message,
             });
         } finally {
@@ -359,6 +392,17 @@ function ProjectsPageContent() {
                                                     <UserPlus className="h-3.5 w-3.5 text-primary" /> Invitar Colaborador
                                                 </DropdownMenuItem>
                                             )}
+                                            {project.authorId === user?.id && (
+                                                <DropdownMenuItem
+                                                    onClick={() => {
+                                                        setSelectedProjectForTransfer(project);
+                                                        setIsTransferModalOpen(true);
+                                                    }}
+                                                    className="text-[10px] font-black uppercase tracking-widest cursor-pointer rounded-lg"
+                                                >
+                                                    <ArrowLeftRight className="h-3.5 w-3.5 text-amber-500" /> Transferir Proyecto
+                                                </DropdownMenuItem>
+                                            )}
                                             {project.authorId === user?.id ? (
                                                 <DropdownMenuItem
                                                     className="text-[10px] font-black uppercase tracking-widest text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-lg mt-1"
@@ -417,6 +461,17 @@ function ProjectsPageContent() {
                                             className="text-[10px] font-black uppercase tracking-widest cursor-pointer rounded-lg"
                                         >
                                             <UserPlus className="h-3.5 w-3.5 text-primary" /> Invitar Colaborador
+                                        </DropdownMenuItem>
+                                    )}
+                                    {project.authorId === user?.id && (
+                                        <DropdownMenuItem
+                                            onClick={() => {
+                                                setSelectedProjectForTransfer(project);
+                                                setIsTransferModalOpen(true);
+                                            }}
+                                            className="text-[10px] font-black uppercase tracking-widest cursor-pointer rounded-lg"
+                                        >
+                                            <ArrowLeftRight className="h-3.5 w-3.5 text-amber-500" /> Transferir Proyecto
                                         </DropdownMenuItem>
                                     )}
                                     {project.authorId === user?.id ? (
@@ -738,6 +793,58 @@ function ProjectsPageContent() {
                             <Button type="submit" disabled={isSubmitting || !inviteEmail} className="bg-blue-500 hover:bg-blue-600 text-primary font-black text-[10px] uppercase h-11 px-8 tracking-widest cursor-pointer">
                                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                                 Enviar Invitación
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={isTransferModalOpen} onOpenChange={setIsTransferModalOpen}>
+                <DialogContent className="sm:max-w-[425px] bg-card border-accent text-primary p-0 overflow-hidden shadow-2xl">
+                    <form onSubmit={handleTransferSubmit}>
+                        <DialogHeader className="p-6 bg-card border-b border-accent">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-500/20 rounded-lg">
+                                    <ArrowLeftRight className="h-6 w-6 text-amber-500" />
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-xl font-bold uppercase tracking-tight">Transferir Propiedad</DialogTitle>
+                                    <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">
+                                        Cambiar el autor principal del proyecto
+                                    </DialogDescription>
+                                </div>
+                            </div>
+                        </DialogHeader>
+                        <div className="p-6 space-y-6">
+                            <div className="bg-card p-4 rounded-xl border border-accent">
+                                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Proyecto a Transferir</p>
+                                <p className="text-sm font-bold text-primary uppercase">{selectedProjectForTransfer?.title}</p>
+                            </div>
+                            <div className="space-y-3">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <Mail className="h-3.5 w-3.5" /> Correo del Nuevo Autor
+                                </Label>
+                                <Input
+                                    type="email"
+                                    value={transferEmail}
+                                    onChange={(e) => setTransferEmail(e.target.value)}
+                                    placeholder="correo@nuevoautor.com"
+                                    required
+                                    className="h-12 bg-card border-accent font-mono text-sm"
+                                />
+                            </div>
+                            <div className="p-4 bg-amber-500/5 rounded-xl border border-amber-500/10">
+                                <p className="text-[9px] text-amber-500 font-bold leading-relaxed uppercase">
+                                    ¡ADVERTENCIA! Al transferir el proyecto, dejarás de ser el propietario. Solo el nuevo autor podrá gestionar colaboradores, transferir o eliminar este proyecto.
+                                </p>
+                            </div>
+                        </div>
+                        <DialogFooter className="p-6 border-t border-accent bg-card">
+                            <Button type="button" variant="ghost" onClick={() => setIsTransferModalOpen(false)} className="text-[10px] font-black uppercase tracking-widest cursor-pointer">
+                                Cancelar
+                            </Button>
+                            <Button type="submit" disabled={isSubmitting || !transferEmail} className="bg-amber-500 hover:bg-amber-600 text-primary font-black text-[10px] uppercase h-11 px-8 tracking-widest cursor-pointer">
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowLeftRight className="mr-2 h-4 w-4" />}
+                                Confirmar Transferencia
                             </Button>
                         </DialogFooter>
                     </form>

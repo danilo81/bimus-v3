@@ -107,12 +107,16 @@ export * from "@/actions/projects/updatePayroll";
 export * from "@/actions/projects/deletePayroll";
 export * from "@/actions/projects/getValuations";
 export * from "@/actions/projects/createValuation";
+export * from "@/actions/projects/updateValuation";
+export * from "@/actions/projects/deleteValuation";
 export * from "@/actions/projects/exportTopicToPDF";
-
-
-export * from "@/actions/projects/getWarehouseStock";
+export * from "@/actions/projects/getBimBoardData";
+export * from "@/actions/projects/getProjectDocuments";
+export * from "@/actions/projects/transferProject";
+export * from "@/actions/projects/consolidateProjectSchedule";
 
 export * from "@/actions/projects/getProjectWarehouseMovements";
+export * from "@/actions/projects/getWarehouseStock";
 
 
 //// CALENDAR ACTIONS ////

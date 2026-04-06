@@ -1,29 +1,25 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { BimTopic, BimTopicStatus } from '../../../../types/types';
-import { 
-    getBimDocument, 
-    upsertBimTopic, 
-    deleteBimTopic, 
-    applyBimTemplate, 
-    createTopicWithChildren, 
-    getProjectById, 
-    saveBimTemplateToCloud, 
-    applyCloudBimTemplate, 
+import {
+    getBimBoardData,
+    upsertBimTopic,
+    deleteBimTopic,
+    applyBimTemplate,
+    createTopicWithChildren,
+    saveBimTemplateToCloud,
+    applyCloudBimTemplate,
     getCloudBimTemplates,
     getProjectDocuments,
     exportTopicToPDF
 } from '@/actions';
 import {
-    Plus,
     Search,
     MoreVertical,
     Trash2,
     Save,
-    X,
     Loader2,
     FileText,
     LayoutTemplate,
@@ -35,7 +31,6 @@ import {
 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { Input } from '../../../../components/ui/input';
-import { Badge } from '../../../../components/ui/badge';
 import { ScrollArea } from '../../../../components/ui/scroll-area';
 import { useToast } from '../../../../hooks/use-toast';
 import { cn } from '../../../../lib/utils';
@@ -63,7 +58,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '../../../../components/ui/dialog';
-import { Separator } from '../../../../components/ui/separator';
 import {
     Accordion,
     AccordionContent,
@@ -206,28 +200,32 @@ export default function BimDocumentationPage() {
         setIsMounted(true);
     }, []);
 
+    const fetchTemplatesOnDemand = useCallback(async () => {
+        if (cloudTemplates.length > 0 || isSaving) return;
+        try {
+            const templates = await getCloudBimTemplates();
+            if (templates) setCloudTemplates(templates);
+        } catch (error) {
+            console.error("Error fetching templates on demand:", error);
+        }
+    }, [cloudTemplates.length, isSaving]);
+
     const fetchData = useCallback(async () => {
         if (!projectId) return;
 
         setIsLoading(true);
         try {
-            const [proj, bimDoc, cTemplates] = await Promise.all([
-                getProjectById(projectId),
-                getBimDocument(projectId),
-                getCloudBimTemplates()
-            ]);
+            const result = await getBimBoardData(projectId);
 
-            if (cTemplates) setCloudTemplates(cTemplates);
-
-            if (proj) setProject(proj);
-            if (bimDoc.success) {
-                setTopics(bimDoc.topics || []);
-                setDocumentId(bimDoc.documentId || null);
-                if (bimDoc.topics && bimDoc.topics.length > 0) {
-                    setSelectedTopicId(prev => prev || bimDoc.topics[0].id);
+            if (result.success) {
+                if (result.project) setProject(result.project);
+                setTopics(result.topics || []);
+                setDocumentId(result.documentId || null);
+                if (result.topics && result.topics.length > 0) {
+                    setSelectedTopicId(prev => prev || result.topics![0].id);
                 }
             } else {
-                toast({ title: "Error", description: bimDoc.error, variant: "destructive" });
+                toast({ title: "Error", description: result.error, variant: "destructive" });
             }
         } catch (error) {
             console.error(error);
@@ -442,7 +440,6 @@ export default function BimDocumentationPage() {
             setSelectedTemplate('none');
         }
     };
-    ////////////////////////////////////////////
     const editorConfig: InitialConfigType = {
         namespace: "Editor",
         theme: editorTheme,
@@ -465,9 +462,9 @@ export default function BimDocumentationPage() {
         try {
             const res = await exportTopicToPDF(projectId, exportTargetTopicId, selectedFolder);
             if (res.success) {
-                toast({ 
-                    title: "PDF Generado", 
-                    description: `El archivo "${res.filename}" se ha guardado en ${selectedFolder}.` 
+                toast({
+                    title: "PDF Generado",
+                    description: `El archivo "${res.filename}" se ha guardado en ${selectedFolder}.`
                 });
                 setIsExportModalOpen(false);
             } else {
@@ -480,7 +477,6 @@ export default function BimDocumentationPage() {
         }
     };
 
-    /////////////////////////////
     if (!isMounted) return null;
 
     return (
@@ -501,7 +497,7 @@ export default function BimDocumentationPage() {
 
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-primary tracking-widest px-1">Inicializar Estructura</Label>
-                            <Select value={selectedTemplate} onValueChange={handleApplyTemplate}>
+                            <Select value={selectedTemplate} onValueChange={handleApplyTemplate} onOpenChange={(open) => open && fetchTemplatesOnDemand()}>
                                 <SelectTrigger className="h-9 bg-card border-accent  text-[10px] font-black uppercase w-full">
                                     <div className="flex items-center gap-2">
                                         <LayoutTemplate className="h-3 w-3 text-primary" />
@@ -531,6 +527,13 @@ export default function BimDocumentationPage() {
 
                     <ScrollArea className="flex-1">
                         <div className="p-3 space-y-2">
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start gap-2 h-10 text-[9px] font-black uppercase text-primary hover:bg-primary/10 border border-dashed border-primary/20 rounded-xl mt-2 cursor-pointer"
+                                onClick={() => handleOpenCreateModal(null)}
+                            >
+                                <PlusCircle className="h-4 w-4" /> Nuevo Tópico
+                            </Button>
                             {filteredTopics.length > 0 ? (
                                 filteredTopics.map((topic) => (
                                     <div key={topic.id} className={cn(
@@ -598,14 +601,6 @@ export default function BimDocumentationPage() {
                                     <p className="text-[10px] font-black uppercase tracking-widest">Sin registros documentales</p>
                                 </div>
                             )}
-
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start gap-2 h-10 text-[9px] font-black uppercase text-primary hover:bg-primary/10 border border-dashed border-primary/20 rounded-xl mt-2"
-                                onClick={() => handleOpenCreateModal(null)}
-                            >
-                                <PlusCircle className="h-4 w-4" /> Nuevo Tópico
-                            </Button>
                         </div>
                     </ScrollArea>
                 </aside>
@@ -614,22 +609,6 @@ export default function BimDocumentationPage() {
                     {selectedTopic ? (
                         <div className="flex flex-col h-full animate-in fade-in duration-500">
                             <div className="border border-accent bg-card flex flex-col px-8 py-5 shrink-0 rounded-2xl m-2 gap-6 ">
-                                {/* Top row: Badges and Save */}
-                                {/* <div className="flex flex-row items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <Badge variant="outline" className={cn("text-[8px] font-black uppercase border-none px-2",
-                                            activeValues?.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
-                                        )}>
-                                            {activeValues?.status.replace('_', ' ')}
-                                        </Badge>
-                                        {hasAnyUnsaved && (
-                                            <Badge className="bg-amber-500/20 text-amber-500 border-none text-[8px] font-black uppercase shadow-sm">Cambios sin guardar</Badge>
-                                        )}
-                                    </div>
-
-                                </div> */}
-
-                                {/* Bottom row: Title and Status Inputs */}
                                 <div className="flex flex-row items-end gap-6 w-full">
                                     <div className="flex-1 space-y-2">
                                         <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Título de la Sección Técnica</Label>
@@ -672,12 +651,12 @@ export default function BimDocumentationPage() {
                                                 <DropdownMenuItem onClick={() => setIsSaveTemplateModalOpen(true)} className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg">
                                                     <Save className="h-3.5 w-3.5" /> Guardar como plantilla
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem 
+                                                <DropdownMenuItem
                                                     onClick={() => {
                                                         setExportTargetTopicId(selectedTopic.id);
                                                         setIsExportModalOpen(true);
                                                         fetchProjectFolders();
-                                                    }} 
+                                                    }}
                                                     className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg"
                                                 >
                                                     <FileDown className="h-3.5 w-3.5" /> Guardar PDF
@@ -708,7 +687,7 @@ export default function BimDocumentationPage() {
                             </ScrollArea>
                         </div>
                     ) : topics.length === 0 && !isLoading ? (
-                        // Empty state: no topics yet — prompt the user to pick a template
+
                         <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-8 animate-in fade-in">
                             <div className="opacity-20">
                                 <LayoutTemplate className="h-24 w-24 text-primary mx-auto" />
@@ -720,11 +699,11 @@ export default function BimDocumentationPage() {
                                     o crea el primer tópico manualmente.
                                 </p>
                             </div>
-                            <div className="flex flex-col sm:flex-row gap-4 items-center">
-                                <div className="space-y-2 w-64">
-                                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Inicializar con Plantilla</Label>
-                                    <Select value={selectedTemplate} onValueChange={handleApplyTemplate}>
-                                        <SelectTrigger className="h-11 bg-card border-accent text-[10px] font-black uppercase w-full">
+                            <div className="flex flex-row sm:flex-row gap-4 items-center">
+                                <div className="space-y-2 w-64 flex flex-row">
+                                    {/* <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Inicializar con Plantilla</Label> */}
+                                    <Select value={selectedTemplate} onValueChange={handleApplyTemplate} onOpenChange={(open) => open && fetchTemplatesOnDemand()}>
+                                        <SelectTrigger className="h-12 bg-card border-accent text-[10px] font-black uppercase w-full">
                                             <div className="flex items-center gap-2">
                                                 <LayoutTemplate className="h-3 w-3 text-primary" />
                                                 <SelectValue placeholder="ELEGIR PLANTILLA..." />
@@ -749,14 +728,16 @@ export default function BimDocumentationPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-widest pt-4">ó</div>
-                                <Button
-                                    variant="outline"
-                                    className="h-11 border-dashed border-primary/30 text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/10"
-                                    onClick={() => handleOpenCreateModal(null)}
-                                >
-                                    <PlusCircle className="h-4 w-4 mr-2" /> Crear Tópico Manual
-                                </Button>
+                                <div className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-widest pt-4 bg-card"></div>
+                                <div className="bg-card">
+                                    <Button
+                                        variant="outline"
+                                        className=" border-accent text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 cursor-pointer"
+                                        onClick={() => handleOpenCreateModal(null)}
+                                    >
+                                        <PlusCircle className="h-4 w-4 mr-2" /> Crear Tópico Manual
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     ) : (
@@ -848,7 +829,7 @@ export default function BimDocumentationPage() {
                             Selecciona la carpeta de destino en donde se guardará el documento.
                         </DialogDescription>
                     </DialogHeader>
-                    
+
                     <div className="py-6 space-y-4">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-primary px-1">Carpeta de Destino</Label>
@@ -872,24 +853,24 @@ export default function BimDocumentationPage() {
                         <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 space-y-2">
                             <p className="text-[9px] font-black uppercase tracking-widest text-primary/60">Nota de Exportación</p>
                             <p className="text-[10px] font-bold leading-relaxed">
-                                El PDF incluirá esta sección maestro y todas sus sub-páginas técnicas asociadas. 
+                                El PDF incluirá esta sección maestro y todas sus sub-páginas técnicas asociadas.
                                 Cada sección comenzará en una página nueva.
                             </p>
                         </div>
                     </div>
 
                     <DialogFooter className="gap-3">
-                        <Button 
-                            variant="ghost" 
+                        <Button
+                            variant="ghost"
                             disabled={isExporting}
-                            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground h-11" 
+                            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground h-11"
                             onClick={() => setIsExportModalOpen(false)}
                         >
                             Cancelar
                         </Button>
-                        <Button 
-                            disabled={isExporting} 
-                            onClick={handleExportPDF} 
+                        <Button
+                            disabled={isExporting}
+                            onClick={handleExportPDF}
                             className="flex-1 font-black uppercase tracking-widest text-[10px] bg-primary h-11 text-background hover:bg-primary/90 rounded-xl shadow-lg shadow-primary/20"
                         >
                             {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}

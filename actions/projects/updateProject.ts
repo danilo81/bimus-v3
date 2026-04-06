@@ -2,7 +2,15 @@
 
 import prisma from "../../lib/prisma";
 import { revalidatePath } from "next/cache";
+import { cookies } from 'next/headers';
 import { ProjectConfig } from "../../types/types";
+
+async function getAuthUserId() {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+    if (!userId || userId === 'undefined' || userId === 'null' || userId === '') return undefined;
+    return userId;
+}
 
 export async function updateProject(id: string, data: {
     title?: string;
@@ -18,6 +26,9 @@ export async function updateProject(id: string, data: {
     levels?: { id?: string, name: string }[];
 }) {
     try {
+        const userId = await getAuthUserId();
+        if (!userId) return { success: false, error: "No autorizado" };
+
         const { config, levels, startDate, ...restProjectData } = data;
         await prisma.$transaction(async (tx) => {
             const updateData: any = { ...restProjectData };
@@ -74,6 +85,17 @@ export async function updateProject(id: string, data: {
                     else await tx.level.create({ data: { name: level.name, projectId: id } });
                 }
             }
+
+            // REGISTRAR EN BITÁCORA
+            await tx.siteLog.create({
+                data: {
+                    projectId: id,
+                    authorId: userId,
+                    type: 'info',
+                    content: `CONFIGURACIÓN ACTUALIZADA: Se modificaron los parámetros generales o la estructura del proyecto.`,
+                    date: new Date()
+                }
+            }).catch(() => null);
         });
         revalidatePath('/projects');
         revalidatePath(`/projects/${id}`);

@@ -50,7 +50,7 @@ import {
     updateChapter,
     deleteChapter
 } from '@/actions';
-import { ScrollArea } from '../../../../components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '../../../../components/ui/scroll-area';
 
 export default function ChaptersPage() {
     const { user } = useAuth();
@@ -198,12 +198,12 @@ export default function ChaptersPage() {
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between bg-card p-4 rounded-xl border border-muted/50 backdrop-blur-sm">
+            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between bg-card p-4 rounded-xl border border-accent">
                 <div className="relative w-full lg:max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Buscar por nombre de capítulo..."
-                        className="pl-10  h-10 bg-background/50 border-muted/50"
+                        className="pl-10  h-10 bg-card border-accent"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -260,12 +260,12 @@ export default function ChaptersPage() {
             </div>
 
             {filteredChapters.length > 0 ? (
-                <Card className="border-muted/50 overflow-hidden bg-card p-0 min-h-[60vh]">
-                    <ScrollArea className='h-150 w-auto'>
+                <Card className="border-accent overflow-y-auto bg-card p-0 max-h-[60vh]">
+                    <ScrollArea className=''>
                         <CardContent className="p-0">
                             <Table>
-                                <TableHeader className="bg-muted/50">
-                                    <TableRow className="hover:bg-transparent">
+                                <TableHeader className="bg-accent">
+                                    <TableRow className="border-accent hover:bg-transparent">
                                         <TableHead className="py-4 px-8 text-[12px] font-black uppercase text-muted-foreground">Capítulo</TableHead>
                                         <TableHead className="text-right px-6 text-[12px] font-black uppercase text-muted-foreground">Acciones</TableHead>
                                     </TableRow>
@@ -273,7 +273,7 @@ export default function ChaptersPage() {
                                 <TableBody>
 
                                     {filteredChapters.map((chapter) => (
-                                        <TableRow key={chapter.id} className="hover:bg-muted/20 transition-colors border-accent group">
+                                        <TableRow key={chapter.id} className="hover:bg-muted/20 transition-colors border-muted/50 group">
                                             <TableCell className="font-semibold text-primary px-8 py-4 uppercase text-xs tracking-tight ">
                                                 {chapter.name}
                                             </TableCell>
@@ -304,6 +304,7 @@ export default function ChaptersPage() {
                                 </TableBody>
                             </Table>
                         </CardContent>
+                        <ScrollBar orientation='vertical' />
                     </ScrollArea>
                 </Card>
             ) : (

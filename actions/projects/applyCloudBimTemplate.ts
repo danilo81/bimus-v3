@@ -2,9 +2,20 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { cookies } from 'next/headers';
+
+async function getAuthUserId() {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+    if (!userId || userId === 'undefined' || userId === 'null' || userId === '') return undefined;
+    return userId;
+}
 
 export async function applyCloudBimTemplate(projectId: string, fileId: string) {
     try {
+        const userId = await getAuthUserId();
+        if (!userId) return { success: false, error: "No autorizado" };
+
         const file = await prisma.libraryFile.findUnique({
             where: { id: fileId }
         });
@@ -62,6 +73,17 @@ export async function applyCloudBimTemplate(projectId: string, fileId: string) {
 
             remaining = remaining.filter(t => !readyToProcess.includes(t));
         }
+
+        // REGISTRAR EN BITÁCORA
+        await prisma.siteLog.create({
+            data: {
+                projectId,
+                authorId: userId,
+                type: 'info',
+                content: `PLANTILLA DESDE NUBE: Se importó la plantilla "${file.name}" al módulo de documentación.`,
+                date: new Date()
+            }
+        }).catch(() => null);
 
         revalidatePath(`/projects/${projectId}/documentation`);
         return { success: true };

@@ -3,6 +3,7 @@
 import prisma from "../../lib/prisma";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { calculateAPU } from "../../lib/apu-utils";
 
 async function getAuthUserId() {
     const cookieStore = await cookies();
@@ -16,13 +17,20 @@ export async function createProjectChangeOrder(projectId: string, reason: string
         const userId = await getAuthUserId();
         if (!userId) return { success: false, error: "No autorizado" };
 
+        // Fetch project config to calculate dynamic APU impacts
+        const projectWithConfig = await prisma.project.findUnique({
+            where: { id: projectId },
+            select: { config: true }
+        });
+        const config = projectWithConfig?.config;
+
         const result = await prisma.$transaction(async (tx) => {
             let totalFinancialImpact = 0;
 
             // Buscamos los items actuales para calcular deltas
             const currentItems = await tx.projectItem.findMany({
                 where: { projectId },
-                include: { item: true }
+                include: { item: { include: { supplies: { include: { supply: true } } } } }
             });
 
             for (const row of computations) {
@@ -32,8 +40,9 @@ export async function createProjectChangeOrder(projectId: string, reason: string
                 const deltaQuantity = newQuantity - oldQuantity;
 
                 if (deltaQuantity !== 0) {
-                    // Usamos el costo unitario del item (total) para calcular el impacto
-                    const unitPrice = currentItem?.item?.total || 0;
+                    // Calculate dynamic APU for the item in this project's context (overheads included)
+                    const apu = calculateAPU(currentItem?.item?.supplies || [], config);
+                    const unitPrice = apu.totalUnit || 0;
                     totalFinancialImpact += deltaQuantity * unitPrice;
                 }
 
@@ -98,6 +107,8 @@ export async function createProjectChangeOrder(projectId: string, reason: string
             });
 
             return { success: true };
+        }, {
+            timeout: 30000
         });
 
         revalidatePath(`/projects/${projectId}`);

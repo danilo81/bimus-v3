@@ -131,6 +131,8 @@ export type GanttFeature = {
   lane?: string;
   progress?: number;
   dependencies?: string[];
+  baselineStartAt?: Date;
+  baselineEndAt?: Date;
 };
 
 export type GanttMarkerProps = {
@@ -364,7 +366,7 @@ export const GanttContentHeader: FC<GanttContentHeaderHeaderProps> = ({
   const id = useId();
   return (
     <div
-      className="sticky top-0 z-20 grid w-full shrink-0 bg-backdrop/90 backdrop-blur-sm"
+      className="sticky top-0 z-20 grid w-full shrink-0 bg-card border-accent"
       style={{ height: "var(--gantt-header-height)" }}
     >
       <div>
@@ -586,7 +588,7 @@ export const GanttSidebarItem: FC<GanttSidebarItemProps> = ({
 
 export const GanttSidebarHeader: FC = () => (
   <div
-    className="sticky top-0 z-10 flex shrink-0 items-end justify-between gap-2.5 border-border/50 border-b bg-backdrop/90 p-2.5 font-medium text-muted-foreground text-xs backdrop-blur-sm"
+    className="sticky top-0 z-10 flex shrink-0 items-end justify-between gap-2.5 border-accent border-b  p-2.5 font-medium text-muted-foreground text-xs "
     style={{ height: "var(--gantt-header-height)" }}
   >
     <p className="flex-1 truncate text-left">Items / Partidas</p>
@@ -1006,12 +1008,27 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
           left: Math.round(offset),
         }}
       >
+        {feature.baselineStartAt && (
+          <div
+            className="absolute pointer-events-none opacity-20 border border-current rounded-sm"
+            style={{
+              height: "12px",
+              top: "22px",
+              width: Math.round(getWidth(feature.baselineStartAt, feature.baselineEndAt || feature.baselineStartAt, gantt)),
+              left: Math.round(getOffset(feature.baselineStartAt, timelineStartDate, gantt)) - Math.round(offset),
+              backgroundColor: feature.status.color,
+              color: feature.status.color,
+              zIndex: -1
+            }}
+          />
+        )}
+
         {isDraggable && (
           <DndContext onDragEnd={onDragEnd} onDragMove={handleLeftDragMove} sensors={[mouseSensor]}>
             <GanttFeatureDragHelper date={startAt} direction="left" featureId={feature.id} />
           </DndContext>
         )}
-        
+
         {isDraggable ? (
           <DndContext onDragEnd={onDragEnd} onDragMove={handleItemDragMove} onDragStart={handleItemDragStart} sensors={[mouseSensor]}>
             <GanttFeatureItemCard id={feature.id} color={feature.status.color} progress={feature.progress}>
@@ -1088,7 +1105,7 @@ export const GanttDependencyOverlay: FC<{ features: (GanttFeature & { subRow: nu
           return (
             <g key={`${predecessor.id}-${feature.id}`}>
               <path d={path} fill="none" stroke="currentColor" strokeWidth="2" className="text-primary/40 block" strokeDasharray="4 2" />
-              <polygon points={`${endX-5},${endY-4} ${endX},${endY} ${endX-5},${endY+4}`} fill="currentColor" className="text-primary/40 block" />
+              <polygon points={`${endX - 5},${endY - 4} ${endX},${endY} ${endX - 5},${endY + 4}`} fill="currentColor" className="text-primary/40 block" />
             </g>
           );
         });

@@ -208,12 +208,12 @@ export default function UnitsPage() {
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between bg-card p-4 rounded-xl border border-muted/50 backdrop-blur-sm">
+            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between bg-card p-4 rounded-xl border border-accent backdrop-blur-sm">
                 <div className="relative w-full lg:max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Buscar por nombre, abreviación o magnitud..."
-                        className="pl-10 h-11 bg-background/50 border-muted/50"
+                        className="pl-10 h-11 bg-card border-accent"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -284,12 +284,12 @@ export default function UnitsPage() {
             </div>
 
             {filteredUnits.length > 0 ? (
-                <Card className="border-muted/50 overflow-hidden bg-card p-0 min-h-[60vh]">
-                    <ScrollArea className='h-150'>
+                <Card className="border-accent overflow-y-auto bg-card p-0 max-h-[60vh]">
+                    <ScrollArea className=''>
                         <CardContent className="p-0">
                             <Table>
-                                <TableHeader className="bg-muted/50">
-                                    <TableRow className="hover:bg-transparent">
+                                <TableHeader className="bg-accent">
+                                    <TableRow className="border-accent hover:bg-transparent ">
                                         <TableHead className="py-4 px-8 text-[12px] font-black uppercase text-muted-foreground">Unidad Medida</TableHead>
                                         <TableHead className="text-[12px] font-black uppercase text-muted-foreground">Abreviación</TableHead>
                                         <TableHead className="text-[12px] font-black uppercase text-muted-foreground">Magnitud</TableHead>

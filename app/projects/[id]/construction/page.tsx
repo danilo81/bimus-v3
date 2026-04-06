@@ -14,7 +14,8 @@ import {
     batchUpdateProjectItemProgress,
     getConstructionItems,
     getSupplies,
-    getProjectSiteLogs
+    getProjectSiteLogs,
+    consolidateProjectSchedule
 } from '@/actions';
 import { calculateAPU } from '@/lib/apu-utils';
 import { useAuth } from '../../../../hooks/use-auth';
@@ -124,6 +125,8 @@ interface ComputationRow {
     ganttStatus: string;
     predecessorId?: string | null;
     startDate?: Date | null;
+    consolidatedStartDate?: Date | null;
+    consolidatedDays?: number | null;
 }
 interface ItemSupply {
     id: string;
@@ -178,6 +181,7 @@ export default function ConstructionPage() {
     const [masterSupplies, setMasterSupplies] = useState<Supply[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState('computo');
     const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
 
@@ -281,13 +285,33 @@ export default function ConstructionPage() {
         });
     }, [computations]);
 
+
+
+
     const ganttFeatures = useMemo((): GanttFeature[] => {
         if (!project || computations.length === 0) return [];
         const projectStart = project.startDate ? new Date(project.startDate) : new Date();
+        const workingDays = project.config?.workingDaysSelection || [1, 2, 3, 4, 5, 6];
 
         const getDuration = (row: any) => {
             const baseDuration = Math.ceil(row.performance > 0 ? (row.total * row.performance) / 8 : 1);
             return Math.max(1, baseDuration + (row.extraDays || 0));
+        };
+
+        const addWorkingDaysHelper = (startDate: Date, duration: number) => {
+            let date = new Date(startDate);
+            // If start date is not a working day, move to next working day
+            while (!workingDays.includes(date.getDay())) {
+                date = addDays(date, 1);
+            }
+            let daysAdded = 0;
+            while (daysAdded < duration) {
+                date = addDays(date, 1);
+                if (workingDays.includes(date.getDay())) {
+                    daysAdded++;
+                }
+            }
+            return date;
         };
 
         const featureMap = new Map<string, { startAt: Date, endAt: Date }>();
@@ -298,8 +322,8 @@ export default function ConstructionPage() {
 
             if (visited.has(row.id)) {
                 const duration = getDuration(row);
-                const startAt = addDays(projectStart, defaultOffset);
-                const endAt = addDays(startAt, duration);
+                const startAt = addWorkingDaysHelper(projectStart, defaultOffset);
+                const endAt = addWorkingDaysHelper(startAt, duration);
                 return { startAt, endAt };
             }
             visited.add(row.id);
@@ -311,17 +335,22 @@ export default function ConstructionPage() {
                     const predDates = calculateDates(predecessor, visited);
                     startAt = new Date(predDates.endAt); // Finish-to-Start relation
                 } else {
-                    startAt = row.startDate ? new Date(row.startDate) : addDays(projectStart, defaultOffset);
+                    startAt = row.startDate ? new Date(row.startDate) : addWorkingDaysHelper(projectStart, defaultOffset);
                 }
             } else if (row.startDate) {
                 // Custom date saved via drag-and-drop
                 startAt = new Date(row.startDate);
             } else {
-                startAt = addDays(projectStart, defaultOffset);
+                startAt = addWorkingDaysHelper(projectStart, defaultOffset);
+            }
+
+            // Ensure startAt is a working day
+            while (!workingDays.includes(startAt.getDay())) {
+                startAt = addDays(startAt, 1);
             }
 
             const duration = getDuration(row);
-            const endAt = addDays(startAt, duration);
+            const endAt = addWorkingDaysHelper(startAt, duration);
 
             if (!row.predecessorId) {
                 defaultOffset += Math.ceil(duration / 2); // Default overlap for non-dependent tasks
@@ -349,10 +378,25 @@ export default function ConstructionPage() {
                     id: statusKey,
                     name: statusKey.charAt(0).toUpperCase() + statusKey.slice(1),
                     color: statusColor
-                }
+                },
+                baselineStartAt: row.consolidatedStartDate ? new Date(row.consolidatedStartDate) : undefined,
+                baselineEndAt: row.consolidatedStartDate && row.consolidatedDays
+                    ? addWorkingDaysHelper(new Date(row.consolidatedStartDate), row.consolidatedDays)
+                    : undefined
             };
         });
     }, [project, computations]);
+
+    const totalProjectDelay = useMemo(() => {
+        if (!project?.consolidatedAt || ganttFeatures.length === 0) return 0;
+        const currentMax = Math.max(...ganttFeatures.map(f => f.endAt.getTime()));
+        const baselineFeatures = ganttFeatures.filter(f => f.baselineEndAt);
+        if (baselineFeatures.length === 0) return 0;
+        const baselineMax = Math.max(...baselineFeatures.map(f => f.baselineEndAt!.getTime()));
+        const diff = currentMax - baselineMax;
+        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+        return days;
+    }, [ganttFeatures, project?.consolidatedAt]);
 
     const apuCalculations = useMemo(() => {
         if (!selectedItem || !project?.config) return null;
@@ -418,7 +462,9 @@ export default function ConstructionPage() {
                         extraDays: pi.extraDays || 0,
                         ganttStatus: pi.ganttStatus || "no iniciado",
                         predecessorId: pi.predecessor?.itemId || null,
-                        startDate: pi.startDate ? new Date(pi.startDate) : null
+                        startDate: pi.startDate ? new Date(pi.startDate) : null,
+                        consolidatedStartDate: pi.consolidatedStartDate ? new Date(pi.consolidatedStartDate) : null,
+                        consolidatedDays: pi.consolidatedDays || null
                     };
                 });
                 setComputations(initialComputations);
@@ -671,6 +717,7 @@ export default function ConstructionPage() {
         }
     };
 
+
     const handleValueChange = (rowIndex: number, levelIndex: number, newValue: string) => {
         const val = parseFloat(newValue) || 0;
         setComputations(prev => {
@@ -726,14 +773,20 @@ export default function ConstructionPage() {
 
         setIsSaving(true);
         try {
+            // 1. Update Project Status (Locks Computations)
             const result = await updateProjectAction(project.id, { status: 'construccion' });
-            if (result && result.success) {
+
+            // 2. Consolidate Schedule Baseline (Frees Gantt dates)
+            const scheduleRes = await consolidateProjectSchedule(project.id);
+
+            if (result && result.success && scheduleRes.success) {
                 toast({
                     title: "Proyecto Consolidado",
-                    description: "Los cómputos han sido bloqueados para el equipo externo."
+                    description: "Los cómputos han sido bloqueados y la línea base del cronograma ha sido establecida."
                 });
                 await fetchProjectData();
             } else {
+                if (!scheduleRes.success) throw new Error(scheduleRes.error || "Fallo al consolidar el cronograma.");
                 throw new Error("Fallo al actualizar el estado del proyecto.");
             }
         } catch (error: any) {
@@ -1858,16 +1911,16 @@ export default function ConstructionPage() {
     ];
 
     return (
-        <div className="flex flex-col min-h-screen text-primary p-4 md:p-8 space-y-6">
-            <Tabs defaultValue="computo" className="w-full">
+        <div className="flex flex-col text-primary p-4 md:p-8 space-y-6  overflow-y-auto">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="bg-card border border-accent h-12 p-0 rounded-xl overflow-hidden mb-6 flex flex-wrap md:flex-nowrap">
-                    <TabsTrigger value="computo" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r border-accent text-xs md:text-sm">
+                    <TabsTrigger value="computo" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                         <Calculator className="mr-2 h-4 w-4" /> CÓMPUTO
                     </TabsTrigger>
-                    <TabsTrigger value="presupuesto" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r border-accent text-xs md:text-sm">
+                    <TabsTrigger value="presupuesto" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r text-xs md:text-sm">
                         <Coins className="mr-2 h-4 w-4" /> PRESUPUESTO
                     </TabsTrigger>
-                    <TabsTrigger value="cronograma" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r border-accent text-xs md:text-sm">
+                    <TabsTrigger value="cronograma" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                         <CalendarDays className="mr-2 h-4 w-4" /> CRONOGRAMA
                     </TabsTrigger>
                     <TabsTrigger value="ejecucion" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none text-xs md:text-sm">
@@ -1876,7 +1929,7 @@ export default function ConstructionPage() {
                 </TabsList>
 
                 <TabsContent value="computo">
-                    <Card className="bg-card border-accent text-primary overflow-hidden">
+                    <Card className="bg-card border-accent text-primary overflow-hidden gap-0">
                         <CardHeader className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0 pb-7 border-b border-accent">
                             <div className="flex items-center gap-4 w-full">
                                 <div className="p-2 bg-primary/20 rounded-lg">
@@ -1937,7 +1990,7 @@ export default function ConstructionPage() {
                                             </Button>
                                         </>
                                     )}
-                                    {!isConstruccion && isAuthor && (
+                                    {!isConstruccion && (
                                         <>
                                             <Button
                                                 onClick={() => setIsAddComputoOpen(true)}
@@ -2087,7 +2140,7 @@ export default function ConstructionPage() {
                             </Accordion>
                         </Card>
 
-                        <Card className="bg-card border-accent text-primary ">
+                        <Card className="bg-card border-accent text-primary gap-0">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7 bg-card border-b border-accent">
                                 <div className="flex items-center gap-4 w-150">
                                     <div className="p-2 bg-primary/20 rounded-lg">
@@ -2185,7 +2238,7 @@ export default function ConstructionPage() {
                 </TabsContent>
 
                 <TabsContent value="cronograma">
-                    <Card className="bg-card border-accent text-primary overflow-hidden h-[700px] flex flex-col">
+                    <Card className="bg-card border-accent text-primary overflow-y-auto h-[700px] flex flex-col">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-accent/2 border-b border-accent">
                             <div className="flex items-center gap-4">
                                 <div className="p-2 bg-primary/20 rounded-lg">
@@ -2197,6 +2250,25 @@ export default function ConstructionPage() {
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                    {project?.consolidatedAt && (
+                                        <div className="flex flex-col items-end mr-4 opacity-70">
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-primary/60">Línea Base</span>
+                                            <span className="text-[10px] font-bold text-primary italic">{format(new Date(project.consolidatedAt), 'dd MMM yyyy', { locale: es })}</span>
+                                        </div>
+                                    )}
+                                </div>
+                                {project?.consolidatedAt && (
+                                    <div className={cn(
+                                        "flex items-center gap-2 px-3 py-2 rounded-xl border font-black text-[10px] uppercase tracking-wider transition-all",
+                                        totalProjectDelay > 0
+                                            ? "bg-red-500/10 border-red-500/20 text-red-500"
+                                            : "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
+                                    )}>
+                                        <History className="h-3.5 w-3.5" />
+                                        {totalProjectDelay > 0 ? `Retraso: ${totalProjectDelay} días` : "En Tiempo"}
+                                    </div>
+                                )}
                                 {(hasPendingGanttMoves || Object.keys(ganttSidebarEdits).length > 0) && (
                                     <Button
                                         onClick={handleSaveGanttTabChanges}
@@ -2368,7 +2440,7 @@ export default function ConstructionPage() {
                                                 />
                                             ))}
                                         </GanttFeatureList>
-                                        <GanttToday className="bg-primary shadow-[0_0_15px_rgba(255,255,255,0.3)] text-background" />
+                                        <GanttToday className="bg-primary text-background" />
                                     </GanttTimeline>
                                 </GanttProvider>
                             ) : (
@@ -2384,7 +2456,7 @@ export default function ConstructionPage() {
                 <TabsContent value="ejecucion">
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <Card className="bg-card border-accent relative overflow-hidden">
+                            <Card className="bg-card border-accent relative overflow-hidden gap-0 h-fit">
                                 <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
                                 <CardHeader className="pb-2">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">Avance Global Físico</span>
@@ -2401,7 +2473,7 @@ export default function ConstructionPage() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="bg-card border-emerald-500/20  relative overflow-hidden">
+                            <Card className="bg-card border-emerald-500/20  relative overflow-hidden gap-0 h-fit">
                                 <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
                                 <CardHeader className="pb-2">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500/70">Valor Ejecutado</span>
@@ -2417,7 +2489,7 @@ export default function ConstructionPage() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="bg-card border-blue-500/20  relative overflow-hidden">
+                            <Card className="bg-card border-blue-500/20  relative overflow-hidden gap-0 h-fit">
                                 <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
                                 <CardHeader className="pb-2">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-500/70">Saldo por Ejecutar</span>
@@ -2434,7 +2506,7 @@ export default function ConstructionPage() {
                             </Card>
                         </div>
 
-                        <Card className="bg-card border-accent text-primary ">
+                        <Card className="bg-card border-accent text-primary gap-0">
                             <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-7 bg-card border-b border-accent">
                                 <div className="flex items-center gap-4 w-full">
                                     <div className="p-2 bg-primary/20 rounded-lg">
@@ -2496,8 +2568,9 @@ export default function ConstructionPage() {
                                                 <TableHead className="text-[12px] font-black uppercase text-right">Cómputo Total</TableHead>
                                                 <TableHead className="text-[12px] font-black uppercase text-right">Cant. Avance</TableHead>
                                                 <TableHead className="text-[12px] font-black uppercase text-right">Saldo Pendiente</TableHead>
-                                                <TableHead className="text-[12px] font-black uppercase text-right pr-8">Avance Financiero</TableHead>
-                                                <TableHead className="text-[12px] font-black uppercase min-w-[150px] pr-6 text-center">% Ejecución</TableHead>
+                                                <TableHead className="text-[12px] font-black uppercase text-right">Avance Financiero</TableHead>
+                                                <TableHead className="text-[12px] font-black uppercase text-right">% Ejecución</TableHead>
+                                                <TableHead className="text-[12px] font-black uppercase text-right pr-8">Acciones</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -2529,8 +2602,8 @@ export default function ConstructionPage() {
                                                             <TableCell className="text-[12px] font-mono text-right text-emerald-500 font-black pr-8">
                                                                 ${row.financialProgress.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                                             </TableCell>
-                                                            <TableCell className="pr-6">
-                                                                <div className="space-y-1.5 w-full max-w-[120px] mx-auto">
+                                                            <TableCell className="text-center ">
+                                                                <div className="space-y-1.5 w-full max-w-[80px] mx-auto">
                                                                     <div className="flex justify-between text-[12px] font-black text-muted-foreground">
                                                                         <span>{row.percentage.toFixed(1)}%</span>
                                                                     </div>
@@ -2543,6 +2616,23 @@ export default function ConstructionPage() {
                                                                         />
                                                                     </div>
                                                                 </div>
+                                                            </TableCell>
+                                                            <TableCell className="align-right justify-end">
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10">
+                                                                            <MoreVertical className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent align="end" className="bg-card border-accent text-primary  p-1.5 rounded-xl">
+                                                                        <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg">
+                                                                            <Calculator className="h-3.5 w-3.5" /> Ver Avance Modelo
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg" onClick={() => handleViewDetail(row)}>
+                                                                            <Calculator className="h-3.5 w-3.5" /> Documentos del Item
+                                                                        </DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
                                                             </TableCell>
                                                         </TableRow>
                                                     ))
@@ -2685,21 +2775,23 @@ export default function ConstructionPage() {
 
             <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}>
                 <DialogContent className="min-w-7xl bg-card border-accent text-primary p-0 overflow-hidden flex flex-col h-[80vh]">
-                    <DialogHeader className="p-6 bg-card border-b border-accent shrink-0 flex flex-row items-center justify-between space-y-0">
-                        <div className="flex items-center gap-3">
+                    <DialogHeader className="p-6 bg-card border-b border-accent shrink-0 flex flex-row items-center justify-between space-y-0 ">
+                        <div className="flex items-center gap-3 ">
                             <History className="h-6 w-6 text-primary" />
                             <div>
                                 <DialogTitle className="text-xl font-bold uppercase tracking-tight text-primary">Historial de Avance Físico</DialogTitle>
                                 <DialogDescription className="text-muted-foreground text-[10px] font-black uppercase mt-1 tracking-widest">Registros chronológicos de certificaciones y reportes de obra</DialogDescription>
                             </div>
                         </div>
-                        <Button
-                            onClick={handlePrintHistory}
-                            variant="outline"
-                            className="border-accent bg-card text-primary font-black text-[10px] uppercase h-10 px-4 rounded-xl hover:bg-accent"
-                        >
-                            <Printer className="mr-2 h-4 w-4" /> Imprimir Historial
-                        </Button>
+                        <div className="pr-6">
+                            <Button
+                                onClick={handlePrintHistory}
+                                variant="outline"
+                                className="border-accent bg-card text-primary font-black text-[10px] uppercase h-10 px-4 rounded-xl hover:bg-accent "
+                            >
+                                <Printer className="mr-2 h-4 w-4" /> Imprimir Historial
+                            </Button>
+                        </div>
                     </DialogHeader>
 
                     <div className="flex-1 overflow-hidden p-6">
@@ -2744,10 +2836,12 @@ export default function ConstructionPage() {
                                                 </TableRow>
                                             ))
                                         ) : (
-                                            <TableRow className="flex justify-center items-center">
-                                                <TableCell colSpan={3} className="text-center py-32 opacity-20 flex flex-col items-center gap-3 justify-center">
-                                                    <History className="h-12 w-12" />
-                                                    <p className="text-[10px] font-black uppercase tracking-widest">Sin registros de avance</p>
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="text-center py-32 opacity-20">
+                                                    <div className="flex flex-col items-center gap-3 justify-center w-full">
+                                                        <History className="h-12 w-12" />
+                                                        <p className="text-[10px] font-black uppercase tracking-widest">Sin registros de avance</p>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         )}
@@ -2788,19 +2882,19 @@ export default function ConstructionPage() {
                             <ScrollArea className="h-100">
                                 <div className="p-8 space-y-10">
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                        <Card className="bg-card border-accent p-4 space-y-1 shadow-inner">
+                                        <Card className="bg-card border-accent p-4 space-y-1 ">
                                             <span className="text-[12px] font-black text-muted-foreground uppercase tracking-widest">Cant. Computada</span>
                                             <p className="text-lg font-black text-primary font-mono">{selectedExecutionItem.total.toFixed(2)} <span className="text-[14px] opacity-40">{selectedExecutionItem.unit}</span></p>
                                         </Card>
-                                        <Card className="bg-card border-accent p-4 space-y-1 shadow-inner">
+                                        <Card className="bg-card border-accent p-4 space-y-1 ">
                                             <span className="text-[12px] font-black text-muted-foreground uppercase tracking-widest">Precio Unitario</span>
                                             <p className="text-lg font-black text-primary font-mono">{project.config?.mainCurrency || 'BS'} {selectedExecutionItem.unitPrice.toFixed(2)}</p>
                                         </Card>
-                                        <Card className="bg-card border-accent p-4 space-y-1 shadow-inner">
+                                        <Card className="bg-card border-accent p-4 space-y-1 ">
                                             <span className="text-[12px] font-black text-muted-foreground uppercase tracking-widest">Total Partida</span>
                                             <p className="text-lg font-black text-primary font-mono">{project.config?.mainCurrency || 'BS'} {(selectedExecutionItem.total * selectedExecutionItem.unitPrice).toLocaleString()}</p>
                                         </Card>
-                                        <Card className="bg-card border-accent p-4 space-y-1 shadow-inner">
+                                        <Card className="bg-card border-accent p-4 space-y-1 ">
                                             <span className="text-[12px] font-black text-muted-foreground uppercase tracking-widest">Costo por Día</span>
                                             <p className="text-lg font-black text-primary font-mono">
                                                 {project.config?.mainCurrency || 'BS'} {((selectedExecutionItem.total * selectedExecutionItem.unitPrice) / Math.max(1, differenceInDays(selectedExecutionItem.gantt.endAt, selectedExecutionItem.gantt.startAt))).toLocaleString(undefined, { maximumFractionDigits: 2 })}
@@ -3043,7 +3137,7 @@ export default function ConstructionPage() {
 
             {/* Orden de Cambio Dialog */}
             <Dialog open={isChangeOrderOpen} onOpenChange={setIsChangeOrderOpen}>
-                <DialogContent className="min-w-7xl bg-card border-accent text-primary p-0 overflow-hidden shadow-2xl flex flex-col h-[90vh] gap-0">
+                <DialogContent className="min-w-7xl bg-card border-accent text-primary p-0 overflow-hidden flex flex-col h-[90vh] gap-0">
                     <DialogHeader className="p-6 border-b border-accent bg-card shrink-0 flex flex-row items-center justify-between space-y-0">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-amber-500/20 rounded-lg">
@@ -3157,7 +3251,7 @@ export default function ConstructionPage() {
 
             {/* Local APU Editor Dialog */}
             <Dialog open={isLocalAPUEditorOpen} onOpenChange={setIsLocalAPUEditorOpen}>
-                <DialogContent className="min-w-7xl bg-card border-accent text-primary p-0 overflow-hidden shadow-2xl flex flex-col h-[85vh]">
+                <DialogContent className="min-w-7xl bg-card border-accent text-primary p-0 overflow-hidden  flex flex-col h-[85vh]">
                     {localAPUEditingItem && (
                         <>
                             <DialogHeader className="p-6 border-b border-accent bg-card shrink-0 flex flex-row items-center gap-4 space-y-0">
@@ -3231,7 +3325,7 @@ export default function ConstructionPage() {
 
             {/* Local Supply Picker Sub-Dialog */}
             <Dialog open={isLocalSupplyLibraryOpen} onOpenChange={setIsLocalSupplyLibraryOpen}>
-                <DialogContent className="sm:max-w-xl bg-card border-accent text-primary p-0 overflow-hidden flex flex-col h-[70vh] shadow-2xl">
+                <DialogContent className="sm:max-w-xl bg-card border-accent text-primary p-0 overflow-hidden flex flex-col h-[70vh] ">
                     <div className="p-6 border-b border-accent flex flex-row items-center gap-4 shrink-0">
                         <div className="p-2 bg-primary/20 rounded-lg border border-primary/20">
                             <Layers className="h-6 w-6 text-primary" />
@@ -3308,7 +3402,7 @@ export default function ConstructionPage() {
             </Dialog>
 
             <Dialog open={isAddComputoOpen} onOpenChange={setIsAddComputoOpen}>
-                <DialogContent className="min-w-7xl bg-card border-accent text-primary p-0 overflow-hidden shadow-2xl flex flex-col h-[85vh]">
+                <DialogContent className="min-w-7xl bg-card border-accent text-primary p-0 overflow-hidden  flex flex-col h-[85vh]">
                     <DialogHeader className="p-6 border-b border-accent bg-card shrink-0 flex flex-row items-center justify-between space-y-0">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-primary/20 rounded-lg">
@@ -3385,14 +3479,32 @@ export default function ConstructionPage() {
 
                     <DialogFooter className="p-6 border-t border-accent bg-card shrink-0">
                         <Button variant="ghost" onClick={() => setIsAddComputoOpen(false)} className="text-[10px] font-black uppercase tracking-widest">Cancelar</Button>
-                        <Button
-                            onClick={handleAddSelectedItems}
-                            disabled={isSaving || selectedLibraryItems.length === 0}
-                            className="bg-primary text-background font-black text-[10px] uppercase h-12 px-12"
-                        >
-                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                            Vincular Seleccionados ({selectedLibraryItems.length})
-                        </Button>
+                        <div className="flex items-center gap-4">
+                            {totalProjectDelay > 0 && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 border border-destructive/20 rounded-lg animate-pulse">
+                                    <Clock className="h-4 w-4 text-destructive" />
+                                    <span className="text-[10px] font-black uppercase text-destructive tracking-widest">
+                                        Atraso: {totalProjectDelay} Días con línea base
+                                    </span>
+                                </div>
+                            )}
+                            {totalProjectDelay === 0 && project?.consolidatedAt && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                    <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">
+                                        Cronograma en Tiempo
+                                    </span>
+                                </div>
+                            )}
+                            <Button
+                                onClick={handleAddSelectedItems}
+                                disabled={isSaving || selectedLibraryItems.length === 0}
+                                className="bg-primary text-background font-black text-[10px] uppercase h-12 px-12"
+                            >
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                                Vincular Seleccionados ({selectedLibraryItems.length})
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

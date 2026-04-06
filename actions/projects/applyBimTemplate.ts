@@ -2,9 +2,20 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { cookies } from 'next/headers';
+
+async function getAuthUserId() {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+    if (!userId || userId === 'undefined' || userId === 'null' || userId === '') return undefined;
+    return userId;
+}
 
 export async function applyBimTemplate(projectId: string, templateType: string) {
     try {
+        const userId = await getAuthUserId();
+        if (!userId) return { success: false, error: "No autorizado" };
+
         const doc = await prisma.bimDocument.findUnique({
             where: { projectId }
         });
@@ -69,6 +80,17 @@ export async function applyBimTemplate(projectId: string, templateType: string) 
                     }
                 });
             }
+
+            // REGISTRAR EN BITÁCORA
+            await prisma.siteLog.create({
+                data: {
+                    projectId,
+                    authorId: userId,
+                    type: 'info',
+                    content: `PLANTILLA APLICADA: Se importaron las partidas de la plantilla "${templateType}" al módulo de documentación.`,
+                    date: new Date()
+                }
+            }).catch(() => null);
         }
 
         revalidatePath(`/projects/${projectId}/documentation`);

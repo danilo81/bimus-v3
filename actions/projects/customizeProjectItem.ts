@@ -51,6 +51,18 @@ export async function customizeProjectItem(projectId: string, oldItemId: string,
                 }
             });
             await tx.projectItem.delete({ where: { projectId_itemId: { projectId, itemId: oldItemId } } });
+
+            // REGISTRAR EN BITÁCORA
+            await tx.siteLog.create({
+                data: {
+                    projectId,
+                    authorId: userId,
+                    type: 'info',
+                    content: `APU PERSONALIZADO: Se creó un análisis de costos local para "${newItemData.description}".`,
+                    date: new Date()
+                }
+            }).catch(() => null);
+
             return { success: true, newItemId: customizedItem.id };
         });
     } catch (error: any) { return { success: false, error: error.message }; }

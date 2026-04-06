@@ -62,6 +62,18 @@ export async function createProject(data: CreateProjectData) {
             await tx.level.create({ data: { name: 'Fundaciones', projectId: project.id } });
             await tx.level.create({ data: { name: 'Nivel 1', projectId: project.id } });
             await tx.level.create({ data: { name: 'Nivel 2', projectId: project.id } });
+
+            // REGISTRAR EN BITÁCORA
+            await tx.siteLog.create({
+                data: {
+                    projectId: project.id,
+                    authorId: userId,
+                    type: 'info',
+                    content: `PROYECTO INICIADO: El proyecto "${data.title}" ha sido creado con éxito.`,
+                    date: new Date()
+                }
+            }).catch(() => null);
+
             return project;
         });
         revalidatePath('/projects');

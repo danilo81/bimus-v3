@@ -584,7 +584,7 @@ export default function ItemsPage() {
         } else {
             const result = await createConstructionItemLibrary(itemData);
             if (result.success) {
-                toast({ title: "Item creado", description: "El nuevo Ã­tem ha sido aÃ±adido al catÃ¡logo." });
+                toast({ title: "Item creado", description: "El nuevo item ha sido añadido al catálogo." });
                 fetchInitialData();
                 setIsDialogOpen(false);
                 resetForm();
