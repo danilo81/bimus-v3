@@ -375,7 +375,7 @@ function ProjectsPageContent() {
                                                 <MoreVertical className="h-4 w-4 text-muted-foreground" />
                                             </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="bg-card border-white/10 text-primary shadow-2xl p-1.5 rounded-xl">
+                                        <DropdownMenuContent align="end" className="bg-card border-accent text-primary  p-1.5 rounded-xl">
                                             <DropdownMenuItem asChild className="text-[10px] font-black uppercase tracking-widest cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg">
                                                 <Link href={`/projects/${project.id}`}>
                                                     <ArrowRight className="h-3.5 w-3.5 text-primary" />Gestionar
@@ -400,7 +400,7 @@ function ProjectsPageContent() {
                                                     }}
                                                     className="text-[10px] font-black uppercase tracking-widest cursor-pointer rounded-lg"
                                                 >
-                                                    <ArrowLeftRight className="h-3.5 w-3.5 text-amber-500" /> Transferir Proyecto
+                                                    <ArrowLeftRight className="h-3.5 w-3.5 text-primary" /> Transferir Proyecto
                                                 </DropdownMenuItem>
                                             )}
                                             {project.authorId === user?.id ? (
@@ -651,10 +651,10 @@ function ProjectsPageContent() {
                                             {formData.imageUrl && formData.imageUrl !== '/project-img.png' && (
                                                 <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-accent">
                                                     <img src={getProjectImageUrl(formData.imageUrl)} className="w-full h-full object-cover" />
-                                                    <Button 
-                                                        type="button" 
-                                                        variant="destructive" 
-                                                        size="icon" 
+                                                    <Button
+                                                        type="button"
+                                                        variant="destructive"
+                                                        size="icon"
                                                         className="absolute top-2 right-2 h-8 w-8 rounded-full"
                                                         onClick={() => setFormData(prev => ({ ...prev, imageUrl: '/project-img.png' }))}
                                                     >
@@ -662,7 +662,7 @@ function ProjectsPageContent() {
                                                     </Button>
                                                 </div>
                                             )}
-                                            <div 
+                                            <div
                                                 className="border-2 border-dashed border-accent rounded-xl p-8 flex flex-col items-center justify-center gap-3 hover:border-primary/50 transition-colors cursor-pointer bg-accent/20"
                                                 onClick={() => document.getElementById('project-image-upload')?.click()}
                                             >
@@ -671,15 +671,15 @@ function ProjectsPageContent() {
                                                     <p className="text-[10px] font-black uppercase">Subir Foto de Portada</p>
                                                     <p className="text-[9px] text-muted-foreground uppercase mt-1">Formatos: JPG, PNG o WEBP (Máx. 5MB)</p>
                                                 </div>
-                                                <input 
-                                                    id="project-image-upload" 
-                                                    type="file" 
-                                                    className="hidden" 
+                                                <input
+                                                    id="project-image-upload"
+                                                    type="file"
+                                                    className="hidden"
                                                     accept="image/*"
                                                     onChange={async (e) => {
                                                         const file = e.target.files?.[0];
                                                         if (!file) return;
-                                                        
+
                                                         setIsSubmitting(true);
                                                         try {
                                                             const response = await fetch('/api/r2/upload', {
@@ -692,15 +692,15 @@ function ProjectsPageContent() {
                                                                     isPublic: true
                                                                 })
                                                             });
-                                                            
+
                                                             const { presignedUrl, publicUrl } = await response.json();
-                                                            
+
                                                             await fetch(presignedUrl, {
                                                                 method: 'PUT',
                                                                 body: file,
                                                                 headers: { 'Content-Type': file.type }
                                                             });
-                                                            
+
                                                             setFormData(prev => ({ ...prev, imageUrl: publicUrl }));
                                                             toast({ title: "Imagen subida", description: "La portada del proyecto ha sido actualizada." });
                                                         } catch (error) {

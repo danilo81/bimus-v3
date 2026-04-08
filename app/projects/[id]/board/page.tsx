@@ -27,7 +27,11 @@ import {
     Layers,
     CloudUpload,
     FileDown,
-    FolderPlus
+    FolderPlus,
+    Info,
+    Clock,
+    Calendar,
+    Hash
 } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { Input } from '../../../../components/ui/input';
@@ -80,6 +84,8 @@ export default function BimDocumentationPage() {
     const { toast } = useToast();
     const [project, setProject] = useState<any>(null);
     const [documentId, setDocumentId] = useState<string | null>(null);
+    const [docInfo, setDocInfo] = useState<any>(null);
+    const [isDocInfoModalOpen, setIsDocInfoModalOpen] = useState(false);
     const [topics, setTopics] = useState<BimTopic[]>([]);
     const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
     const activeTopicIdRef = useRef<string | null>(null);
@@ -221,6 +227,7 @@ export default function BimDocumentationPage() {
                 if (result.project) setProject(result.project);
                 setTopics(result.topics || []);
                 setDocumentId(result.documentId || null);
+                if (result.document) setDocInfo(result.document);
                 if (result.topics && result.topics.length > 0) {
                     setSelectedTopicId(prev => prev || result.topics![0].id);
                 }
@@ -648,6 +655,12 @@ export default function BimDocumentationPage() {
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><MoreVertical className="h-4 w-4" /></Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="bg-card border-accent text-primary  p-1.5 rounded-xl">
+                                                <DropdownMenuItem 
+                                                    onClick={() => setIsDocInfoModalOpen(true)} 
+                                                    className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg"
+                                                >
+                                                    <Info className="h-3.5 w-3.5" /> Información del documento
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => setIsSaveTemplateModalOpen(true)} className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg">
                                                     <Save className="h-3.5 w-3.5" /> Guardar como plantilla
                                                 </DropdownMenuItem>
@@ -876,6 +889,48 @@ export default function BimDocumentationPage() {
                             {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                             {isExporting ? 'Generando...' : 'Generar y Guardar'}
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={isDocInfoModalOpen} onOpenChange={setIsDocInfoModalOpen}>
+                <DialogContent className="sm:max-w-md bg-card border-accent text-primary">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold uppercase tracking-tight text-primary">Información del Documento</DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground">
+                            Detalles técnicos del expediente BIM actual.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-6 space-y-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-primary/10 rounded-xl">
+                                <Calendar className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Fecha de Creación</p>
+                                <p className="text-sm font-bold">{docInfo?.createdAt ? new Date(docInfo.createdAt).toLocaleString() : '---'}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-primary/10 rounded-xl">
+                                <Clock className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Última Modificación</p>
+                                <p className="text-sm font-bold">{docInfo?.updatedAt ? new Date(docInfo.updatedAt).toLocaleString() : '---'}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-primary/10 rounded-xl">
+                                <Hash className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Versión del Documento</p>
+                                <p className="text-sm font-bold">V {docInfo?.version ?? 1}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" className="w-full text-[10px] font-black uppercase tracking-widest border-accent hover:bg-primary/10" onClick={() => setIsDocInfoModalOpen(false)}>Cerrar</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

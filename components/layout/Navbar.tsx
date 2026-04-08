@@ -90,8 +90,6 @@ export function Navbar() {
 
     // New Event Modal State
     const [isNewEventOpen, setIsNewEventOpen] = useState(false);
-    const [eventProjects, setEventProjects] = useState<Project[]>([]);
-    const [isFetchingEventProjects, setIsFetchingEventProjects] = useState(false);
     const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
     const [newEventForm, setNewEventForm] = useState<{
         title: string;
@@ -184,10 +182,11 @@ export function Navbar() {
         if (user?.id && !isFetchingDetails) {
             setIsFetchingDetails(true);
             try {
-                const [notifData, tasksData, eventsData] = await Promise.all([
+                const [notifData, tasksData, eventsData, projectsData] = await Promise.all([
                     getNotifications(user.id),
                     getTasks(),
-                    getUpcomingEvents()
+                    getUpcomingEvents(),
+                    getProjects()
                 ]);
 
                 setNotifications(notifData);
@@ -197,6 +196,7 @@ export function Navbar() {
                 setTasks(userTasks as any);
                 setPendingTasksCount(userTasks.filter((t: any) => t.status !== 'completado').length);
                 setUpcomingEvents(eventsData);
+                setProjects(projectsData);
                 setHasFetchedDetails(true);
             } catch (error) {
                 console.error("Error fetching inbox details:", error);
@@ -740,7 +740,7 @@ export function Navbar() {
     };
 
     return (
-        <nav className="h-14 border-b md:border-2 md:border-foreground/10 bg-card flex items-center px-2 md:px-4 justify-between sticky top-0 z-40 md:rounded-lg md:m-3 shadow-sm md:shadow-none">
+        <nav className="h-14 border-b md:border-2 md:border-foreground/10 bg-card flex items-center px-2 md:px-4 justify-between sticky top-0  md:rounded-lg md:m-3 shadow-sm md:shadow-none z-40">
             <div className="flex items-center gap-2 md:gap-6">
 
                 {/* MENÚ MÓVIL (SHEET) */}
@@ -1147,17 +1147,23 @@ export function Navbar() {
 
                             <div className="p-3 bg-card border-t border-accent text-center flex flex-col gap-2">
                                 <div className="grid grid-cols-2 gap-2">
-                                    <Button 
-                                        variant="outline" 
+                                    <Button
+                                        variant="outline"
                                         className="text-[9px] font-black uppercase tracking-widest h-9 border-accent hover:bg-primary/10 hover:text-primary cursor-pointer"
-                                        onClick={() => setIsCreateOpen(true)}
+                                        onClick={() => {
+                                            if (projects.length === 0) fetchData();
+                                            setIsCreateOpen(true);
+                                        }}
                                     >
                                         <PlusCircle className="mr-2 h-3.5 w-3.5" /> Tarea
                                     </Button>
-                                    <Button 
-                                        variant="outline" 
+                                    <Button
+                                        variant="outline"
                                         className="text-[9px] font-black uppercase tracking-widest h-9 border-accent hover:bg-primary/10 hover:text-primary cursor-pointer"
-                                        onClick={() => setIsNewEventOpen(true)}
+                                        onClick={() => {
+                                            if (projects.length === 0) fetchData();
+                                            setIsNewEventOpen(true);
+                                        }}
                                     >
                                         <Calendar className="mr-2 h-3.5 w-3.5" /> Evento
                                     </Button>
@@ -1240,31 +1246,31 @@ export function Navbar() {
                                 </div>
 
                                 <ScrollArea className="flex-1">
-                                    <TabsList className="flex flex-col h-auto bg-card p-4 justify-start w-full rounded-none gap-1.5">
-                                        <TabsTrigger value="profile" className="w-full justify-start gap-3 h-11 px-4 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-secondary data-[state=active]:text-primary border border-transparent data-[state=active]:border-secondary transition-all rounded-sm">
+                                    <TabsList className="bg-card border border-accent h-12 p-0 rounded-xl overflow-hidden mb-6 flex flex-wrap md:flex-nowrap">
+                                        <TabsTrigger value="profile" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             <UserIcon className="h-4 w-4" /> Perfil de Usuario
                                         </TabsTrigger>
-                                        <TabsTrigger value="security" className="w-full justify-start gap-3 h-11 px-4 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20 transition-all rounded-xl">
+                                        <TabsTrigger value="security" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             <ShieldCheck className="h-4 w-4" /> Seguridad
                                         </TabsTrigger>
-                                        <TabsTrigger value="notifications" className="w-full justify-start gap-3 h-11 px-4 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20 transition-all rounded-xl">
+                                        <TabsTrigger value="notifications" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             <BellIcon className="h-4 w-4" /> Notificaciones
                                         </TabsTrigger>
-                                        <TabsTrigger value="appearance" className="w-full justify-start gap-3 h-11 px-4 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20 transition-all rounded-xl">
+                                        <TabsTrigger value="appearance" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             <Palette className="h-4 w-4" /> Apariencia
                                         </TabsTrigger>
                                         <Separator className="my-4 bg-white/5" />
-                                        <TabsTrigger value="subscription" className="w-full justify-start gap-3 h-11 px-4 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20 transition-all rounded-xl">
+                                        <TabsTrigger value="subscription" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             <CreditCard className="h-4 w-4" /> Suscripción
                                         </TabsTrigger>
-                                        <TabsTrigger value="billing" className="w-full justify-start gap-3 h-11 px-4 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20 transition-all rounded-xl">
+                                        <TabsTrigger value="billing" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             <Receipt className="h-4 w-4" /> Facturación
                                         </TabsTrigger>
                                         <Separator className="my-4 bg-white/5" />
-                                        <TabsTrigger value="support" className="w-full justify-start gap-3 h-11 px-4 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20 transition-all rounded-xl">
+                                        <TabsTrigger value="support" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             <LifeBuoy className="h-4 w-4" /> Soporte Técnico
                                         </TabsTrigger>
-                                        <TabsTrigger value="docs" className="w-full justify-start gap-3 h-11 px-4 text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20 transition-all rounded-xl">
+                                        <TabsTrigger value="docs" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             <FileCode className="h-4 w-4" /> Privacidad y terminos de uso
                                         </TabsTrigger>
                                     </TabsList>
@@ -1499,16 +1505,15 @@ export function Navbar() {
                                     <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">Gestione la información general y los parámetros económicos.</DialogDescription>
                                 </div>
                             </div>
-                            {/* <Button variant="ghost" size="icon" onClick={() => setIsConfigOpen(false)} className="text-muted-foreground hover:text-[rimary"><X className="h-6 w-6" /></Button> */}
                         </DialogHeader>
                         <Tabs defaultValue="informacion" className="flex-1 flex flex-col overflow-hidden">
-                            <div className="bg-secondary border-b border-accent shrink-0">
-                                <TabsList className="h-14 bg-transparent p-0 gap-0 w-full" variant="default">
-                                    <TabsTrigger value="informacion" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">INFORMACIÓN</TabsTrigger>
-                                    <TabsTrigger value="parametros" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary border-x">PARÁMETROS</TabsTrigger>
-                                    <TabsTrigger value="niveles" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">NIVELES</TabsTrigger>
-                                    <TabsTrigger value="modelobim" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">MODELO</TabsTrigger>
-                                    <TabsTrigger value="permisos" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-white data-[state=active]:bg-white/5 text-[11px] font-black uppercase tracking-widest text-muted-foreground data-[state=active]:text-primary">PERMISOS</TabsTrigger>
+                            <div className=" border-b border-accent shrink-0">
+                                <TabsList className="bg-card border border-accent h-12 p-0 rounded-xl overflow-hidden mb-6 flex flex-wrap md:flex-nowrap">
+                                    <TabsTrigger value="informacion" className="fflex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">INFORMACIÓN</TabsTrigger>
+                                    <TabsTrigger value="parametros" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">PARÁMETROS</TabsTrigger>
+                                    <TabsTrigger value="niveles" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">NIVELES</TabsTrigger>
+                                    <TabsTrigger value="modelobim" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">MODELO</TabsTrigger>
+                                    <TabsTrigger value="permisos" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">PERMISOS</TabsTrigger>
                                 </TabsList>
                             </div>
                             <ScrollArea className="flex-1 p-8">
@@ -1771,11 +1776,11 @@ export function Navbar() {
                             <div><DialogTitle className="text-xl font-bold uppercase tracking-tight">Personal del Proyecto</DialogTitle><DialogDescription className="text-muted-foreground text-[10px] font-black uppercase mt-1">Gestión de equipo y responsables</DialogDescription></div>
                         </DialogHeader>
                         <Tabs defaultValue="current" className="flex-1 flex flex-col overflow-hidden">
-                            <div className="px-6 bg-secondary border-b border-accent shrink-0">
-                                <TabsList className="h-12 bg-transparent p-0 gap-0 w-full" variant="line">
-                                    <TabsTrigger value="current" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-[10px] font-black uppercase">EQUIPO TÉCNICO</TabsTrigger>
-                                    <TabsTrigger value="add" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-[10px] font-black uppercase border-l">AÑADIR PERSONAL</TabsTrigger>
-                                    <TabsTrigger value="invite" className="flex-1 h-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-[10px] font-black uppercase border-l">COLABORADORES</TabsTrigger>
+                            <div className="px-6  shrink-0">
+                                <TabsList className="bg-card border border-accent h-12 p-0 rounded-xl overflow-hidden mb-6">
+                                    <TabsTrigger value="current" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">EQUIPO</TabsTrigger>
+                                    <TabsTrigger value="add" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm"> PERSONAL</TabsTrigger>
+                                    <TabsTrigger value="invite" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">COLABORADORES</TabsTrigger>
                                 </TabsList>
                             </div>
                             <div className="flex-1 overflow-hidden">
@@ -1793,12 +1798,6 @@ export function Navbar() {
                                     </div>
                                 ))}</div></ScrollArea></TabsContent>
                                 <TabsContent value="add" className="h-full m-0 flex flex-col overflow-hidden">
-                                    <div className="p-6 border-b border-accent bg-card space-y-4">
-                                        <div className="relative">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input placeholder="BUSCAR EN EL DIRECTORIO..." className="pl-10 h-11 bg-card border-accent text-[10px] font-bold uppercase tracking-widest" value={teamSearchTerm} onChange={(e) => setTeamSearchTerm(e.target.value)} />
-                                        </div>
-                                    </div>
                                     <ScrollArea className="flex-1 p-6">
                                         <div className="space-y-3">{isFetchingLibrary ? <div className="flex flex-col items-center justify-center py-20 opacity-20 gap-3"><Loader2 className="h-8 w-8 animate-spin" /><p className="text-[10px] font-black uppercase tracking-widest">Consultando Directorio...</p></div> : filteredLibraryContacts.map((contact) => (
                                             <div key={contact.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-accent hover:bg-accent/5 transition-all group">
@@ -1846,7 +1845,7 @@ export function Navbar() {
                                 </TabsContent>
                             </div>
                         </Tabs>
-                        <DialogFooter className="p-4 border-t border-accent bg-card shrink-0"><Button variant="ghost" onClick={() => setIsTeamOpen(false)} className="w-full text-[9px] font-black uppercase tracking-[0.2em] h-10 hover:bg-accent cursor-pointer">Cerrar Terminal de Equipo</Button></DialogFooter>
+                        <DialogFooter className="p-4 border-t border-accent bg-card shrink-0"><Button variant="ghost" onClick={() => setIsTeamOpen(false)} className="w-full text-[9px] font-black uppercase tracking-[0.2em] h-10 hover:bg-accent cursor-pointer">Cerrar</Button></DialogFooter>
                     </DialogContent>
                 </Dialog>
             )}

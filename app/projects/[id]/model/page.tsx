@@ -39,7 +39,9 @@ import {
     Terminal,
     CheckCircle2,
     LayoutGrid,
-    Inbox
+    Inbox,
+    AlertCircle,
+    ClipboardList
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -309,12 +311,7 @@ export default function ModelPage() {
         };
     }, [selectedItem, project]);
 
-    const mockAssets = [
-        { id: '1', name: 'PLANO_CIMENTACION_REV01.PDF', type: 'DOCUMENT', size: '2.4 MB', version: 'v1.2' },
-        { id: '2', name: 'NUBE_PUNTOS_TOPOGRAFIA.LAS', type: 'CLOUD', size: '1.2 GB', version: 'v2.0' },
-        { id: '3', name: 'MODELO_ESTRUCTURAL_BASE.IFC', type: 'BIM', size: '45.8 MB', version: 'v3.1' },
-        { id: '4', name: 'MEMORIA_CALCULO_ACERO.PDF', type: 'DOCUMENT', size: '850 KB', version: 'v1.0' },
-    ];
+
 
     return (
         <div className="flex flex-col h-fit text-primary p-4 md:p-8 space-y-6">
@@ -325,21 +322,21 @@ export default function ModelPage() {
                     </TabsTrigger>
                     <TabsTrigger
                         value="assets"
-                        className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-white rounded-none border-r border-white/10 text-xs md:text-sm font-black uppercase tracking-widest"
+                        className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r text-xs md:text-sm font-black uppercase tracking-widest"
                     >
                         <HardDrive className="mr-2 h-4 w-4" /> ASSETS
                     </TabsTrigger>
                     <TabsTrigger
-                        value="assets"
-                        className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-white rounded-none border-r border-white/10 text-xs md:text-sm font-black uppercase tracking-widest"
+                        value="incidencias"
+                        className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm font-black uppercase tracking-widest"
                     >
-                        <HardDrive className="mr-2 h-4 w-4" /> Incidencias
+                        <AlertCircle className="mr-2 h-4 w-4" /> Incidencias
                     </TabsTrigger>
                     <TabsTrigger
-                        value="assets"
-                        className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-white rounded-none border-r border-white/10 text-xs md:text-sm font-black uppercase tracking-widest"
+                        value="submittals"
+                        className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none text-xs md:text-sm font-black uppercase tracking-widest"
                     >
-                        <HardDrive className="mr-2 h-4 w-4" /> Submittals
+                        <ClipboardList className="mr-2 h-4 w-4" /> Submittals
                     </TabsTrigger>
                 </TabsList>
 
@@ -433,10 +430,6 @@ export default function ModelPage() {
                                         </CardTitle>
                                         <CardDescription className="text-[9px] font-bold uppercase text-muted-foreground mt-1">Viendo Rama: <span className="text-primary">{activeBranch?.name}</span></CardDescription>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase hover:bg-accent/10"><Download className="h-3.5 w-3.5 mr-1.5" /> Descargar (.rvt)</Button>
-                                        <Button variant="outline" size="sm" className="h-8 border-accent text-[9px] font-black uppercase hover:bg-accent/10"><Plus className="h-3.5 w-3.5 mr-1.5" /> Vincular IFC</Button>
-                                    </div>
                                 </CardHeader>
                                 <CardContent className="flex-1 p-0 relative group">
 
@@ -455,42 +448,11 @@ export default function ModelPage() {
                                 </h1>
                                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Planos, nubes de puntos y modelos vinculados.</p>
                             </div>
-                            <Button size="sm" className="bg-primary hover:bg-primary/90 text-background font-black text-[10px] uppercase tracking-widest h-9 px-6 ">
-                                <Plus className="mr-2 h-4 w-4" /> Subir Asset
-                            </Button>
                         </CardHeader>
-                        <CardContent className="space-y-4 pt-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                {mockAssets.map((asset) => (
-                                    <Card key={asset.id} className="bg-card border-accent hover:border-primary/50 transition-all group overflow-hidden">
-                                        <CardContent className="p-4 flex flex-col gap-3">
-                                            <div className="flex items-start justify-between">
-                                                <div className="p-2 bg-primary/20 rounded-lg group-hover:scale-110 transition-transform">
-                                                    <FileText className="h-6 w-6 text-primary" />
-                                                </div>
-                                                <Badge variant="outline" className="text-[9px] border-accent text-muted-foreground font-black uppercase">
-                                                    {asset.type}
-                                                </Badge>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <h4 className="text-sm font-bold truncate text-primary uppercase tracking-tight">{asset.name}</h4>
-                                                <div className="flex justify-between text-[9px] text-muted-foreground font-bold uppercase tracking-tighter">
-                                                    <span>{asset.size}</span>
-                                                    <span className="text-primary">{asset.version}</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2 mt-2 pt-2 border-t border-accent">
-                                                <Button variant="ghost" size="sm" className="flex-1 h-7 text-[10px] uppercase font-black hover:bg-primary hover:text-background">
-                                                    <Eye className="h-3 w-3 mr-1" /> Ver
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 bg-accent hover:bg-accent/10">
-                                                    <Download className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
+                        <CardContent className="py-20 flex flex-col items-center justify-center opacity-20 group hover:opacity-40 transition-opacity duration-700">
+                            <Box className="h-16 w-16 mb-4 text-primary" />
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em]">No hay activos digitales vinculados</h3>
+                            <p className="text-[9px] uppercase tracking-widest mt-2">Vincule planos o modelos en el módulo de Documentación</p>
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -607,42 +569,42 @@ export default function ModelPage() {
 
                 <TabsContent value="activos">
                     {hasAssets ? (
-                        <Card className="bg-[#0a0a0a] border-white/10 text-white shadow-2xl">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7 bg-white/2 border-b border-white/5">
+                        <Card className="bg-card border-accent text-primary overflow-hidden">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7 bg-accent/2 border-b border-accent">
                                 <div>
                                     <CardTitle className="text-lg font-bold uppercase tracking-tight">Activos Fijos Asignados a la Obra</CardTitle>
                                     <CardDescription className="text-muted-foreground text-[10px] uppercase font-black tracking-widest mt-1">Maquinaria y equipos asignados físicamente a este proyecto.</CardDescription>
                                 </div>
-                                <Button size="sm" variant="outline" className="border-white/10 bg-white/5 text-[10px] font-black uppercase h-10 px-6 hover:bg-white/10" onClick={handleOpenAssignModal}>
+                                <Button size="sm" variant="outline" className="border-accent bg-accent/5 text-[10px] font-black uppercase h-10 px-6 hover:bg-accent/10" onClick={handleOpenAssignModal}>
                                     <Plus className="mr-2 h-4 w-4" /> Asignar Equipo
                                 </Button>
                             </CardHeader>
                             <CardContent className="p-0">
-                                <div className="border border-white/5 rounded-xl overflow-hidden mx-6 mb-6 mt-6">
+                                <div className="border border-accent rounded-xl overflow-hidden mx-6 mb-6 mt-6">
                                     <Table>
-                                        <TableHeader className="bg-white/5">
-                                            <TableRow className="border-white/5 hover:bg-transparent">
+                                        <TableHeader className="bg-accent">
+                                            <TableRow className="border-accent hover:bg-transparent">
                                                 <TableHead className="text-[10px] font-black uppercase py-4 px-6 w-32">Código</TableHead>
                                                 <TableHead className="text-[10px] font-black uppercase">Equipo / Activo</TableHead>
                                                 <TableHead className="text-[10px] font-black uppercase">Marca/Modelo</TableHead>
-                                                <TableHead className="text-[10px) font-black uppercase text-center">Estado</TableHead>
+                                                <TableHead className="text-[10px] font-black uppercase text-center">Estado</TableHead>
                                                 <TableHead className="text-[10px] font-black uppercase text-right pr-12">Acciones</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {projectAssets.map((asset) => (
-                                                <TableRow key={asset.id} className="border-white/5 hover:bg-white/5 transition-colors group">
+                                                <TableRow key={asset.id} className="border-accent hover:bg-accent/5 transition-colors group">
                                                     <TableCell className="px-6 py-4">
                                                         <span className="text-[10px] font-mono font-black text-primary uppercase bg-primary/5 px-2 py-1 rounded border border-primary/10">
                                                             {asset.code}
                                                         </span>
                                                     </TableCell>
-                                                    <TableCell className="text-xs font-bold text-white uppercase">{asset.name}</TableCell>
+                                                    <TableCell className="text-xs font-bold text-primary uppercase">{asset.name}</TableCell>
                                                     <TableCell className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">
                                                         {asset.brand} {asset.model}
                                                     </TableCell>
                                                     <TableCell className="text-center">
-                                                        <Badge variant="outline" className={cn("text-[8px] font-black uppercase px-2.5 py-0.5 border-white/10",
+                                                        <Badge variant="outline" className={cn("text-[8px] font-black uppercase px-2.5 py-0.5 border-accent",
                                                             asset.status === 'en_uso' ? 'text-primary bg-primary/10 border-primary/20' : 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'
                                                         )}>
                                                             {asset.status.replace('_', ' ')}
@@ -661,16 +623,42 @@ export default function ModelPage() {
                             </CardContent>
                         </Card>
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-40 border border-dashed border-white/5 rounded-3xl opacity-20 bg-white/1">
+                        <div className="flex flex-col items-center justify-center py-40 border border-dashed border-accent rounded-3xl opacity-20 bg-accent/2">
                             <Truck className="h-16 w-16 mb-4 text-primary" />
                             <div className="text-center space-y-4">
                                 <p className="text-[10px] font-black uppercase tracking-[0.3em]">No hay activos fijos asignados a esta obra.</p>
-                                <Button size="sm" variant="outline" className="border-white/10 text-[10px] font-black uppercase px-8 h-10 hover:bg-white/10" onClick={handleOpenAssignModal}>
+                                <Button size="sm" variant="outline" className="border-accent text-[10px] font-black uppercase px-8 h-10 hover:bg-accent/10" onClick={handleOpenAssignModal}>
                                     <Plus className="mr-2 h-4 w-4" /> Asignar Primer Equipo
                                 </Button>
                             </div>
                         </div>
                     )}
+                </TabsContent>
+
+                <TabsContent value="incidencias">
+                    <div className="flex flex-col items-center justify-center py-40 border-2 border-dashed border-accent rounded-[2rem] bg-card backdrop-blur-sm group hover:border-primary/30 transition-all duration-500">
+                        <div className="p-6 bg-accent/20 rounded-full mb-6 group-hover:scale-110 transition-transform duration-500">
+                            <AlertCircle className="h-12 w-12 text-muted-foreground/30" />
+                        </div>
+                        <Badge className="bg-primary/10 text-primary border-none mb-4 font-black uppercase tracking-widest text-[9px]">Próximamente</Badge>
+                        <h3 className="text-xl font-black uppercase tracking-[0.2em] text-primary mb-2">Módulo de Incidencias</h3>
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground/40 max-w-[400px] text-center leading-relaxed">
+                            Estamos integrando el motor de detección y gestión de colisiones. Muy pronto podrás vincular issues de diseño directamente con el modelo BIM.
+                        </p>
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="submittals">
+                    <div className="flex flex-col items-center justify-center py-40 border-2 border-dashed border-accent rounded-[2rem] bg-card backdrop-blur-sm group hover:border-primary/30 transition-all duration-500">
+                        <div className="p-6 bg-accent/20 rounded-full mb-6 group-hover:scale-110 transition-transform duration-500">
+                            <ClipboardList className="h-12 w-12 text-muted-foreground/30" />
+                        </div>
+                        <Badge className="bg-primary/10 text-primary border-none mb-4 font-black uppercase tracking-widest text-[9px]">Próximamente</Badge>
+                        <h3 className="text-xl font-black uppercase tracking-[0.2em] text-primary mb-2">Gestión de Submittals</h3>
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground/40 max-w-[400px] text-center leading-relaxed">
+                            Control total de especificaciones técnicas y aprobaciones de materiales vinculadas a cada componente del diseño.
+                        </p>
+                    </div>
                 </TabsContent>
             </Tabs>
 

@@ -667,11 +667,11 @@ export default function ItemsPage() {
 
                             <Tabs defaultValue="informacion" className="flex-1 flex flex-col overflow-hidden">
                                 <div className="px-6 border-accent">
-                                    <TabsList className="h-14 bg-transparent p-0 gap-8">
-                                        <TabsTrigger value="informacion" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
+                                    <TabsList className="bg-card border border-accent h-12 p-0 rounded-xl overflow-hidden mb-6 flex flex-wrap md:flex-nowrap">
+                                        <TabsTrigger value="informacion" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             Análisis Costos
                                         </TabsTrigger>
-                                        <TabsTrigger value="calidad" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
+                                        <TabsTrigger value="calidad" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             Control de Calidad
                                         </TabsTrigger>
                                     </TabsList>
@@ -801,7 +801,7 @@ export default function ItemsPage() {
                                                         <DialogTrigger asChild>
                                                             <Button
                                                                 type="button"
-                                                                variant="outline"
+                                                                variant="default"
                                                                 className="h-11 text-primary font-black text-[10px] uppercase tracking-widest px-8 hover:bg-muted/50 bg-secondary cursor-pointer"
                                                             >
                                                                 <Plus className="mr-2 h-4 w-4 text-primary" /> Crear Nuevo Insumo
@@ -898,11 +898,11 @@ export default function ItemsPage() {
                                                         </DialogContent>
                                                     </Dialog>
 
-                                                    <div className="relative w-full max-w-xs">
+                                                    <div className="relative w-full">
                                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                                         <Input
-                                                            placeholder="BUSCAR INSUMO AÑADIDO..."
-                                                            className="pl-9 h-11 bg-card border-accent text-[10px] font-black uppercase tracking-widest"
+                                                            placeholder="Buscar Item ..."
+                                                            className="pl-9 h-11 bg-card border-accent text-[10px] font-black tracking-widest w-full"
                                                             value={selectedSuppliesSearchTerm}
                                                             onChange={(e) => setSelectedSuppliesSearchTerm(e.target.value)}
                                                         />

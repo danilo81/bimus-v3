@@ -2569,7 +2569,7 @@ export default function ConstructionPage() {
                                                 <TableHead className="text-[12px] font-black uppercase text-right">Cant. Avance</TableHead>
                                                 <TableHead className="text-[12px] font-black uppercase text-right">Saldo Pendiente</TableHead>
                                                 <TableHead className="text-[12px] font-black uppercase text-right">Avance Financiero</TableHead>
-                                                <TableHead className="text-[12px] font-black uppercase text-right">% Ejecución</TableHead>
+                                                <TableHead className="text-[12px] font-black uppercase text-center">% Ejecución</TableHead>
                                                 <TableHead className="text-[12px] font-black uppercase text-right pr-8">Acciones</TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -2604,7 +2604,7 @@ export default function ConstructionPage() {
                                                             </TableCell>
                                                             <TableCell className="text-center ">
                                                                 <div className="space-y-1.5 w-full max-w-[80px] mx-auto">
-                                                                    <div className="flex justify-between text-[12px] font-black text-muted-foreground">
+                                                                    <div className="flex justify-center text-[12px] font-black text-muted-foreground">
                                                                         <span>{row.percentage.toFixed(1)}%</span>
                                                                     </div>
                                                                     <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
@@ -2617,7 +2617,7 @@ export default function ConstructionPage() {
                                                                     </div>
                                                                 </div>
                                                             </TableCell>
-                                                            <TableCell className="align-right justify-end">
+                                                            <TableCell className="text-right pr-8">
                                                                 <DropdownMenu>
                                                                     <DropdownMenuTrigger asChild>
                                                                         <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10">
@@ -3409,7 +3409,7 @@ export default function ConstructionPage() {
                                 <PlusCircle className="h-6 w-6 text-primary" />
                             </div>
                             <div>
-                                <DialogTitle className="text-xl font-bold uppercase tracking-tight">Librería de Partidas Maestro</DialogTitle>
+                                <DialogTitle className="text-xl font-bold uppercase tracking-tight">Librería de Partidas/ Items</DialogTitle>
                                 <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">
                                     Seleccione las actividades técnicas para vincular al proyecto
                                 </DialogDescription>

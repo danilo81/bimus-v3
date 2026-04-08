@@ -250,24 +250,23 @@ export default function UnitsPage() {
                                         <Label htmlFor="name" className="text-[10px] font-bold uppercase text-muted-foreground">Nombre de la Unidad</Label>
                                         <Input id="name" value={formData.name} onChange={handleInputChange} className="h-11 bg-background/50" placeholder="Ej: Metro, Litro, Kilogramo..." required />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="abbreviation" className="text-[10px] font-bold uppercase text-muted-foreground">Abreviación</Label>
-                                            <Input id="abbreviation" value={formData.abbreviation} onChange={handleInputChange} className="h-11 bg-background/50 font-mono" placeholder="Ej: m, l, kg..." maxLength={4} required />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="magnitude" className="text-[10px] font-bold uppercase text-muted-foreground">Magnitud Física</Label>
-                                            <Select value={formData.magnitude} onValueChange={handleSelectChange} required>
-                                                <SelectTrigger className="bg-background/50 w-full h-11">
-                                                    <SelectValue placeholder="Seleccione magnitud..." />
-                                                </SelectTrigger>
-                                                <SelectContent className="bg-card">
-                                                    {magnitudes.map((mag) => (
-                                                        <SelectItem key={mag} value={mag} className="text-xs uppercase font-bold">{mag}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="abbreviation" className="text-[10px] font-bold uppercase text-muted-foreground">Abreviación</Label>
+                                        <Input id="abbreviation" value={formData.abbreviation} onChange={handleInputChange} className="h-11 bg-background/50 font-mono" placeholder="Ej: m, l, kg..." maxLength={4} required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="magnitude" className="text-[10px] font-bold uppercase text-muted-foreground">Magnitud Física</Label>
+                                        <Select value={formData.magnitude} onValueChange={handleSelectChange} required>
+                                            <SelectTrigger className="bg-background/50 w-full h-11">
+                                                <SelectValue placeholder="Seleccione magnitud..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-card">
+                                                {magnitudes.map((mag) => (
+                                                    <SelectItem key={mag} value={mag} className="text-xs uppercase font-bold">{mag}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </div>
                                 <DialogFooter className="p-6 border-t border-accent gap-3 items-center">

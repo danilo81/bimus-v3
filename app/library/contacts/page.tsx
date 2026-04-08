@@ -571,17 +571,17 @@ export default function ContactsPage() {
 
                             <Tabs defaultValue="info" className="flex-1 flex flex-col overflow-hidden">
                                 <div className="px-8  shrink-0">
-                                    <TabsList className="h-14 p-0 gap-8 w-full bg-transparent" >
-                                        <TabsTrigger value="info" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
+                                    <TabsList className="bg-card border border-accent h-12 p-0 rounded-xl overflow-hidden mb-6 flex flex-wrap md:flex-nowrap" >
+                                        <TabsTrigger value="info" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             Información General
                                         </TabsTrigger>
-                                        <TabsTrigger value="locked1" disabled className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
+                                        <TabsTrigger value="locked1" disabled className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             <Lock className="h-3 w-3 mr-2" /> Bancos
                                         </TabsTrigger>
-                                        <TabsTrigger value="locked2" disabled className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
+                                        <TabsTrigger value="locked2" disabled className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             <Lock className="h-3 w-3 mr-2" /> Documentos
                                         </TabsTrigger>
-                                        <TabsTrigger value="locked3" disabled className="  flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
+                                        <TabsTrigger value="locked3" disabled className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             <Lock className="h-3 w-3 mr-2" /> Contabilidad
                                         </TabsTrigger>
                                     </TabsList>
@@ -658,7 +658,7 @@ export default function ContactsPage() {
                                 </ScrollArea>
                             </Tabs>
 
-                            <DialogFooter className="p-6 border-t border-white/5 bg-transparent shrink-0">
+                            <DialogFooter className="p-6 border-t border-accent bg-card shrink-0">
                                 <div className="flex justify-end gap-3">
                                     <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)} className="w-full text-[10px] font-black uppercase tracking-widest h-12 hover:bg-primary/20 transition-all cursor-pointer">
                                         CANCELAR OPERACIÓN DE REGISTRO
@@ -703,17 +703,17 @@ export default function ContactsPage() {
 
                             <Tabs defaultValue="info" className="flex-1 flex flex-col overflow-hidden">
                                 <div className="px-8  shrink-0">
-                                    <TabsList className="h-14  p-0 gap-0 w-full bg-transparent">
-                                        <TabsTrigger value="info" className="  flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
+                                    <TabsList className="bg-card border border-accent h-12 p-0 rounded-xl overflow-hidden mb-6 flex flex-wrap md:flex-nowrap">
+                                        <TabsTrigger value="info" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             Información General
                                         </TabsTrigger>
-                                        <TabsTrigger value="banks" className="  flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
+                                        <TabsTrigger value="banks" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             Cuentas Bancarias
                                         </TabsTrigger>
-                                        <TabsTrigger value="docs" className="  flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-smy">
+                                        <TabsTrigger value="docs" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             Documentos
                                         </TabsTrigger>
-                                        <TabsTrigger value="accounting" className="  flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-2xl border-r border-accent text-xs md:text-sm">
+                                        <TabsTrigger value="accounting" className="flex-1 h-full px-4 md:px-8 data-[state=active]:bg-primary data-[state=active]:text-background rounded-none border-r  text-xs md:text-sm">
                                             Contabilidad
                                         </TabsTrigger>
                                     </TabsList>
@@ -1109,7 +1109,7 @@ export default function ContactsPage() {
                                 </ScrollArea>
                             </Tabs>
 
-                            <DialogFooter className="p-6 border-t border-white/5 bg-transparent shrink-0">
+                            <DialogFooter className="p-6 border-t border-accent bg-card shrink-0">
                                 <div className="flex justify-end gap-3">
                                     <Button variant="ghost" onClick={() => setIsProfileDialogOpen(false)} className="w-full text-[10px]  uppercase tracking-[0.2em] h-12 hover:bg-primary/20 transition-all cursor-pointer">
                                         Cerrar

@@ -58,6 +58,12 @@ export async function upsertBimTopic(data: {
             }
         }).catch(() => null);
 
+        // Incrementar la versión del documento
+        await prisma.bimDocument.update({
+            where: { id: data.documentId },
+            data: { version: { increment: 1 } }
+        });
+
         revalidatePath(`/projects/${data.projectId}/documentation`);
         revalidatePath(`/projects/${data.projectId}/board`);
         

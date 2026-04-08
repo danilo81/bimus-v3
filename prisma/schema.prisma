@@ -393,6 +393,7 @@ model QualityControlSubPoint {
 model BimDocument {
   id        String     @id @default(cuid())
   projectId String     @unique
+  version   Int        @default(1)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   project   Project    @relation(fields: [projectId], references: [id])

@@ -58,6 +58,7 @@ export async function getBimBoardData(projectId: string) {
             success: true, 
             project: JSON.parse(JSON.stringify(project)),
             topics: rootTopics, 
+            document: JSON.parse(JSON.stringify(currentDoc)),
             documentId: currentDoc.id 
         };
     } catch (error: any) {

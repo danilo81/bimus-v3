@@ -196,7 +196,7 @@ export default function DashboardPage() {
                     <p className="text-muted-foreground mt-1 text-[10px] font-black uppercase tracking-[0.3em] opacity-50">SISTEMA DE CONTROL OPERATIVO</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="rounded-xl px-4 h-10 flex items-center gap-3 bg-card">
+                    <div className="rounded-xl px-4 h-8 flex items-center gap-3 bg-card">
                         <Calendar className="h-4 w-4 text-primary" />
                         <span className="text-[14px] font-black uppercase tracking-widest text-primary">{currentDate || 'Cargando...'}</span>
                     </div>

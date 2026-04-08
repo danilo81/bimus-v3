@@ -711,7 +711,7 @@ export const GanttColumn: FC<GanttColumnProps> = ({
     <div
       className={cn(
         "group relative h-full overflow-hidden",
-        isColumnSecondary?.(index) ? "bg-secondary" : ""
+        isColumnSecondary?.(index) ? "bg-secondary/50" : ""
       )}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -1016,8 +1016,8 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
               top: "22px",
               width: Math.round(getWidth(feature.baselineStartAt, feature.baselineEndAt || feature.baselineStartAt, gantt)),
               left: Math.round(getOffset(feature.baselineStartAt, timelineStartDate, gantt)) - Math.round(offset),
-              backgroundColor: feature.status.color,
-              color: feature.status.color,
+              backgroundColor: '#F54927',
+              color: '#F54927',
               zIndex: -1
             }}
           />
@@ -1180,7 +1180,7 @@ export const GanttFeatureList: FC<GanttFeatureListProps> = ({
   children,
 }) => (
   <div
-    className={cn("absolute top-0 left-0 h-full w-max space-y-4", className)}
+    className={cn("absolute top-0 left-0 h-full w-max space-y-4 z-1", className)}
     style={{ marginTop: "var(--gantt-header-height)" }}
   >
     {children}
