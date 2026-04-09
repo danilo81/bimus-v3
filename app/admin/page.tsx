@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import type { User } from '@prisma/client';
 import { UserRole } from '../../types/types';
 import { useToast } from '../../hooks/use-toast';
-import { ShieldCheck, Loader2, UserPlus, MoreHorizontal, Search, ExternalLink, Mail, User as UserIcon, X, Briefcase, LayoutGrid, Save, Wrench, Hammer, Users, Globe } from 'lucide-react';
+import { ShieldCheck, Loader2, UserPlus, MoreHorizontal, Search, ExternalLink, Mail, User as UserIcon, X, Briefcase, LayoutGrid, Save, Wrench, Hammer, Users, Globe, Smartphone } from 'lucide-react';
 import { getUsers, updateUserRole, createUser, getUserProjects } from '@/actions';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { Button } from '../../components/ui/button';
@@ -38,6 +38,8 @@ export default function AdminPage() {
         password: '',
         role: 'viewer' as UserRole,
         storageLimit: '1GB',
+        telefono: '',
+        cargo: '',
     });
 
     const mockTickets = [
@@ -142,7 +144,7 @@ export default function AdminPage() {
             toast({ title: "Usuario creado", description: `El usuario ${newUserData.name} ha sido creado.` });
             setUsers(prevUsers => [newUserData, ...prevUsers]);
             setIsCreateDialogOpen(false);
-            setNewUser({ name: '', email: '', password: '', role: 'viewer', storageLimit: '1GB' });
+            setNewUser({ name: '', email: '', password: '', role: 'viewer', storageLimit: '1GB', telefono: '', cargo: '' });
         }
     };
 
@@ -248,6 +250,16 @@ export default function AdminPage() {
                                             />
                                         </div>
                                         <p className="text-[8px] text-muted-foreground font-black uppercase tracking-widest mt-1 opacity-50">Define la cuota máxima de archivos en la nube para este usuario.</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase text-muted-foreground">Teléfono</Label>
+                                            <Input value={newUser.telefono} onChange={(e) => setNewUser(p => ({ ...p, telefono: e.target.value }))} className="h-11 text-sm font-bold uppercase" placeholder="Ej: +591 70000000" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase text-muted-foreground">Cargo</Label>
+                                            <Input value={newUser.cargo} onChange={(e) => setNewUser(p => ({ ...p, cargo: e.target.value }))} className="h-11 text-sm font-bold uppercase" placeholder="Ej: Residente de Obra" />
+                                        </div>
                                     </div>
                                 </div>
                                 <DialogFooter className="p-6 bg-card border-t border-accent gap-3">
@@ -391,6 +403,16 @@ export default function AdminPage() {
                                         <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
                                             <Mail className="h-3 w-3" /> {selectedUser.email}
                                         </span>
+                                        {(selectedUser as any).telefono && (
+                                            <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
+                                                <Smartphone className="h-3 w-3" /> {(selectedUser as any).telefono}
+                                            </span>
+                                        )}
+                                        {(selectedUser as any).cargo && (
+                                            <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
+                                                <Briefcase className="h-3 w-3" /> {(selectedUser as any).cargo}
+                                            </span>
+                                        )}
                                     </DialogDescription>
                                 </div>
                             </DialogHeader>

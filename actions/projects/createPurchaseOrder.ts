@@ -32,15 +32,34 @@ export async function createPurchaseOrder(data: {
                     data: { status: 'completado' }
                 });
             }
-            const count = await tx.purchaseOrder.count({
-                where: { projectId }
-            });
             const project = await tx.project.findUnique({
                 where: { id: projectId },
                 select: { title: true }
             });
             const projectPrefix = project?.title?.slice(0, 3).toUpperCase() || 'ORD';
-            const poNumber = `${projectPrefix}-${(count + 1).toString().padStart(4, '0')}`;
+
+            // Buscar la última orden con este prefijo (a nivel global para evitar colisiones de prefijos iguales en distintos proyectos)
+            const lastOrder = await tx.purchaseOrder.findFirst({
+                where: {
+                    number: {
+                        startsWith: `${projectPrefix}-`
+                    }
+                },
+                orderBy: {
+                    number: 'desc'
+                }
+            });
+
+            let nextNumber = 1;
+            if (lastOrder) {
+                const lastNumStr = lastOrder.number.split('-').pop();
+                const lastNum = parseInt(lastNumStr || '0');
+                if (!isNaN(lastNum)) {
+                    nextNumber = lastNum + 1;
+                }
+            }
+
+            const poNumber = `${projectPrefix}-${nextNumber.toString().padStart(4, '0')}`;
 
             const newOrder = await tx.purchaseOrder.create({
                 data: {
@@ -78,8 +97,28 @@ export async function createPurchaseOrder(data: {
             }
 
             if (totalOvercost > 0) {
-                const ocCount = await tx.projectChangeOrder.count({ where: { projectId } });
-                const ocNumber = `OC-P-${(ocCount + 1).toString().padStart(3, '0')}`;
+                // Buscar la última orden de cambio con el prefijo OC-P- (globalmente)
+                const lastOCP = await tx.projectChangeOrder.findFirst({
+                    where: {
+                        number: {
+                            startsWith: 'OC-P-'
+                        }
+                    },
+                    orderBy: {
+                        number: 'desc'
+                    }
+                });
+
+                let nextOCNum = 1;
+                if (lastOCP && lastOCP.number) {
+                    const lastNumStr = lastOCP.number.split('-').pop();
+                    const lastNum = parseInt(lastNumStr || '0');
+                    if (!isNaN(lastNum)) {
+                        nextOCNum = lastNum + 1;
+                    }
+                }
+
+                const ocNumber = `OC-P-${nextOCNum.toString().padStart(3, '0')}`;
                 
                 await tx.projectChangeOrder.create({
                     data: {

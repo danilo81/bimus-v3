@@ -14,6 +14,11 @@ import {
     createBimVersion,
     getAssets as getLibraryAssets
 } from '@/actions';
+import { getBimIssues, updateBimIssueStatus } from '@/actions/projects/bimIssues';
+
+import { getProjectDocuments } from '@/actions/projects/getProjectDocuments';
+import { assignBimRoleToDocument } from '@/actions/projects/assignBimRole';
+import { IfcCloudModal } from '@/components/bim/IfcCloudModal';
 
 import {
     Box,
@@ -101,10 +106,16 @@ export default function ModelPage() {
     const [newBranchName, setNewBranchName] = useState('');
     const [commitMessage, setCommitMessage] = useState('');
 
+    const [documents, setDocuments] = useState<any[]>([]);
+    const [isAssignRoleModalOpen, setIsAssignRoleModalOpen] = useState(false);
+    const [assignRoleTarget, setAssignRoleTarget] = useState<'arquitectura' | 'estructura' | 'instalaciones' | null>(null);
+
     const [projectAssets, setProjectAssets] = useState<FixedAsset[]>([]);
     const [libraryAssets, setLibraryAssets] = useState<FixedAsset[]>([]);
     const [assetSearchTerm, setAssetSearchTerm] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [bimIssues, setBimIssues] = useState<any[]>([]);
+    const [issueFilter, setIssueFilter] = useState<'all' | 'pendiente' | 'resuelto'>('all');
 
     const fetchProject = useCallback(async () => {
         const id = params?.id;
@@ -113,13 +124,17 @@ export default function ModelPage() {
         if (cleanId) {
             setIsLoading(true);
             try {
-                const [found, assetsResponse, bimResponse] = await Promise.all([
+                const [found, assetsResponse, bimResponse, docsResponse, issuesResponse] = await Promise.all([
                     getProjectById(cleanId as string),
                     getProjectAssets(cleanId as string),
-                    getProjectBimData(cleanId as string)
+                    getProjectBimData(cleanId as string),
+                    getProjectDocuments(cleanId as string),
+                    getBimIssues(cleanId as string)
                 ]);
 
                 if (found) setProject(found);
+
+                if (docsResponse) setDocuments(docsResponse);
 
                 if (assetsResponse && 'assets' in assetsResponse) {
                     setProjectAssets(assetsResponse.assets as FixedAsset[]);
@@ -132,6 +147,10 @@ export default function ModelPage() {
                     if (bimResponse.branches.length > 0 && !selectedBranchId) {
                         setSelectedBranchId(bimResponse.branches[0].id);
                     }
+                }
+
+                if (issuesResponse?.success) {
+                    setBimIssues(issuesResponse.issues || []);
                 }
             } catch (error) {
                 console.error("Error loading project:", error);
@@ -194,6 +213,31 @@ export default function ModelPage() {
     const handleViewDetail = (item: any) => {
         setSelectedItem(item);
         setIsDetailOpen(true);
+    };
+
+    const handleAssignRole = async (url: string, name: string) => {
+        setIsAssignRoleModalOpen(false);
+        if (!project || !assignRoleTarget) return;
+
+        // Find the document that matches the URL
+        const doc = documents.find(d => d.url === url);
+        if (!doc) return;
+
+        setIsSaving(true);
+        try {
+            const result = await assignBimRoleToDocument(project.id, doc.id, assignRoleTarget);
+            if (result.success) {
+                toast({ title: "Modelo Asignado", description: `Se ha asignado el modelo de ${assignRoleTarget} exitosamente.` });
+                await fetchProject();
+            } else {
+                toast({ title: "Error", description: result.error, variant: "destructive" });
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsSaving(false);
+            setAssignRoleTarget(null);
+        }
     };
 
     const aggregatedSupplies = useMemo(() => {
@@ -311,6 +355,28 @@ export default function ModelPage() {
         };
     }, [selectedItem, project]);
 
+    const handleToggleIssueStatus = async (issueId: string, currentStatus: string) => {
+        const newStatus = currentStatus === 'pendiente' ? 'resuelto' : 'pendiente';
+        // Optimistic update
+        setBimIssues(prev => prev.map(i => i.id === issueId ? { ...i, status: newStatus } : i));
+        try {
+            const result = await updateBimIssueStatus(issueId, newStatus);
+            if (!result.success) {
+                // Revert
+                setBimIssues(prev => prev.map(i => i.id === issueId ? { ...i, status: currentStatus } : i));
+                toast({ title: 'Error', description: result.error || 'No se pudo actualizar el estado.', variant: 'destructive' });
+            } else {
+                toast({ title: 'Estado actualizado', description: `Incidencia marcada como "${newStatus}".` });
+            }
+        } catch {
+            setBimIssues(prev => prev.map(i => i.id === issueId ? { ...i, status: currentStatus } : i));
+        }
+    };
+
+    const filteredIssues = useMemo(() => {
+        if (issueFilter === 'all') return bimIssues;
+        return bimIssues.filter(i => i.status === issueFilter);
+    }, [bimIssues, issueFilter]);
 
 
     return (
@@ -428,11 +494,58 @@ export default function ModelPage() {
                                         <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2">
                                             <Terminal className="h-4 w-4 text-primary" /> Control de versiones
                                         </CardTitle>
-                                        <CardDescription className="text-[9px] font-bold uppercase text-muted-foreground mt-1">Viendo Rama: <span className="text-primary">{activeBranch?.name}</span></CardDescription>
+                                        <CardDescription className="text-[9px] font-bold uppercase text-muted-foreground mt-1">Gestión de ramas y versiones de diseño</CardDescription>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="flex-1 p-0 relative group">
+                                    <div className="flex border-b border-accent h-32 items-center justify-around bg-linear-to-br from-black to-accent/10 p-6">
+                                        {['arquitectura', 'estructura', 'instalaciones'].map((role) => {
+                                            const roleDoc = documents.find(d => d.bimRole === role);
+                                            return (
+                                                <div key={role} className="flex flex-col items-center justify-center p-4 bg-background/50 border border-accent rounded-xl w-64 shadow-xl">
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+                                                        <Box className="w-3 h-3" /> {role}
+                                                    </span>
+                                                    {roleDoc ? (
+                                                        <div className="flex items-center gap-2 mb-2 w-full justify-center">
+                                                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                                            <span className="text-[10px] truncate max-w-[150px] font-mono text-muted-foreground">{roleDoc.name}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[9px] uppercase tracking-widest text-muted-foreground/50 mb-2">No asignado</span>
+                                                    )}
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-6 text-[9px] border-accent/50 w-full"
+                                                        onClick={() => {
+                                                            setAssignRoleTarget(role as any);
+                                                            setIsAssignRoleModalOpen(true);
+                                                        }}
+                                                    >
+                                                        Asignar Archivo
+                                                    </Button>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
 
+                                    {project && isAssignRoleModalOpen && (
+                                        <IfcCloudModal
+                                            isOpen={isAssignRoleModalOpen}
+                                            onClose={() => setIsAssignRoleModalOpen(false)}
+                                            projectId={project.id}
+                                            onSelect={handleAssignRole}
+                                        />
+                                    )}
+
+                                    <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
+                                        <Layers className="h-16 w-16 mb-4 text-primary opacity-20" />
+                                        <h3 className="text-[12px] font-black uppercase tracking-[0.3em] text-primary">El visor 3D en control de versiones está en construcción.</h3>
+                                        <p className="text-[10px] uppercase tracking-widest mt-2 text-muted-foreground">Utilice el módulo de Diseño para visualizar y operar sobre los modelos asignados.</p>
+                                    </div>
+                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm opacity-100 flex items-center justify-center -z-10">
+                                    </div>
                                 </CardContent>
                             </Card>
                         </div>
@@ -636,16 +749,127 @@ export default function ModelPage() {
                 </TabsContent>
 
                 <TabsContent value="incidencias">
-                    <div className="flex flex-col items-center justify-center py-40 border-2 border-dashed border-accent rounded-[2rem] bg-card backdrop-blur-sm group hover:border-primary/30 transition-all duration-500">
-                        <div className="p-6 bg-accent/20 rounded-full mb-6 group-hover:scale-110 transition-transform duration-500">
-                            <AlertCircle className="h-12 w-12 text-muted-foreground/30" />
-                        </div>
-                        <Badge className="bg-primary/10 text-primary border-none mb-4 font-black uppercase tracking-widest text-[9px]">Próximamente</Badge>
-                        <h3 className="text-xl font-black uppercase tracking-[0.2em] text-primary mb-2">Módulo de Incidencias</h3>
-                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground/40 max-w-[400px] text-center leading-relaxed">
-                            Estamos integrando el motor de detección y gestión de colisiones. Muy pronto podrás vincular issues de diseño directamente con el modelo BIM.
-                        </p>
-                    </div>
+                    <Card className="bg-card border-accent overflow-hidden">
+                        <CardHeader className="p-4 md:p-6 bg-accent/2 border-b border-accent">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                    <CardTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-3">
+                                        <AlertCircle className="h-6 w-6 text-primary" /> Incidencias de Diseño
+                                    </CardTitle>
+                                    <CardDescription className="text-[10px] uppercase tracking-widest mt-1 text-muted-foreground">
+                                        Issues vinculados a elementos del modelo BIM • Creados desde el workspace de diseño
+                                    </CardDescription>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant={issueFilter === 'all' ? 'default' : 'outline'}
+                                        size="sm"
+                                        className="text-[10px] font-black uppercase h-8 px-4"
+                                        onClick={() => setIssueFilter('all')}
+                                    >
+                                        Todos ({bimIssues.length})
+                                    </Button>
+                                    <Button
+                                        variant={issueFilter === 'pendiente' ? 'default' : 'outline'}
+                                        size="sm"
+                                        className="text-[10px] font-black uppercase h-8 px-4"
+                                        onClick={() => setIssueFilter('pendiente')}
+                                    >
+                                        Pendientes ({bimIssues.filter(i => i.status === 'pendiente').length})
+                                    </Button>
+                                    <Button
+                                        variant={issueFilter === 'resuelto' ? 'default' : 'outline'}
+                                        size="sm"
+                                        className="text-[10px] font-black uppercase h-8 px-4"
+                                        onClick={() => setIssueFilter('resuelto')}
+                                    >
+                                        Resueltos ({bimIssues.filter(i => i.status === 'resuelto').length})
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {filteredIssues.length > 0 ? (
+                                <div className="divide-y divide-accent">
+                                    {filteredIssues.map((issue: any) => (
+                                        <div key={issue.id} className="p-4 md:p-6 hover:bg-accent/5 transition-colors group">
+                                            <div className="flex items-start gap-4">
+                                                <button
+                                                    onClick={() => handleToggleIssueStatus(issue.id, issue.status)}
+                                                    className={cn(
+                                                        "mt-1 shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-300",
+                                                        issue.status === 'resuelto'
+                                                            ? "bg-emerald-500/20 border-emerald-500 text-emerald-500"
+                                                            : "border-amber-500/40 text-amber-500/40 hover:border-amber-500 hover:text-amber-500"
+                                                    )}
+                                                    title={issue.status === 'pendiente' ? 'Marcar como resuelto' : 'Reabrir incidencia'}
+                                                >
+                                                    {issue.status === 'resuelto' ? (
+                                                        <Check className="h-4 w-4" />
+                                                    ) : (
+                                                        <AlertCircle className="h-3.5 w-3.5" />
+                                                    )}
+                                                </button>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-3 mb-1">
+                                                        <h4 className={cn(
+                                                            "font-bold text-sm uppercase tracking-wide",
+                                                            issue.status === 'resuelto' && "line-through text-muted-foreground/50"
+                                                        )}>
+                                                            {issue.title}
+                                                        </h4>
+                                                        <Badge className={cn(
+                                                            "text-[8px] font-black uppercase tracking-widest border-none",
+                                                            issue.status === 'pendiente'
+                                                                ? "bg-amber-500/10 text-amber-500"
+                                                                : "bg-emerald-500/10 text-emerald-500"
+                                                        )}>
+                                                            {issue.status}
+                                                        </Badge>
+                                                    </div>
+                                                    {issue.description && (
+                                                        <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                                                            {issue.description}
+                                                        </p>
+                                                    )}
+                                                    <div className="flex flex-wrap items-center gap-4 text-[10px] uppercase tracking-widest text-muted-foreground/60">
+                                                        {issue.elementName && (
+                                                            <span className="flex items-center gap-1.5">
+                                                                <Layers className="h-3 w-3" /> {issue.elementName}
+                                                            </span>
+                                                        )}
+                                                        {issue.elementId && (
+                                                            <span className="flex items-center gap-1.5 font-mono text-[9px]">
+                                                                <Terminal className="h-3 w-3" /> {issue.elementId.slice(0, 12)}...
+                                                            </span>
+                                                        )}
+                                                        {issue.author && (
+                                                            <span className="flex items-center gap-1.5">
+                                                                <UserCircle className="h-3 w-3" /> {issue.author.name || issue.author.email}
+                                                            </span>
+                                                        )}
+                                                        <span className="flex items-center gap-1.5">
+                                                            <Clock className="h-3 w-3" /> {new Date(issue.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-28 opacity-30">
+                                    <Inbox className="h-14 w-14 mb-4 text-muted-foreground" />
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
+                                        {issueFilter === 'all'
+                                            ? 'No hay incidencias registradas. Crea una desde el workspace de diseño.'
+                                            : `No hay incidencias con estado "${issueFilter}".`
+                                        }
+                                    </p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="submittals">

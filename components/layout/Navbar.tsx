@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Notification, Task, Contact, Project, ProjectConfig, TaskPriority, TaskStatus } from '@/types/types';
 import { getNotifications, markAsRead, deleteNotification } from '@/actions';
 import { getTasks, createTask, deleteTask, updateTask, getContacts, getUpcomingEvents, createCalendarEvent } from '@/actions';
-import { getProjectById, getProjects, updateProject as updateProjectAction, addContactToProject, removeContactFromProject, inviteCollaborator, updateProjectContactPermissions, getMyProjectPermissions, getInboxSummary } from '@/actions';
+import { getProjectById, getProjects, updateProject as updateProjectAction, addContactToProject, removeContactFromProject, inviteCollaborator, updateProjectContactPermissions, getMyProjectPermissions, getInboxSummary, updateProfile } from '@/actions';
 
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { cn } from '../../lib/utils';
@@ -53,7 +53,7 @@ const PERMISSION_MODULES = [
 ];
 
 export function Navbar() {
-    const { user, logout, isAuthenticated } = useAuth();
+    const { user, logout, isAuthenticated, updateUser } = useAuth();
     const pathname = usePathname();
     const router = useRouter();
     const { theme, setTheme } = useTheme();
@@ -143,6 +143,41 @@ export function Navbar() {
         workingDays: 6,
         workingDaysSelection: [1, 2, 3, 4, 5, 6]
     });
+
+    // Profile Update State
+    const [profileForm, setProfileForm] = useState({
+        name: '',
+        telefono: '',
+        cargo: ''
+    });
+    const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            setProfileForm({
+                name: user.name || '',
+                telefono: user.telefono || '',
+                cargo: user.cargo || ''
+            });
+        }
+    }, [user]);
+
+    const handleUpdateProfile = async () => {
+        setIsUpdatingProfile(true);
+        try {
+            const res = await updateProfile(profileForm);
+            if (res.success) {
+                toast({ title: "Perfil actualizado", description: "Tus datos se han guardado correctamente." });
+                updateUser(res.user as any);
+            } else {
+                toast({ variant: 'destructive', title: "Error", description: res.error });
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsUpdatingProfile(false);
+        }
+    };
 
     const [inboxSummary, setInboxSummary] = useState({
         notifications: 0,
@@ -1182,7 +1217,7 @@ export function Navbar() {
                             <Button variant="ghost" className="relative h-11 flex items-center gap-3 px-3 hover:bg-white/5 rounded-xl border border-transparent hover:border-white/5 transition-all">
                                 <div className="flex flex-col items-end leading-none sm:flex">
                                     <span className="text-xs font-bold text-primary uppercase tracking-tight">{user?.name || 'Usuario'}</span>
-                                    <span className="text-[9px] text-primary font-black uppercase tracking-widest mt-0.5">{user?.role || 'Viewer'}</span>
+                                    <span className="text-[9px] text-primary font-black uppercase tracking-widest mt-0.5">{user?.cargo}</span>
                                 </div>
                                 <Avatar className="h-8 w-8 border-2 border-primary/20 bg-primary/10 shadow-primary/5">
                                     <AvatarFallback className="bg-transparent text-primary text-xs font-black">
@@ -1240,7 +1275,7 @@ export function Navbar() {
                                         </Avatar>
                                         <div className="flex flex-col overflow-hidden">
                                             <span className="text-[12px] font-bold text-primary uppercase truncate">{user?.name}</span>
-                                            <span className="text-[8px] text-primary font-black uppercase tracking-tighter">{user?.role}</span>
+                                            <span className="text-[8px] text-primary font-black uppercase tracking-tighter">{user?.cargo}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1317,11 +1352,19 @@ export function Navbar() {
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                                 <div className="space-y-3">
                                                     <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Nombre Completo</Label>
-                                                    <Input defaultValue={user?.name} className="h-12 bg-card border-accent uppercase font-bold text-sm" />
+                                                    <Input value={profileForm.name} onChange={(e) => setProfileForm(p => ({ ...p, name: e.target.value }))} className="h-12 bg-card border-accent uppercase font-bold text-sm" />
                                                 </div>
                                                 <div className="space-y-3">
                                                     <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Correo Electrónico</Label>
                                                     <Input defaultValue={user?.email} disabled className="h-12 bg-card border-accent font-mono text-sm opacity-50" />
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Teléfono</Label>
+                                                    <Input value={profileForm.telefono} onChange={(e) => setProfileForm(p => ({ ...p, telefono: e.target.value }))} className="h-12 bg-card border-accent font-bold text-sm" placeholder="Ej: +591 70000000" />
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Cargo</Label>
+                                                    <Input value={profileForm.cargo} onChange={(e) => setProfileForm(p => ({ ...p, cargo: e.target.value }))} className="h-12 bg-card border-accent uppercase font-bold text-sm" placeholder="Ej: Ingeniero Civil" />
                                                 </div>
                                                 <div className="space-y-3">
                                                     <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Rol en la Plataforma</Label>
@@ -1344,8 +1387,12 @@ export function Navbar() {
                                                 </div>
                                             </div>
                                             <div className="pt-6 flex justify-end">
-                                                <Button className="bg-primary text-background font-black uppercase text-[10px] h-11 px-10 tracking-widest cursor-pointer">
-                                                    Actualizar Perfil
+                                                <Button
+                                                    onClick={handleUpdateProfile}
+                                                    disabled={isUpdatingProfile}
+                                                    className="bg-primary text-background font-black uppercase text-[10px] h-11 px-10 tracking-widest cursor-pointer"
+                                                >
+                                                    {isUpdatingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : "Actualizar Perfil"}
                                                 </Button>
                                             </div>
                                         </TabsContent>

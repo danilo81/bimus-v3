@@ -4,12 +4,16 @@ import projectData from '../lib/placeholder-images.json';
 
 const PROJECTS_KEY = 'project_showcase_projects';
 
-const mockLevelNames = ['Fundaciones', 'Fundaciones', 'Nivel 1', 'Nivel 2'];
+const mockLevelNames = ['Fundaciones', 'Nivel 1', 'Nivel 2'];
 const makeMockLevels = (projectId: string): Level[] =>
     mockLevelNames.map((name, i) => ({
         id: `l-${projectId}-${i}`,
         name,
         projectId,
+        isStory: i > 0,
+        elevation: i * 3.0,
+        defaultWallHeight: 3.0,
+        cutPlane: 1.2
     }));
 
 // Initial projects from placeholder data

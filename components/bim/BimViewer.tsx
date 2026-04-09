@@ -1,983 +1,1513 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-'use client';
-
-import { Suspense, useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { 
-  OrbitControls, 
-  Grid, 
-  Stage, 
-  Environment, 
-  PerspectiveCamera,
-  OrthographicCamera,
-  Float,
-  Text,
-  Html,
-  Sphere,
-  Line as ThreeLine,
-  Ring,
-  Plane,
-  TransformControls
-} from '@react-three/drei';
+"use client"
+import React, { Suspense, useEffect, useState, useRef, useMemo } from 'react';
+import { Canvas, useThree, ThreeEvent } from '@react-three/fiber';
+import { OrbitControls, Environment, ContactShadows, Grid, GizmoHelper, GizmoViewport, TransformControls, OrthographicCamera, PerspectiveCamera, Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { cn } from '@/lib/utils';
-import { 
-  Box, 
-  Layers, 
-  Eye, 
-  EyeOff,
-  Zap, 
-  MousePointer2, 
-  Ruler, 
-  X, 
-  Search,
-  Settings,
-  History,
-  Clock,
-  UserCircle,
-  Sun,
-  Grid3X3,
-  Pencil,
-  Circle as CircleIcon,
-  Square,
-  Eraser,
-  ArrowRightLeft,
-  Magnet,
-  Maximize2,
-  Compass,
-  Navigation,
-  BoxSelect,
-  Map as MapIcon,
-  Move,
-  RotateCw
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+import { BuildingModel } from './BuildingModel';
+import { GripController } from './GripController';
+import dynamic from 'next/dynamic';
+const PaperDrawingLayer = dynamic(() => import('./PaperDrawingLayer').then(mod => mod.PaperDrawingLayer), { ssr: false });
+import { BimElement, WallType, LineType, ScaleSettings, ArcConfig } from '@/types/types';
+import { getSnappedPoint } from '@/lib/snapUtils';
+import { ifcLoader } from '@/lib/ifc';
 
-/**
- * Metadata for procedural BIM objects
- */
-const BIM_OBJECTS = [
-  { id: 'foundation', name: 'Losa de Fundación', category: 'Estructura', type: 'Slab', value: 144 },
-  { id: 'slab-1', name: 'Losa Entrepiso Nivel 1', category: 'Estructura', type: 'Slab', value: 121 },
-  { id: 'slab-roof', name: 'Losa de Cubierta', category: 'Estructura', type: 'Slab', value: 121 },
-  { id: 'walls-int', name: 'Muros Interiores', category: 'Arquitectura', type: 'Wall', value: 62.4 },
-  { id: 'glass', name: 'Muro Cortina Glass', category: 'Arquitectura', type: 'Curtain Wall', value: 62.4 },
-  { id: 'col-grid', name: 'Columnas Estructurales', category: 'Estructura', type: 'Column Group', subItems: [
-    { id: 'col--5--5', name: 'Columna A-1' },
-    { id: 'col--5-0', name: 'Columna A-2' },
-    { id: 'col--5-5', name: 'Columna A-3' },
-    { id: 'col-0--5', name: 'Columna B-1' },
-    { id: 'col-0-0', name: 'Columna B-2' },
-    { id: 'col-0-5', name: 'Columna B-3' },
-    { id: 'col-5--5', name: 'Columna C-1' },
-    { id: 'col-5-0', name: 'Columna C-2' },
-    { id: 'col-5-5', name: 'Columna C-3' },
-  ]}
-];
-
-/**
- * Mock BIM history data
- */
-const BIM_HISTORY = [
-  { id: 'rev-1', date: '2024-05-20 14:30', user: 'Arq. Carlos Ruiz', action: 'Ajuste de espesor en losa N1', hash: '8F2A1C' },
-  { id: 'rev-2', date: '2024-05-19 09:15', user: 'Ing. Maria Delgado', action: 'Actualización de refuerzo en Columnas A-1 a C-3', hash: '3D9E4B' },
-  { id: 'rev-3', date: '2024-05-18 16:45', user: 'Bimus System', action: 'Sincronización automática de parámetros ISO 19650', hash: 'AC77D2' },
-  { id: 'rev-4', date: '2024-05-17 11:00', user: 'Arq. Luna', action: 'Modificación de material en muro cortina este', hash: 'BB9011' },
-];
-
-type DrawingType = 'none' | 'line' | 'circle' | 'rectangle';
-type ViewMode = '3D' | '2D';
-type TransformMode = 'translate' | 'rotate' | 'scale';
-
-interface DrawnShape {
-  id: string;
-  type: DrawingType;
-  points: THREE.Vector3[];
-  color: string;
+interface BimViewerProps {
+  elements: BimElement[];
+  ifcModels?: THREE.Object3D[];
+  selectedIds: string[];
+  onSelect: (id: string | null, multi?: boolean) => void;
+  onSelectMultiple?: (ids: string[]) => void;
+  onUpdateElement: (id: string, updates: Partial<BimElement>) => void;
+  wireframe: boolean;
+  transformMode: 'translate' | 'rotate' | 'scale' | null;
+  activeTool?: string | null;
+  setActiveTool?: (tool: string | null) => void;
+  onAddLine?: (start: [number, number, number], end: [number, number, number]) => void;
+  lineConfig?: {
+    color: string;
+    opacity: number;
+    type: string;
+    bimClass: string;
+  };
+  onAddRectangle?: (position: [number, number, number], args: [number, number, number], rotation: [number, number, number], config: any) => void;
+  rectangleConfig?: {
+    fillColor: string;
+    lineColor: string;
+    opacity: number;
+    lineType: string;
+    creationMode: 'corner' | 'center' | 'edgeCenter' | 'threePoints';
+    bimClass: string;
+  };
+  onAddArc?: (points: [number, number, number][], config: any) => void;
+  arcConfig?: ArcConfig;
+  activeLevel?: string;
+  onAddWall?: (points: [number, number, number][], config: any) => void;
+  onAddPolyline?: (points: [number, number, number][]) => void;
+  onAddSlab?: (points: [number, number, number][], thickness: number, elevation: number) => void;
+  wallConfig?: any;
+  activeSlabTypeId?: string | null;
+  slabTypes?: any[];
+  snapConfig?: any;
+  wallTypes?: WallType[];
+  lineTypes?: LineType[];
+  editingGroupId?: string | null;
+  onExitGroupEdit?: () => void;
+  showOutsideGroup?: boolean;
+  viewMode: '2D' | '3D';
+  setViewMode: (mode: '2D' | '3D') => void;
+  selectionMode: 'single' | 'rectangle' | 'lasso' | 'similar' | 'visibility';
+  modelConfig: {
+    showGrid: boolean;
+    showShadows: boolean;
+    backgroundColor: string;
+    gridSize: number;
+    gridSpacing: number;
+    gridFullCanvas: boolean;
+  };
+  onContextMenu?: (x: number, y: number) => void;
+  scaleSettings: ScaleSettings;
+  saveViewTrigger?: number;
+  onSaveView?: (position: [number, number, number], target: [number, number, number]) => void;
+  restoreView?: { position: [number, number, number], target: [number, number, number] } | null;
+  clippingPlaneActive?: boolean;
+  clippingPlaneHeight?: number;
+  setClippingPlaneHeight?: (height: number) => void;
+  mappedElements?: { elementId: string; projectItemId: string; quantity: number }[];
+  activeAssignmentTarget?: string | null;
 }
 
-interface Dimension {
-  id: string;
-  start: THREE.Vector3;
-  end: THREE.Vector3;
-  distance: number;
-}
 
-/**
- * ArchitecturalStructure Component with Snap capabilities and Transform Refs
- */
-function ArchitecturalStructure({ 
-  wireframe = false, 
-  xray = false,
-  selectable = false,
-  selectedIds = [],
-  hiddenIds = [],
-  onToggleSelect,
-  activeMode = 'none',
-  onInteractionPoint,
-  onHoverPoint,
-  onRefCreated
-}: { 
-  wireframe?: boolean, 
-  xray?: boolean,
-  selectable?: boolean,
-  selectedIds?: string[],
-  hiddenIds?: string[],
-  onToggleSelect?: (id: string, metadata: any) => void,
-  activeMode: 'none' | 'measure' | DrawingType | 'cote',
-  onInteractionPoint?: (point: THREE.Vector3) => void,
-  onHoverPoint?: (point: THREE.Vector3 | null) => void,
-  onRefCreated?: (id: string, ref: THREE.Mesh | THREE.Group) => void
-}) {
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const opacity = xray ? 0.2 : 1;
-  const transparent = xray;
+function DrawingPlane({ activeTool, onAddLine, setActiveTool, lineConfig, onAddRectangle, rectangleConfig, onAddArc, arcConfig, activeLevel, onAddWall, onAddPolyline, onAddSlab, wallConfig, snapConfig, elements, lineTypes, gridSpacing, scaleSettings, activeSlabTypeId, slabTypes }: { activeTool?: string | null, onAddLine?: (start: [number, number, number], end: [number, number, number]) => void, setActiveTool?: (tool: string | null) => void, lineConfig?: any, onAddRectangle?: (position: [number, number, number], args: [number, number, number], rotation: [number, number, number], config: any) => void, rectangleConfig?: any, onAddArc?: (points: [number, number, number][], config: any) => void, arcConfig?: ArcConfig, activeLevel?: string, onAddWall?: (points: [number, number, number][], config: any) => void, onAddPolyline?: (points: [number, number, number][]) => void, onAddSlab?: (points: [number, number, number][], thickness: number, elevation: number) => void, wallConfig?: any, snapConfig?: any, elements?: BimElement[], lineTypes?: LineType[], gridSpacing?: number, scaleSettings: ScaleSettings, activeSlabTypeId?: string | null, slabTypes?: any[] }) {
+  const [startPoint, setStartPoint] = useState<THREE.Vector3 | null>(null);
+  const [secondPoint, setSecondPoint] = useState<THREE.Vector3 | null>(null);
+  const [currentPoint, setCurrentPoint] = useState<THREE.Vector3 | null>(null);
+  const [wallPoints, setWallPoints] = useState<THREE.Vector3[]>([]);
+  const [polylinePoints, setPolylinePoints] = useState<THREE.Vector3[]>([]);
+  const [slabPoints, setSlabPoints] = useState<THREE.Vector3[]>([]);
+  const [arcPoints, setArcPoints] = useState<THREE.Vector3[]>([]);
+  const polylinePointsRef = useRef<THREE.Vector3[]>([]);
+  const slabPointsRef = useRef<THREE.Vector3[]>([]);
+  const [snapType, setSnapType] = useState<string | null>(null);
 
-  const getElementColor = (id: string, baseColor: string) => {
-    if (selectedIds.includes(id)) return "#10b981"; 
-    if (selectable && hoveredId === id) return "#3b82f6"; 
-    return baseColor;
+  useEffect(() => {
+    polylinePointsRef.current = polylinePoints;
+  }, [polylinePoints]);
+
+  useEffect(() => {
+    slabPointsRef.current = slabPoints;
+  }, [slabPoints]);
+
+  // Determine plane Y position based on active level
+  const planeY = activeLevel === 'L00' ? 0 : activeLevel === 'L01' ? 4.2 : activeLevel === 'L02' ? 8.4 : activeLevel === 'Roof' ? 12.6 : 0;
+
+  if (activeTool !== 'line' && activeTool !== 'wall' && activeTool !== 'rectangle' && activeTool !== 'polyline' && activeTool !== 'arc' && activeTool !== 'slab') {
+    if (startPoint) setStartPoint(null);
+    if (secondPoint) setSecondPoint(null);
+    if (wallPoints.length > 0) setWallPoints([]);
+    if (polylinePoints.length > 0) setPolylinePoints([]);
+    if (slabPoints.length > 0) setSlabPoints([]);
+    if (arcPoints.length > 0) setArcPoints([]);
+    if (snapType) setSnapType(null);
+    return null;
+  }
+
+  const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
+    const { point, type } = getSnappedPoint(e.point.clone(), elements, snapConfig, planeY, gridSpacing);
+    setCurrentPoint(point);
+    setSnapType(type);
   };
 
-  /**
-   * Helper to find the closest vertex of an intersected face for snapping
-   */
-  const findSnapPoint = (intersect: any) => {
-    if (!intersect.face || !intersect.object.geometry) return intersect.point;
-    
-    const mesh = intersect.object;
-    const geometry = mesh.geometry;
-    const position = geometry.attributes.position;
-    
-    // Get world position of face vertices
-    const vA = new THREE.Vector3().fromBufferAttribute(position, intersect.face.a).applyMatrix4(mesh.matrixWorld);
-    const vB = new THREE.Vector3().fromBufferAttribute(position, intersect.face.b).applyMatrix4(mesh.matrixWorld);
-    const vC = new THREE.Vector3().fromBufferAttribute(position, intersect.face.c).applyMatrix4(mesh.matrixWorld);
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    const { point } = getSnappedPoint(e.point.clone(), elements, snapConfig, planeY, gridSpacing);
 
-    const points = [vA, vB, vC];
-    const threshold = 0.6; // Magnet attraction radius
-    
-    let closest = intersect.point;
-    let minDict = Infinity;
-
-    points.forEach(p => {
-      const d = intersect.point.distanceTo(p);
-      if (d < threshold && d < minDict) {
-        minDict = d;
-        closest = p;
+    if (activeTool === 'line') {
+      if (!startPoint) {
+        setStartPoint(point);
+      } else {
+        if (onAddLine && setActiveTool) {
+          onAddLine(
+            [startPoint.x, startPoint.y, startPoint.z],
+            [point.x, point.y, point.z]
+          );
+          setStartPoint(null);
+          setCurrentPoint(null);
+          setSnapType(null);
+          setActiveTool(null);
+        }
       }
-    });
+    } else if (activeTool === 'wall') {
+      setWallPoints([...wallPoints, point]);
+    } else if (activeTool === 'polyline') {
+      const currentPoints = polylinePointsRef.current;
+      // Check proximity to first point
+      if (currentPoints.length >= 2) {
+        const firstPoint = currentPoints[0];
+        const distance = firstPoint.distanceTo(point);
+        if (distance < 0.5) { // Threshold
+          // Close and finalize
+          if (onAddPolyline) onAddPolyline([...currentPoints, firstPoint].map(p => [p.x, p.y, p.z]));
+          setPolylinePoints([]);
+          polylinePointsRef.current = [];
+          setCurrentPoint(null);
+          setSnapType(null);
+          if (setActiveTool) setActiveTool(null);
+          return;
+        }
+      }
+      const newPoints = [...currentPoints, point];
+      setPolylinePoints(newPoints);
+      polylinePointsRef.current = newPoints;
+    } else if (activeTool === 'slab') {
+      const currentPoints = slabPointsRef.current;
+      // Check proximity to first point
+      if (currentPoints.length >= 2) {
+        const firstPoint = currentPoints[0];
+        const distance = firstPoint.distanceTo(point);
+        if (distance < 0.5) { // Threshold
+          // Close and finalize
+          if (onAddSlab && setActiveTool) {
+            let thickness = 0.15;
+            let elevation = planeY;
+            if (activeSlabTypeId && slabTypes) {
+              const slabType = slabTypes.find(st => st.id === activeSlabTypeId);
+              if (slabType) {
+                thickness = slabType.totalThickness;
+                if (slabType.datum === 'bottom') {
+                  elevation = planeY + thickness;
+                }
+              }
+            }
+            onAddSlab([...currentPoints, firstPoint].map(p => [p.x, p.y, p.z]), thickness, elevation);
+          }
+          setSlabPoints([]);
+          slabPointsRef.current = [];
+          setCurrentPoint(null);
+          setSnapType(null);
+          if (setActiveTool) setActiveTool(null);
+          return;
+        }
+      }
+      const newPoints = [...currentPoints, point];
+      setSlabPoints(newPoints);
+      slabPointsRef.current = newPoints;
+    } else if (activeTool === 'arc') {
+      const newPoints = [...arcPoints, point];
+      setArcPoints(newPoints);
+      if (newPoints.length === 3) {
+        if (onAddArc && setActiveTool) {
+          onAddArc(
+            newPoints.map(p => [p.x, p.y, p.z]),
+            arcConfig
+          );
+          setArcPoints([]);
+          setCurrentPoint(null);
+          setSnapType(null);
+          setActiveTool(null);
+        }
+      }
+    } else if (activeTool === 'rectangle') {
+      const mode = rectangleConfig?.creationMode || 'corner';
 
-    return closest;
-  };
+      if (mode === 'threePoints') {
+        if (!startPoint) {
+          setStartPoint(point);
+        } else if (!secondPoint) {
+          setSecondPoint(point);
+        } else {
+          // Calculate rectangle from 3 points
+          const p1 = startPoint;
+          const p2 = secondPoint;
+          const p3 = point;
 
-  const handlePointerDown = (e: any, id: string, name: string, value: number) => {
-    if (activeMode !== 'none') {
-      e.stopPropagation();
-      const point = findSnapPoint(e);
-      onInteractionPoint?.(point);
-      return;
-    }
-    if (!selectable) return;
-    e.stopPropagation();
-    onToggleSelect?.(id, { name, value });
-  };
+          const lengthVec = new THREE.Vector3().subVectors(p2, p1);
+          const length = lengthVec.length();
+          const angle = Math.atan2(lengthVec.z, lengthVec.x);
 
-  const handlePointerMove = (e: any) => {
-    if (activeMode === 'none') return;
-    e.stopPropagation();
-    const point = findSnapPoint(e);
-    onHoverPoint?.(point);
-  };
+          const dir = lengthVec.clone().normalize();
+          const perp = new THREE.Vector3(-dir.z, 0, dir.x);
 
-  const handlePointerOver = (e: any, id: string) => {
-    if (!selectable && activeMode === 'none') return;
-    e.stopPropagation();
-    setHoveredId(id);
-    document.body.style.cursor = 'crosshair';
-  };
+          const widthVec = new THREE.Vector3().subVectors(p3, p1);
+          const width = widthVec.dot(perp);
 
-  const handlePointerOut = () => {
-    setHoveredId(null);
-    onHoverPoint?.(null);
-    document.body.style.cursor = 'auto';
-  };
+          const center = p1.clone().add(dir.multiplyScalar(length / 2)).add(perp.normalize().multiplyScalar(width / 2));
 
-  return (
-    <group>
-      {/* Foundation Slab */}
-      <mesh 
-        ref={(el) => { if (el && onRefCreated) onRefCreated('foundation', el); }}
-        position={[0, -0.05, 0]} 
-        receiveShadow 
-        visible={!hiddenIds.includes('foundation')}
-        onPointerDown={(e) => handlePointerDown(e, 'foundation', 'Losa de Fundación', 144)}
-        onPointerMove={handlePointerMove}
-        onPointerOver={(e) => handlePointerOver(e, 'foundation')}
-        onPointerOut={handlePointerOut}
-      >
-        <boxGeometry args={[12, 0.1, 12]} />
-        <meshStandardMaterial 
-          color={getElementColor('foundation', "#222")} 
-          metalness={0.8} 
-          roughness={0.2} 
-          wireframe={wireframe}
-          transparent={transparent}
-          opacity={opacity}
-        />
-      </mesh>
-
-      {/* Main Structural Grid (Columns) */}
-      <group 
-        ref={(el) => { if (el && onRefCreated) onRefCreated('col-grid', el); }}
-        visible={!hiddenIds.includes('col-grid')}
-      >
-        {[-5, 0, 5].map((x) => 
-          [-5, 0, 5].map((z) => {
-            const id = `col-${x}-${z}`;
-            return (
-              <mesh 
-                key={id} 
-                position={[x, 3, z]} 
-                castShadow 
-                visible={!hiddenIds.includes(id)}
-                onPointerDown={(e) => handlePointerDown(e, id, `Columna Estructural ${id}`, 0.96)}
-                onPointerMove={handlePointerMove}
-                onPointerOver={(e) => handlePointerOver(e, id)}
-                onPointerOut={handlePointerOut}
-              >
-                <boxGeometry args={[0.4, 6, 0.4]} />
-                <meshStandardMaterial 
-                  color={getElementColor(id, "#555")} 
-                  wireframe={wireframe}
-                  transparent={transparent}
-                  opacity={opacity}
-                />
-              </mesh>
+          if (onAddRectangle && setActiveTool) {
+            onAddRectangle(
+              [center.x, center.y, center.z],
+              [length, width, 0.01],
+              [0, -angle, 0],
+              rectangleConfig
             );
-          })
-        )}
-      </group>
+            setStartPoint(null);
+            setSecondPoint(null);
+            setCurrentPoint(null);
+            setSnapType(null);
+            setActiveTool(null);
+          }
+        }
+      } else {
+        // 2-point modes
+        if (!startPoint) {
+          setStartPoint(point);
+        } else {
+          let center = new THREE.Vector3();
+          let width = 0;
+          let height = 0;
+          let angle = 0;
 
-      {/* First Floor Slab */}
-      <mesh 
-        ref={(el) => { if (el && onRefCreated) onRefCreated('slab-1', el); }}
-        position={[0, 3, 0]} 
-        castShadow 
-        receiveShadow
-        visible={!hiddenIds.includes('slab-1')}
-        onPointerDown={(e) => handlePointerDown(e, 'slab-1', 'Losa Entrepiso Nivel 1', 121)}
-        onPointerMove={handlePointerMove}
-        onPointerOver={(e) => handlePointerOver(e, 'slab-1')}
-        onPointerOut={handlePointerOut}
-      >
-        <boxGeometry args={[11, 0.2, 11]} />
-        <meshStandardMaterial 
-          color={getElementColor('slab-1', "#444")} 
-          transparent={true} 
-          opacity={xray ? 0.1 : 0.9} 
-          wireframe={wireframe}
-        />
-      </mesh>
+          if (mode === 'corner') {
+            center = new THREE.Vector3().addVectors(startPoint, point).multiplyScalar(0.5);
+            width = Math.abs(point.x - startPoint.x);
+            height = Math.abs(point.z - startPoint.z);
+          } else if (mode === 'center') {
+            center = startPoint.clone();
+            width = Math.abs(point.x - startPoint.x) * 2;
+            height = Math.abs(point.z - startPoint.z) * 2;
+          } else if (mode === 'edgeCenter') {
+            // First point is edge center, second is corner
+            // Assume the edge is parallel to X or Z for simplicity, or calculate based on the vector
+            const dx = point.x - startPoint.x;
+            const dz = point.z - startPoint.z;
 
-      {/* Top Roof Slab */}
-      <mesh 
-        ref={(el) => { if (el && onRefCreated) onRefCreated('slab-roof', el); }}
-        position={[0, 6, 0]} 
-        castShadow 
-        receiveShadow
-        visible={!hiddenIds.includes('slab-roof')}
-        onPointerDown={(e) => handlePointerDown(e, 'slab-roof', 'Losa de Cubierta', 121)}
-        onPointerMove={handlePointerMove}
-        onPointerOver={(e) => handlePointerOver(e, 'slab-roof')}
-        onPointerOut={handlePointerOut}
-      >
-        <boxGeometry args={[11, 0.2, 11]} />
-        <meshStandardMaterial 
-          color={getElementColor('slab-roof', "#333")} 
-          transparent={true} 
-          opacity={xray ? 0.1 : 0.7} 
-          wireframe={wireframe}
-        />
-      </mesh>
+            if (Math.abs(dx) > Math.abs(dz)) {
+              // Edge center is on a vertical edge (parallel to Z)
+              width = Math.abs(dx);
+              height = Math.abs(dz) * 2;
+              center = new THREE.Vector3(startPoint.x + dx / 2, startPoint.y, startPoint.z);
+            } else {
+              // Edge center is on a horizontal edge (parallel to X)
+              width = Math.abs(dx) * 2;
+              height = Math.abs(dz);
+              center = new THREE.Vector3(startPoint.x, startPoint.y, startPoint.z + dz / 2);
+            }
+          }
 
-      {/* Interior Walls */}
-      <mesh 
-        ref={(el) => { if (el && onRefCreated) onRefCreated('walls-int', el); }}
-        position={[-5.3, 3, 0]} 
-        castShadow
-        visible={!hiddenIds.includes('walls-int')}
-        onPointerDown={(e) => handlePointerDown(e, 'walls-int', 'Muros Interiores', 62.4)}
-        onPointerMove={handlePointerMove}
-        onPointerOver={(e) => handlePointerOver(e, 'walls-int')}
-        onPointerOut={handlePointerOut}
-      >
-        <boxGeometry args={[0.2, 6, 10.4]} />
-        <meshStandardMaterial 
-          color={getElementColor('walls-int', "#1a1a1a")} 
-          wireframe={wireframe}
-          transparent={transparent}
-          opacity={opacity}
-        />
-      </mesh>
-      
-      {/* Glass Curtain Wall */}
-      <mesh 
-        ref={(el) => { if (el && onRefCreated) onRefCreated('glass', el); }}
-        position={[5.3, 3, 0]}
-        visible={!hiddenIds.includes('glass')}
-        onPointerDown={(e) => handlePointerDown(e, 'glass', 'Muro Cortina Glass', 62.4)}
-        onPointerMove={handlePointerMove}
-        onPointerOver={(e) => handlePointerOver(e, 'glass')}
-        onPointerOut={handlePointerOut}
-      >
-        <boxGeometry args={[0.1, 6, 10.4]} />
-        <meshStandardMaterial 
-          color={getElementColor('glass', "#88ccff")} 
-          transparent={true} 
-          opacity={xray ? 0.05 : 0.3} 
-          metalness={1} 
-          roughness={0} 
-          wireframe={wireframe}
-        />
-      </mesh>
+          if (onAddRectangle && setActiveTool) {
+            onAddRectangle(
+              [center.x, center.y, center.z],
+              [width, height, 0.01],
+              [0, 0, 0],
+              rectangleConfig
+            );
+            setStartPoint(null);
+            setCurrentPoint(null);
+            setSnapType(null);
+            setActiveTool(null);
+          }
+        }
+      }
+    }
+  };
 
-      {/* Labels 3D */}
-      <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
-        <Text
-          position={[0, 7, 0]}
-          fontSize={0.5}
-          color="white"
-          anchorX="center"
-          anchorY="middle"
-        >
-          BIMUS CORE MODEL
-        </Text>
-      </Float>
-    </group>
-  );
-}
+  const handleDoubleClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    if (activeTool === 'wall' && wallPoints.length > 0) {
+      if (onAddWall && setActiveTool) {
+        const { point } = getSnappedPoint(e.point.clone(), elements, snapConfig, planeY, gridSpacing);
+        // Add the final point on double click
+        const finalPoints = [...wallPoints, point];
+        onAddWall(
+          finalPoints.map(p => [p.x, p.y, p.z]),
+          wallConfig
+        );
+        setWallPoints([]);
+        setCurrentPoint(null);
+        setSnapType(null);
+        setActiveTool(null);
+      }
+    } else if (activeTool === 'polyline' && polylinePointsRef.current.length > 0) {
+      if (onAddPolyline && setActiveTool) {
+        const { point } = getSnappedPoint(e.point.clone(), elements, snapConfig, planeY, gridSpacing);
 
-/**
- * DrawnShapes Renderer
- */
-function DrawnShapes({ shapes }: { shapes: DrawnShape[] }) {
+        // Reemplazar el último punto añadido por handleClick con el punto del doble clic
+        let lastPoints = polylinePointsRef.current;
+        if (polylinePointsRef.current.length > 1) {
+          lastPoints = polylinePointsRef.current.slice(0, -1);
+        }
+        const finalPoints = [...lastPoints, point];
+
+        // Cerrar el perímetro si no está cerrado
+        const closedPoints = [...polylinePointsRef.current, polylinePointsRef.current[0]];
+
+        onAddPolyline(closedPoints.map(p => [p.x, p.y, p.z]));
+        setPolylinePoints([]);
+        polylinePointsRef.current = [];
+        setCurrentPoint(null);
+        setSnapType(null);
+        setActiveTool(null);
+      }
+    } else if (activeTool === 'slab' && slabPointsRef.current.length > 0) {
+      if (onAddSlab && setActiveTool) {
+        let thickness = 0.15;
+        let elevation = planeY;
+        if (activeSlabTypeId && slabTypes) {
+          const slabType = slabTypes.find(st => st.id === activeSlabTypeId);
+          if (slabType) {
+            thickness = slabType.totalThickness;
+            if (slabType.datum === 'bottom') {
+              elevation = planeY + thickness;
+            }
+          }
+        }
+
+        // Cerrar el perímetro
+        const closedPoints = [...slabPointsRef.current, slabPointsRef.current[0]];
+
+        onAddSlab(closedPoints.map(p => [p.x, p.y, p.z]), thickness, elevation);
+        setSlabPoints([]);
+        slabPointsRef.current = [];
+        setCurrentPoint(null);
+        setSnapType(null);
+        setActiveTool(null);
+      }
+    }
+  };
+
+  let distance = 0;
+  let angle = 0;
+  const precision = scaleSettings?.precision ?? 2;
+
+  // For line tool
+  if (activeTool === 'line' && startPoint && currentPoint) {
+    distance = startPoint.distanceTo(currentPoint);
+    const dx = currentPoint.x - startPoint.x;
+    const dz = currentPoint.z - startPoint.z;
+    angle = Math.atan2(dz, dx) * (0 / Math.PI);
+    if (angle < 0) angle += 360;
+  }
+
+  // For wall tool
+  if (activeTool === 'wall' && wallPoints.length > 0 && currentPoint) {
+    const lastPoint = wallPoints[wallPoints.length - 1];
+    distance = lastPoint.distanceTo(currentPoint);
+    const dx = currentPoint.x - lastPoint.x;
+    const dz = currentPoint.z - lastPoint.z;
+    angle = Math.atan2(dz, dx) * (180 / Math.PI);
+    if (angle < 0) angle += 360;
+  }
+
+  // For rectangle tool
+  let rectPreview: { center: THREE.Vector3, size: [number, number], rotation: number } | null = null;
+  if (activeTool === 'rectangle' && startPoint && currentPoint) {
+    const mode = rectangleConfig?.creationMode || 'corner';
+    if (mode === 'corner') {
+      const center = new THREE.Vector3().addVectors(startPoint, currentPoint).multiplyScalar(0.5);
+      const width = Math.abs(currentPoint.x - startPoint.x);
+      const height = Math.abs(currentPoint.z - startPoint.z);
+      rectPreview = { center, size: [width, height], rotation: 0 };
+    } else if (mode === 'center') {
+      const width = Math.abs(currentPoint.x - startPoint.x) * 2;
+      const height = Math.abs(currentPoint.z - startPoint.z) * 2;
+      rectPreview = { center: startPoint, size: [width, height], rotation: 0 };
+    } else if (mode === 'edgeCenter') {
+      const dx = currentPoint.x - startPoint.x;
+      const dz = currentPoint.z - startPoint.z;
+      let width = 0, height = 0, center = new THREE.Vector3();
+      if (Math.abs(dx) > Math.abs(dz)) {
+        width = Math.abs(dx);
+        height = Math.abs(dz) * 2;
+        center = new THREE.Vector3(startPoint.x + dx / 2, startPoint.y, startPoint.z);
+      } else {
+        width = Math.abs(dx) * 2;
+        height = Math.abs(dz);
+        center = new THREE.Vector3(startPoint.x, startPoint.y, startPoint.z + dz / 2);
+      }
+      rectPreview = { center, size: [width, height], rotation: 0 };
+    } else if (mode === 'threePoints') {
+      if (secondPoint) {
+        const p1 = startPoint;
+        const p2 = secondPoint;
+        const p3 = currentPoint;
+        const lengthVec = new THREE.Vector3().subVectors(p2, p1);
+        const length = lengthVec.length();
+        const angle = Math.atan2(lengthVec.z, lengthVec.x);
+        const dir = lengthVec.clone().normalize();
+        const perp = new THREE.Vector3(-dir.z, 0, dir.x);
+        const widthVec = new THREE.Vector3().subVectors(p3, p1);
+        const width = widthVec.dot(perp);
+        const center = p1.clone().add(dir.multiplyScalar(length / 2)).add(perp.normalize().multiplyScalar(width / 2));
+        rectPreview = { center, size: [length, width], rotation: -angle };
+      } else {
+        // Just show a line for the first segment
+        distance = startPoint.distanceTo(currentPoint);
+        const dx = currentPoint.x - startPoint.x;
+        const dz = currentPoint.z - startPoint.z;
+        angle = Math.atan2(dz, dx) * (180 / Math.PI);
+        if (angle < 0) angle += 360;
+      }
+    }
+  }
+
   return (
     <group>
-      {shapes.map((shape) => {
-        if (shape.type === 'line' && shape.points.length === 2) {
-          return (
-            <ThreeLine
-              key={shape.id}
-              points={[shape.points[0], shape.points[1]]}
-              color={shape.color}
-              lineWidth={3}
-            />
-          );
-        }
-        if (shape.type === 'circle' && shape.points.length === 2) {
-          const radius = shape.points[0].distanceTo(shape.points[1]);
-          return (
-            <group key={shape.id} position={shape.points[0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <Ring args={[radius - 0.05, radius, 64]}>
-                <meshBasicMaterial color={shape.color} side={THREE.DoubleSide} />
-              </Ring>
-            </group>
-          );
-        }
-        if (shape.type === 'rectangle' && shape.points.length === 2) {
-          const p1 = shape.points[0];
-          const p2 = shape.points[1];
-          const width = Math.abs(p2.x - p1.x);
-          const height = Math.abs(p2.z - p1.z);
-          const center = new THREE.Vector3((p1.x + p2.x) / 2, p1.y + 0.01, (p1.z + p2.z) / 2);
-          return (
-            <group key={shape.id} position={center} rotation={[-Math.PI / 2, 0, 0]}>
-              <Plane args={[width, height]}>
-                <meshBasicMaterial color={shape.color} transparent opacity={0.3} side={THREE.DoubleSide} />
-              </Plane>
-              <ThreeLine
-                points={[
-                  new THREE.Vector3(-width/2, -height/2, 0),
-                  new THREE.Vector3(width/2, -height/2, 0),
-                  new THREE.Vector3(width/2, height/2, 0),
-                  new THREE.Vector3(-width/2, height/2, 0),
-                  new THREE.Vector3(-width/2, -height/2, 0),
-                ]}
-                color={shape.color}
-                lineWidth={2}
-              />
-            </group>
-          );
-        }
-        return null;
-      })}
-    </group>
-  );
-}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, planeY, 0]}
+        onPointerMove={handlePointerMove}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+      >
+        <planeGeometry args={[1000, 1000]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
 
-/**
- * Persistent Dimensions Renderer
- */
-function PersistentDimensions({ dimensions }: { dimensions: Dimension[] }) {
-  return (
-    <group>
-      {dimensions.map((dim) => (
-        <group key={dim.id}>
-          <Sphere position={dim.start} args={[0.08, 16, 16]}>
-            <meshBasicMaterial color="#00f2ff" />
-          </Sphere>
-          <Sphere position={dim.end} args={[0.08, 16, 16]}>
-            <meshBasicMaterial color="#00f2ff" />
-          </Sphere>
-          <ThreeLine points={[dim.start, dim.end]} color="#00f2ff" lineWidth={2} />
-          <Html position={new THREE.Vector3().addVectors(dim.start, dim.end).multiplyScalar(0.5)}>
-            <div className="bg-black/90 border border-[#00f2ff]/40 px-2 py-1 rounded text-[9px] font-black text-[#00f2ff] whitespace-nowrap shadow-2xl">
-              {dim.distance.toFixed(3)} m
+      {/* Snap Indicator */}
+      {snapType && currentPoint && (
+        <group position={currentPoint}>
+          {snapType === 'vertex' && (
+            <mesh>
+              <boxGeometry args={[0.2, 0.2, 0.2]} />
+              <meshBasicMaterial color="#a855f7" wireframe depthTest={false} />
+            </mesh>
+          )}
+          {snapType === 'edgeCenter' && (
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <circleGeometry args={[0.15, 3]} />
+              <meshBasicMaterial color="#3b82f6" wireframe depthTest={false} />
+            </mesh>
+          )}
+          {snapType === 'edge' && (
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[0.1, 0.15, 4]} />
+              <meshBasicMaterial color="#10b981" wireframe depthTest={false} />
+            </mesh>
+          )}
+          {snapType === 'grid' && (
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <circleGeometry args={[0.1, 16]} />
+              <meshBasicMaterial color="#f59e0b" wireframe depthTest={false} />
+            </mesh>
+          )}
+          <Html position={[0, 0, 0]} center style={{ pointerEvents: 'none', transform: 'translate3d(15px, 15px, 0)' }}>
+            <div className="bg-zinc-900/90 text-[10px] text-white px-1.5 py-0.5 rounded shadow-lg border border-zinc-700 capitalize whitespace-nowrap">
+              {snapType === 'edgeCenter' ? 'Midpoint' : snapType}
             </div>
           </Html>
         </group>
-      ))}
+      )}
+
+      {/* Line Tool Preview */}
+      {activeTool === 'line' && startPoint && currentPoint && (() => {
+        let isDashed = false;
+        let dashSize = 0.5;
+        let gapSize = 0.2;
+        let lineWidth = 2;
+
+        if (lineConfig?.type === 'Dashed') {
+          isDashed = true;
+        } else if (lineConfig?.type === 'Dotted') {
+          isDashed = true;
+          dashSize = 0.1;
+        } else if (lineConfig?.type !== 'Solid') {
+          const customType = lineTypes?.find(t => t.id === lineConfig?.type);
+          if (customType) {
+            lineWidth = customType.thickness;
+            if (customType.segmentation && customType.segmentation.length > 0) {
+              isDashed = true;
+              dashSize = customType.segmentation[0] || 0.5;
+              gapSize = customType.segmentation.length > 1 ? customType.segmentation[1] : dashSize;
+            }
+          }
+        }
+
+        return (
+          <group>
+            <Line
+              points={[startPoint, currentPoint]}
+              color={lineConfig?.color || "#3b82f6"}
+              lineWidth={lineWidth}
+              transparent={lineConfig?.opacity < 100}
+              opacity={lineConfig?.opacity ? lineConfig.opacity / 100 : 1}
+              dashed={isDashed}
+              dashSize={dashSize}
+              gapSize={gapSize}
+            />
+            {/* Horizontal reference line */}
+            <Line
+              points={[startPoint, new THREE.Vector3(startPoint.x + distance, startPoint.y, startPoint.z)]}
+              color="#9ca3af"
+              lineWidth={1}
+              dashed
+              dashSize={0.5}
+              gapSize={0.5}
+            />
+            <Html position={currentPoint} center style={{ pointerEvents: 'none', transform: 'translate3d(15px, -15px, 0)' }}>
+              <div className="bg-zinc-900/95 backdrop-blur-md border border-zinc-700 text-zinc-300 px-2.5 py-2 rounded shadow-xl flex flex-col gap-1.5 font-mono text-[11px] select-none min-w-[120px]">
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-zinc-500 font-medium">Distance</span>
+                  <span className="text-indigo-400 font-semibold">{distance.toFixed(precision)}m</span>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-zinc-500 font-medium">Angle</span>
+                  <span className="text-indigo-400 font-semibold">{angle.toFixed(1)}°</span>
+                </div>
+                <div className="w-full h-px bg-zinc-800 my-0.5"></div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-zinc-500 font-medium">ΔX</span>
+                  <span className="text-zinc-400">{Math.abs(currentPoint.x - startPoint.x).toFixed(precision)}m</span>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-zinc-500 font-medium">ΔY</span>
+                  <span className="text-zinc-400">{Math.abs(currentPoint.z - startPoint.z).toFixed(precision)}m</span>
+                </div>
+              </div>
+            </Html>
+          </group>
+        );
+      })()}
+
+      {/* Rectangle Tool Preview */}
+      {activeTool === 'rectangle' && startPoint && currentPoint && (
+        <group>
+          {rectPreview ? (
+            <mesh position={rectPreview.center} rotation={[0, rectPreview.rotation, 0]}>
+              <boxGeometry args={[rectPreview.size[0], 0.01, rectPreview.size[1]]} />
+              <meshBasicMaterial
+                color={rectangleConfig?.fillColor || "#3b82f6"}
+                transparent
+                opacity={(rectangleConfig?.opacity || 50) / 100}
+              />
+              <Line
+                points={[
+                  new THREE.Vector3(-rectPreview.size[0] / 2, 0, -rectPreview.size[1] / 2),
+                  new THREE.Vector3(rectPreview.size[0] / 2, 0, -rectPreview.size[1] / 2),
+                  new THREE.Vector3(rectPreview.size[0] / 2, 0, rectPreview.size[1] / 2),
+                  new THREE.Vector3(-rectPreview.size[0] / 2, 0, rectPreview.size[1] / 2),
+                  new THREE.Vector3(-rectPreview.size[0] / 2, 0, -rectPreview.size[1] / 2),
+                ]}
+                color={rectangleConfig?.lineColor || "#ffffff"}
+                lineWidth={2}
+                dashed={rectangleConfig?.lineType === 'Dashed' || rectangleConfig?.lineType === 'Dotted'}
+                dashSize={rectangleConfig?.lineType === 'Dotted' ? 0.1 : 0.5}
+                gapSize={rectangleConfig?.lineType === 'Dotted' ? 0.2 : 0.2}
+              />
+            </mesh>
+          ) : (
+            /* First segment for 3-point mode */
+            <group>
+              <Line
+                points={[startPoint, currentPoint]}
+                color={rectangleConfig?.lineColor || "#ffffff"}
+                lineWidth={2}
+                dashed
+              />
+              <Html position={currentPoint} center style={{ pointerEvents: 'none', transform: 'translate3d(15px, -15px, 0)' }}>
+                <div className="bg-zinc-900/95 backdrop-blur-md border border-zinc-700 text-zinc-300 px-2.5 py-2 rounded shadow-xl flex flex-col gap-1.5 font-mono text-[11px] select-none min-w-[120px]">
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-zinc-500 font-medium">Length</span>
+                    <span className="text-indigo-400 font-semibold">{distance.toFixed(precision)}m</span>
+                  </div>
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-zinc-500 font-medium">Angle</span>
+                    <span className="text-indigo-400 font-semibold">{angle.toFixed(1)}°</span>
+                  </div>
+                </div>
+              </Html>
+            </group>
+          )}
+        </group>
+      )}
+
+      {/* Polyline Tool Preview */}
+      {activeTool === 'polyline' && polylinePoints.length > 0 && (
+        <group>
+          {/* Draw confirmed polyline segments */}
+          {polylinePoints.length > 1 && (
+            <Line
+              points={polylinePoints}
+              color="#3b82f6"
+              lineWidth={2}
+            />
+          )}
+
+          {/* Draw current drawing segment */}
+          {currentPoint && (
+            <group>
+              <Line
+                points={[polylinePoints[polylinePoints.length - 1], currentPoint]}
+                color="#3b82f6"
+                lineWidth={2}
+                dashed
+                dashSize={0.5}
+                gapSize={0.5}
+              />
+              <Html position={currentPoint} center style={{ pointerEvents: 'none', transform: 'translate3d(15px, -15px, 0)' }}>
+                <div className="bg-zinc-900/95 backdrop-blur-md border border-blue-500/50 text-zinc-300 px-2.5 py-2 rounded shadow-xl flex flex-col gap-1.5 font-mono text-[11px] select-none min-w-[120px]">
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-zinc-500 font-medium">Length</span>
+                    <span className="text-blue-400 font-semibold">{polylinePoints[polylinePoints.length - 1].distanceTo(currentPoint).toFixed(precision)}m</span>
+                  </div>
+                  <div className="w-full h-px bg-zinc-800 my-0.5"></div>
+                  <div className="text-center text-zinc-500 text-[9px] mt-1">Double-click to finish</div>
+                </div>
+              </Html>
+            </group>
+          )}
+        </group>
+      )}
+
+      {/* Slab Tool Preview */}
+      {activeTool === 'slab' && slabPoints.length > 0 && (
+        <group>
+          {/* Draw confirmed slab segments */}
+          {slabPoints.length > 1 && (
+            <Line
+              points={slabPoints}
+              color="#10b981"
+              lineWidth={2}
+            />
+          )}
+
+          {/* Draw current drawing segment */}
+          {currentPoint && (
+            <group>
+              <Line
+                points={[slabPoints[slabPoints.length - 1], currentPoint]}
+                color="#10b981"
+                lineWidth={2}
+                dashed
+                dashSize={0.5}
+                gapSize={0.5}
+              />
+              <Html position={currentPoint} center style={{ pointerEvents: 'none', transform: 'translate3d(15px, -15px, 0)' }}>
+                <div className="bg-zinc-900/95 backdrop-blur-md border border-emerald-500/50 text-zinc-300 px-2.5 py-2 rounded shadow-xl flex flex-col gap-1.5 font-mono text-[11px] select-none min-w-[120px]">
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-zinc-500 font-medium">Length</span>
+                    <span className="text-emerald-400 font-semibold">{slabPoints[slabPoints.length - 1].distanceTo(currentPoint).toFixed(precision)}m</span>
+                  </div>
+                  <div className="w-full h-px bg-zinc-800 my-0.5"></div>
+                  <div className="text-center text-zinc-500 text-[9px] mt-1">Click first point or Double-click to finish</div>
+                </div>
+              </Html>
+            </group>
+          )}
+        </group>
+      )}
+
+      {/* Wall Tool Preview */}
+      {activeTool === 'wall' && wallPoints.length > 0 && (
+        <group>
+          {/* Draw confirmed wall segments */}
+          {wallPoints.length > 1 && (
+            <Line
+              points={wallPoints}
+              color="#a855f7"
+              lineWidth={3}
+            />
+          )}
+
+          {/* Draw current drawing segment */}
+          {currentPoint && (
+            <group>
+              <Line
+                points={[wallPoints[wallPoints.length - 1], currentPoint]}
+                color="#a855f7"
+                lineWidth={3}
+                dashed
+                dashSize={0.5}
+                gapSize={0.5}
+              />
+              <Html position={currentPoint} center style={{ pointerEvents: 'none', transform: 'translate3d(15px, -15px, 0)' }}>
+                <div className="bg-zinc-900/95 backdrop-blur-md border border-purple-500/50 text-zinc-300 px-2.5 py-2 rounded shadow-xl flex flex-col gap-1.5 font-mono text-[11px] select-none min-w-[120px]">
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-zinc-500 font-medium">Length</span>
+                    <span className="text-purple-400 font-semibold">{distance.toFixed(precision)}m</span>
+                  </div>
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-zinc-500 font-medium">Angle</span>
+                    <span className="text-purple-400 font-semibold">{angle.toFixed(1)}°</span>
+                  </div>
+                  <div className="w-full h-px bg-zinc-800 my-0.5"></div>
+                  <div className="text-center text-zinc-500 text-[9px] mt-1">Double-click to finish</div>
+                </div>
+              </Html>
+            </group>
+          )}
+        </group>
+      )}
+
+      {/* Arc Tool Preview */}
+      {activeTool === 'arc' && arcPoints.length > 0 && (
+        <group>
+          {/* Draw confirmed arc segments */}
+          {arcPoints.length > 0 && (
+            <group>
+              {arcPoints.map((p, i) => (
+                <mesh key={i} position={p}>
+                  <sphereGeometry args={[0.1, 8, 8]} />
+                  <meshBasicMaterial color="#ef4444" />
+                </mesh>
+              ))}
+              {arcPoints.length > 1 && (
+                <Line
+                  points={arcPoints}
+                  color="#ef4444"
+                  lineWidth={2}
+                  dashed
+                />
+              )}
+            </group>
+          )}
+
+          {/* Draw current drawing segment */}
+          {currentPoint && (
+            <group>
+              <Line
+                points={[arcPoints[arcPoints.length - 1], currentPoint]}
+                color="#ef4444"
+                lineWidth={2}
+                dashed
+                dashSize={0.5}
+                gapSize={0.5}
+              />
+            </group>
+          )}
+        </group>
+      )}
     </group>
   );
 }
 
-/**
- * BimViewer Component
- */
-export function BimViewer({ 
-  branchName, 
-  showControls = true,
-  selectable = false,
-  selectedIds = [],
-  onSelectionChange
-}: { 
-  branchName?: string, 
-  showControls?: boolean,
-  selectable?: boolean,
-  selectedIds?: string[],
-  onSelectionChange?: (ids: string[], totalValue: number) => void
+function TransformManager({
+  selectedElement,
+  transformMode,
+  onUpdateElement,
+  controlsRef,
+  editingGroupId
+}: {
+  selectedElement: BimElement | null,
+  transformMode: 'translate' | 'rotate' | 'scale' | null,
+  onUpdateElement: (id: string, updates: Partial<BimElement>) => void,
+  controlsRef: React.RefObject<OrbitControlsImpl | null>,
+  editingGroupId: string | null | undefined
 }) {
-  const [wireframe, setWireframe] = useState(false);
-  const [xray, setXray] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('3D');
-  const [transformMode, setTransformMode] = useState<TransformMode>('translate');
-  const [selectionActive, setSelectionActive] = useState(selectable);
-  const [measureActive, setMeasureActive] = useState(false);
-  const [coteActive, setCoteActive] = useState(false);
-  const [drawingMode, setDrawingMode] = useState<DrawingType>('none');
-  const [explorerOpen, setExplorerOpen] = useState(false);
-  const [configOpen, setConfigOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [interactionPoints, setInteractionPoints] = useState<THREE.Vector3[]>([]);
-  const [drawnShapes, setDrawnShapes] = useState<DrawnShape[]>([]);
-  const [dimensions, setDimensions] = useState<Dimension[]>([]);
-  const [internalSelectedIds, setInternalSelectedIds] = useState<string[]>(selectedIds);
-  const [hiddenIds, setHiddenIds] = useState<string[]>([]);
-  const [elementsData, setElementsData] = useState<Record<string, number>>({});
-  const [snapPoint, setSnapPoint] = useState<THREE.Vector3 | null>(null);
-  const [activeViewLabel, setActiveViewLabel] = useState('Perspectiva');
-  const [isGizmoDragging, setIsGizmoDragging] = useState(false);
+  const { scene } = useThree();
 
-  // Visualization Config State
-  const [lightIntensity, setLightIntensity] = useState(0.6);
-  const [showGrid, setShowGrid] = useState(true);
-  const [showShadows, setShowShadows] = useState(true);
+  if (!selectedElement || !transformMode) return null;
 
-  // References
-  const controlsRef = useRef<any>(null);
-  const meshRefs = useRef<Record<string, THREE.Mesh | THREE.Group>>({});
-
-  // Sync internal state
-  const prevSelectedIdsRef = useRef(JSON.stringify(selectedIds));
-  useEffect(() => {
-    const currentIdsStr = JSON.stringify(selectedIds);
-    if (prevSelectedIdsRef.current !== currentIdsStr) {
-      setInternalSelectedIds(selectedIds);
-      prevSelectedIdsRef.current = currentIdsStr;
-    }
-  }, [selectedIds]);
-
-  const handleToggleSelect = useCallback((id: string, metadata: any) => {
-    const isSelected = internalSelectedIds.includes(id);
-    const nextIds = isSelected 
-      ? internalSelectedIds.filter(i => i !== id) 
-      : [...internalSelectedIds, id];
-    
-    const nextElementsData = { ...elementsData };
-    if (!isSelected) {
-      nextElementsData[id] = metadata.value || 0;
-    } else {
-      delete nextElementsData[id];
-    }
-
-    setInternalSelectedIds(nextIds);
-    setElementsData(nextElementsData);
-
-    const totalValue = Object.values(nextElementsData).reduce((a, b) => a + b, 0);
-    setTimeout(() => { onSelectionChange?.(nextIds, totalValue); }, 0);
-  }, [internalSelectedIds, elementsData, onSelectionChange]);
-
-  const handleInteractionPoint = useCallback((point: THREE.Vector3) => {
-    if (measureActive || coteActive) {
-      setInteractionPoints(prev => {
-        const next = [...prev, point];
-        if (next.length === 2) {
-          const newDim: Dimension = {
-            id: Math.random().toString(36).substr(2, 9),
-            start: next[0],
-            end: next[1],
-            distance: next[0].distanceTo(next[1])
-          };
-          setDimensions(d => [...d, newDim]);
-          return [];
-        }
-        return next;
-      });
-      return;
-    }
-
-    if (drawingMode !== 'none') {
-      setInteractionPoints(prev => {
-        const next = [...prev, point];
-        if (next.length === 2) {
-          const newShape: DrawnShape = {
-            id: Math.random().toString(36).substr(2, 9),
-            type: drawingMode,
-            points: next,
-            color: drawingMode === 'line' ? '#3b82f6' : drawingMode === 'circle' ? '#f59e0b' : '#10b981'
-          };
-          setDrawnShapes(s => [...s, newShape]);
-          return [];
-        }
-        return next;
-      });
-    }
-  }, [measureActive, coteActive, drawingMode]);
-
-  const handleToggleVisibility = useCallback((id: string) => {
-    setHiddenIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  }, []);
-
-  const handleRefCreated = useCallback((id: string, ref: THREE.Mesh | THREE.Group) => {
-    meshRefs.current[id] = ref;
-  }, []);
-
-  const clearTools = () => { 
-    setInteractionPoints([]); 
-    setDrawnShapes([]); 
-    setDimensions([]);
-  };
-
-  /**
-   * Technical View Presets Handler
-   */
-  const setCameraView = useCallback((view: string, label: string) => {
-    if (!controlsRef.current) return;
-    const controls = controlsRef.current;
-    const camera = controls.object;
-    
-    setActiveViewLabel(label);
-    
-    // Set consistent focus target (center of building)
-    controls.target.set(0, 3, 0);
-
-    switch(view) {
-      case 'north':
-        camera.position.set(0, 3, 20);
-        setViewMode('3D');
-        break;
-      case 'south':
-        camera.position.set(0, 3, -20);
-        setViewMode('3D');
-        break;
-      case 'east':
-        camera.position.set(20, 3, 0);
-        setViewMode('3D');
-        break;
-      case 'west':
-        camera.position.set(-20, 3, 0);
-        setViewMode('3D');
-        break;
-      case 'iso':
-        camera.position.set(18, 12, 18);
-        setViewMode('3D');
-        break;
-      case 'axon':
-        camera.position.set(15, 15, 15);
-        setViewMode('2D'); // Force Orthographic for axonometric look
-        break;
-      case 'top':
-        camera.position.set(0, 30, 0);
-        setViewMode('2D');
-        break;
-    }
-    controls.update();
-  }, []);
-
-  const toggleExplorer = () => { setExplorerOpen(!explorerOpen); if (!explorerOpen) { setConfigOpen(false); setHistoryOpen(false); } };
-  const toggleConfig = () => { setConfigOpen(!configOpen); if (!configOpen) { setExplorerOpen(false); setHistoryOpen(false); } };
-  const toggleHistory = () => { setHistoryOpen(!historyOpen); if (!historyOpen) { setExplorerOpen(false); setConfigOpen(false); } };
-
-  const currentModeLabel = useMemo(() => {
-    if (isGizmoDragging) return `Transformando: ${transformMode.toUpperCase()}`;
-    if (measureActive) return "Medición Láser";
-    if (coteActive) return "Acotación Persistente";
-    if (drawingMode === 'line') return "Dibujando Línea";
-    if (drawingMode === 'circle') return "Dibujando Círculo";
-    if (drawingMode === 'rectangle') return "Dibujando Rectángulo";
-    if (selectionActive) return "Selección & Edición";
-    return `Vista: ${activeViewLabel}`;
-  }, [measureActive, coteActive, drawingMode, selectionActive, activeViewLabel, isGizmoDragging, transformMode]);
-
-  const isAnyToolActive = useMemo(() => measureActive || coteActive || drawingMode !== 'none' || selectionActive || isGizmoDragging, [measureActive, coteActive, drawingMode, selectionActive, isGizmoDragging]);
-
-  const activeMode = useMemo(() => {
-    if (measureActive) return 'measure';
-    if (coteActive) return 'cote';
-    return drawingMode;
-  }, [measureActive, coteActive, drawingMode]);
+  const obj = scene.getObjectByName(selectedElement.id);
+  if (!obj) return null;
 
   return (
-    <div className="w-full h-full bg-[#050505] relative overflow-hidden rounded-xl border border-white/5 shadow-inner group">
-      <Canvas shadows dpr={[1, 2]}>
-        {viewMode === '3D' ? (
-          <PerspectiveCamera makeDefault position={[18, 12, 18]} fov={40} />
-        ) : (
-          <OrthographicCamera makeDefault position={[0, 50, 0]} zoom={40} />
+    <TransformControls
+      object={obj}
+      mode={transformMode}
+      onMouseDown={() => {
+        if (controlsRef.current) controlsRef.current.enabled = false;
+      }}
+      onMouseUp={() => {
+        if (controlsRef.current) controlsRef.current.enabled = true;
+        onUpdateElement(selectedElement.id, {
+          geometry: {
+            ...selectedElement.geometry,
+            position: [obj.position.x, obj.position.y, obj.position.z],
+            rotation: [obj.rotation.x, obj.rotation.y, obj.rotation.z],
+            scale: [obj.scale.x, obj.scale.y, obj.scale.z],
+          }
+        });
+      }}
+      enabled={(!editingGroupId || selectedElement.groupId === editingGroupId) && !selectedElement.locked}
+    />
+  );
+}
+
+function SelectionManager({
+  selectionMode,
+  elements,
+  onSelectMultiple,
+  controlsRef
+}: {
+  selectionMode: 'single' | 'rectangle' | 'lasso' | 'similar' | 'visibility',
+  elements: BimElement[],
+  onSelectMultiple?: (ids: string[]) => void,
+  controlsRef: React.RefObject<OrbitControlsImpl | null>
+}) {
+  const { camera, gl, scene, size } = useThree();
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [startPos, setStartPos] = useState<THREE.Vector2 | null>(null);
+  const [currentPos, setCurrentPos] = useState<THREE.Vector2 | null>(null);
+  const [lassoPoints, setLassoPoints] = useState<THREE.Vector2[]>([]);
+
+  useEffect(() => {
+    if (selectionMode === 'single' || selectionMode === 'similar' || selectionMode === 'visibility') return;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      const rect = gl.domElement.getBoundingClientRect();
+      const pos = new THREE.Vector2(e.clientX - rect.left, e.clientY - rect.top);
+      setIsSelecting(true);
+      setStartPos(pos);
+      setCurrentPos(pos);
+      if (selectionMode === 'lasso') {
+        setLassoPoints([pos]);
+      }
+      if (controlsRef.current) controlsRef.current.enabled = false;
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isSelecting) return;
+      const rect = gl.domElement.getBoundingClientRect();
+      const pos = new THREE.Vector2(e.clientX - rect.left, e.clientY - rect.top);
+      setCurrentPos(pos);
+      if (selectionMode === 'lasso') {
+        setLassoPoints(prev => {
+          const lastPoint = prev[prev.length - 1];
+          if (lastPoint && lastPoint.distanceTo(pos) < 5) return prev;
+          return [...prev, pos];
+        });
+      }
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (!isSelecting) return;
+      setIsSelecting(false);
+      if (controlsRef.current) controlsRef.current.enabled = true;
+
+      const rect = gl.domElement.getBoundingClientRect();
+      const endPos = new THREE.Vector2(e.clientX - rect.left, e.clientY - rect.top);
+
+      const selectedIds: string[] = [];
+
+      if (selectionMode === 'rectangle' && startPos) {
+        const minX = Math.min(startPos.x, endPos.x);
+        const maxX = Math.max(startPos.x, endPos.x);
+        const minY = Math.min(startPos.y, endPos.y);
+        const maxY = Math.max(startPos.y, endPos.y);
+
+        elements.forEach(el => {
+          if (el.visibility === 'hidden') return;
+          const obj = scene.getObjectByName(el.id);
+          if (obj) {
+            const box = new THREE.Box3().setFromObject(obj);
+            const corners = [
+              new THREE.Vector3(box.min.x, box.min.y, box.min.z),
+              new THREE.Vector3(box.max.x, box.min.y, box.min.z),
+              new THREE.Vector3(box.min.x, box.max.y, box.min.z),
+              new THREE.Vector3(box.max.x, box.max.y, box.min.z),
+              new THREE.Vector3(box.min.x, box.min.y, box.max.z),
+              new THREE.Vector3(box.max.x, box.min.y, box.max.z),
+              new THREE.Vector3(box.min.x, box.max.y, box.max.z),
+              new THREE.Vector3(box.max.x, box.max.y, box.max.z),
+            ];
+
+            let isInside = true;
+            corners.forEach(corner => {
+              const screenPos = corner.clone().project(camera);
+              const x = (screenPos.x + 1) * size.width / 2;
+              const y = (-screenPos.y + 1) * size.height / 2;
+              if (x < minX || x > maxX || y < minY || y > maxY) {
+                isInside = false;
+              }
+            });
+
+            if (isInside) {
+              selectedIds.push(el.id);
+            }
+          }
+        });
+      } else if (selectionMode === 'lasso' && lassoPoints.length > 2) {
+        const isPointInPoly = (poly: THREE.Vector2[], pt: THREE.Vector2) => {
+          let inside = false;
+          for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+            if (((poly[i].y > pt.y) !== (poly[j].y > pt.y)) &&
+              (pt.x < (poly[j].x - poly[i].x) * (pt.y - poly[i].y) / (poly[j].y - poly[i].y) + poly[i].x)) {
+              inside = !inside;
+            }
+          }
+          return inside;
+        };
+
+        elements.forEach(el => {
+          if (el.visibility === 'hidden') return;
+          const obj = scene.getObjectByName(el.id);
+          if (obj) {
+            const box = new THREE.Box3().setFromObject(obj);
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            const screenPos = center.project(camera);
+            const x = (screenPos.x + 1) * size.width / 2;
+            const y = (-screenPos.y + 1) * size.height / 2;
+            if (isPointInPoly(lassoPoints, new THREE.Vector2(x, y))) {
+              selectedIds.push(el.id);
+            }
+          }
+        });
+      }
+
+      if (selectedIds.length > 0 && onSelectMultiple) {
+        onSelectMultiple(selectedIds);
+      }
+
+      setStartPos(null);
+      setCurrentPos(null);
+      setLassoPoints([]);
+    };
+
+    gl.domElement.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+
+    return () => {
+      gl.domElement.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [selectionMode, isSelecting, startPos, lassoPoints, gl, controlsRef, elements, onSelectMultiple, camera, scene, size]);
+
+  if (!isSelecting) return null;
+
+  return (
+    <Html fullscreen style={{ pointerEvents: 'none' }}>
+      <div className="w-full h-full relative">
+        {selectionMode === 'rectangle' && startPos && currentPos && (
+          <div
+            className="absolute border-2 border-blue-500 bg-blue-500/20"
+            style={{
+              left: Math.min(startPos.x, currentPos.x),
+              top: Math.min(startPos.y, currentPos.y),
+              width: Math.abs(currentPos.x - startPos.x),
+              height: Math.abs(currentPos.y - startPos.y)
+            }}
+          />
         )}
-        
-        <Suspense fallback={null}>
-          <Stage 
-            intensity={lightIntensity} 
-            environment="city" 
-            adjustCamera={false} 
-            shadows={showShadows ? { type: 'contact', opacity: 0.2, blur: 2 } : false}
-          >
-            <ArchitecturalStructure 
-              wireframe={wireframe} 
-              xray={xray} 
-              selectable={selectionActive || explorerOpen}
-              selectedIds={internalSelectedIds}
-              hiddenIds={hiddenIds}
-              onToggleSelect={handleToggleSelect}
-              activeMode={activeMode}
-              onInteractionPoint={handleInteractionPoint}
-              onHoverPoint={setSnapPoint}
-              onRefCreated={handleRefCreated}
+        {selectionMode === 'lasso' && lassoPoints.length > 1 && (
+          <svg className="absolute inset-0 w-full h-full">
+            <polyline
+              points={lassoPoints.map(p => `${p.x},${p.y}`).join(' ')}
+              fill="rgba(59, 130, 246, 0.2)"
+              stroke="rgb(59, 130, 246)"
+              strokeWidth="2"
             />
-            {/* Transform Controls (Gizmo) */}
-            {selectionActive && internalSelectedIds.length === 1 && meshRefs.current[internalSelectedIds[0]] && (
-              <TransformControls 
-                object={meshRefs.current[internalSelectedIds[0]]} 
-                mode={transformMode}
-                onMouseDown={() => setIsGizmoDragging(true)}
-                onMouseUp={() => setIsGizmoDragging(false)}
+          </svg>
+        )}
+      </div>
+    </Html>
+  );
+}
+
+const highlightMaterial = new THREE.MeshBasicMaterial({
+  color: 0x3b82f6,
+  depthTest: false,
+  transparent: true,
+  opacity: 0.5
+});
+
+const xrayMaterial = new THREE.MeshStandardMaterial({
+  color: 0x888888,
+  transparent: true,
+  opacity: 0.2,
+  depthWrite: false
+});
+
+const mappedMaterial = new THREE.MeshBasicMaterial({
+  color: 0x10b981,
+  depthTest: false,
+  transparent: true,
+  opacity: 0.4
+});
+
+const activeMappedMaterial = new THREE.MeshBasicMaterial({
+  color: 0x059669,
+  depthTest: false,
+  transparent: true,
+  opacity: 0.6
+});
+
+function IfcModelRenderer({ model, elements, onSelect, activeTool }: { model: any, elements: BimElement[], onSelect: (id: string, multi: boolean) => void, activeTool: string | null | undefined }) {
+  const [visibleSubset, setVisibleSubset] = useState<THREE.Mesh | null>(null);
+  const [xraySubset, setXraySubset] = useState<THREE.Mesh | null>(null);
+
+  const modelElements = useMemo(() => 
+    elements.filter(el => el.geometry.type === 'ifc' && el.geometry.args.modelID === model.modelID),
+  [elements, model.modelID]);
+
+  useEffect(() => {
+    // If we have elements defined for this model, we use subsets for visibility/xray
+    // If NO elements are defined (still being parsed), we show the original model
+    if (modelElements.length > 0) {
+      model.visible = false;
+      
+      const visibleIds = modelElements.filter(el => el.visibility !== 'hidden' && el.visibility !== 'xray').map(el => el.geometry.args.expressID);
+      const xrayIds = modelElements.filter(el => el.visibility === 'xray').map(el => el.geometry.args.expressID);
+
+      if (visibleIds.length > 0) {
+        const vSubset = ifcLoader.ifcManager.createSubset({
+          modelID: model.modelID,
+          ids: visibleIds,
+          removePrevious: true,
+          customID: 'visible-subset'
+        }) as THREE.Mesh;
+        vSubset.visible = true;
+        setVisibleSubset(vSubset);
+      } else if (visibleSubset) {
+        visibleSubset.visible = false;
+        setVisibleSubset(null);
+      }
+
+      if (xrayIds.length > 0) {
+        const xSubset = ifcLoader.ifcManager.createSubset({
+          modelID: model.modelID,
+          ids: xrayIds,
+          material: xrayMaterial,
+          removePrevious: true,
+          customID: 'xray-subset'
+        }) as THREE.Mesh;
+        xSubset.visible = true;
+        setXraySubset(xSubset);
+      } else if (xraySubset) {
+        xraySubset.visible = false;
+        setXraySubset(null);
+      }
+    } else {
+      model.visible = true;
+    }
+  }, [model, modelElements]);
+
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
+    if (activeTool === 'select' || !activeTool || activeTool === 'assign') {
+      e.stopPropagation();
+      if (e.faceIndex !== undefined && e.faceIndex !== null) {
+        const mesh = e.object as THREE.Mesh;
+        const expressId = ifcLoader.ifcManager.getExpressId(mesh.geometry, e.faceIndex);
+        if (expressId !== undefined) {
+          const elementId = `ifc-${model.modelID}-${expressId}`;
+          onSelect(elementId, e.shiftKey || e.ctrlKey || e.metaKey);
+        }
+      }
+    }
+  };
+
+  return (
+    <group>
+      {/* Base model is visible when no subsets are active yet */}
+      <primitive object={model} visible={modelElements.length === 0} onClick={handleClick} />
+      {visibleSubset && (
+        <primitive
+          object={visibleSubset}
+          dispose={null}
+          onClick={handleClick}
+        />
+      )}
+      {xraySubset && (
+        <primitive
+          object={xraySubset}
+          dispose={null}
+          onClick={handleClick}
+        />
+      )}
+    </group>
+  );
+}
+
+function IfcMappedHighlighter({ mappedElements = [], activeAssignmentTarget, ifcModels }: { mappedElements?: any[], activeAssignmentTarget?: string | null, ifcModels: any[] }) {
+  const { scene } = useThree();
+  useEffect(() => {
+    // Clear previous highlights
+    ifcModels.forEach((model: any) => {
+      ifcLoader.ifcManager.removeSubset(model.modelID, mappedMaterial);
+      ifcLoader.ifcManager.removeSubset(model.modelID, activeMappedMaterial);
+    });
+
+    const ifcMapped = mappedElements.filter(m => m.elementId.startsWith('ifc-'));
+    if (ifcMapped.length === 0) return;
+
+    // Group by model and activity
+    const activeByModel: Record<number, number[]> = {};
+    const regularByModel: Record<number, number[]> = {};
+
+    ifcMapped.forEach(m => {
+      const parts = m.elementId.split('-');
+      const modelID = parseInt(parts[1], 10);
+      const expressID = parseInt(parts[2], 10);
+      
+      const isActive = m.projectItemId === activeAssignmentTarget;
+      const targetMap = isActive ? activeByModel : regularByModel;
+
+      if (!targetMap[modelID]) targetMap[modelID] = [];
+      targetMap[modelID].push(expressID);
+    });
+
+    // Create subsets
+    const createSubsets = (byModel: Record<number, number[]>, material: THREE.Material) => {
+      Object.keys(byModel).forEach(modelIDStr => {
+        const modelID = parseInt(modelIDStr, 10);
+        const model = ifcModels.find((m: any) => m.modelID === modelID);
+        if (model) {
+          ifcLoader.ifcManager.createSubset({
+            modelID,
+            ids: byModel[modelID],
+            material: material,
+            scene: scene,
+            removePrevious: true
+          });
+        }
+      });
+    };
+
+    createSubsets(regularByModel, mappedMaterial);
+    createSubsets(activeByModel, activeMappedMaterial);
+
+    return () => {
+      ifcModels.forEach((model: any) => {
+        ifcLoader.ifcManager.removeSubset(model.modelID, mappedMaterial);
+        ifcLoader.ifcManager.removeSubset(model.modelID, activeMappedMaterial);
+      });
+    };
+  }, [mappedElements, activeAssignmentTarget, ifcModels, scene]);
+
+  return null;
+}
+
+function IfcHighlighter({ selectedIds, ifcModels }: { selectedIds: string[], ifcModels: any[] }) {
+  const { scene } = useThree();
+
+  useEffect(() => {
+    // Clear previous highlights
+    ifcModels.forEach((model: any) => {
+      ifcLoader.ifcManager.removeSubset(model.modelID, highlightMaterial);
+    });
+
+    const ifcSelectedIds = selectedIds.filter(id => id.startsWith('ifc-'));
+    if (ifcSelectedIds.length === 0) return;
+
+    // Group by modelID
+    const byModel: Record<number, number[]> = {};
+    ifcSelectedIds.forEach(id => {
+      const parts = id.split('-');
+      const modelID = parseInt(parts[1], 10);
+      const expressID = parseInt(parts[2], 10);
+      if (!byModel[modelID]) byModel[modelID] = [];
+      byModel[modelID].push(expressID);
+    });
+
+    Object.keys(byModel).forEach(modelIDStr => {
+      const modelID = parseInt(modelIDStr, 10);
+      const model = ifcModels.find((m: any) => m.modelID === modelID);
+      if (model) {
+        ifcLoader.ifcManager.createSubset({
+          modelID,
+          ids: byModel[modelID],
+          material: highlightMaterial,
+          scene: scene,
+          removePrevious: true
+        });
+      }
+    });
+
+    return () => {
+      ifcModels.forEach((model: any) => {
+        ifcLoader.ifcManager.removeSubset(model.modelID, highlightMaterial);
+      });
+    };
+  }, [selectedIds, ifcModels, scene]);
+
+  return null;
+}
+
+function CameraManager({ saveViewTrigger, onSaveView, restoreView, controlsRef }: { saveViewTrigger?: number, onSaveView?: (position: [number, number, number], target: [number, number, number]) => void, restoreView?: { position: [number, number, number], target: [number, number, number] } | null, controlsRef: React.RefObject<OrbitControlsImpl | null> }) {
+  const { camera } = useThree();
+  const prevTrigger = useRef(saveViewTrigger);
+
+  useEffect(() => {
+    if (saveViewTrigger !== undefined && saveViewTrigger !== prevTrigger.current) {
+      prevTrigger.current = saveViewTrigger;
+      if (onSaveView && controlsRef.current) {
+        onSaveView(
+          [camera.position.x, camera.position.y, camera.position.z],
+          [controlsRef.current.target.x, controlsRef.current.target.y, controlsRef.current.target.z]
+        );
+      }
+    }
+  }, [saveViewTrigger, onSaveView, camera, controlsRef]);
+
+  useEffect(() => {
+    if (restoreView && controlsRef.current) {
+      camera.position.set(...restoreView.position);
+      controlsRef.current.target.set(...restoreView.target);
+      controlsRef.current.update();
+    }
+  }, [restoreView, camera, controlsRef]);
+
+  return null;
+}
+
+function ClippingPlaneManager({ active, height }: { active: boolean, height: number }) {
+  const { gl } = useThree();
+  const planeRef = useRef(new THREE.Plane(new THREE.Vector3(0, -1, 0), height));
+
+  useEffect(() => {
+    if (active) {
+      gl.localClippingEnabled = true;
+      planeRef.current.constant = height;
+      gl.clippingPlanes = [planeRef.current];
+    } else {
+      gl.localClippingEnabled = false;
+      gl.clippingPlanes = [];
+    }
+  }, [active, height, gl]);
+
+  if (!active) return null;
+
+  return (
+    <group position={[0, height - 0.01, 0]}>
+      {/* Visual helper for the clipping plane */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[100, 100]} />
+        <meshBasicMaterial
+          color={0xff0000}
+          transparent
+          opacity={0.1}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+      <gridHelper args={[100, 100, 0xff0000, 0xff0000]} position={[0, 0.01, 0]}>
+        <lineBasicMaterial attach="material" transparent opacity={0.2} depthWrite={false} color={0xff0000} />
+      </gridHelper>
+    </group>
+  );
+}
+
+export function BimViewer({
+  elements,
+  ifcModels = [],
+  selectedIds,
+  onSelect,
+  onSelectMultiple,
+  onUpdateElement,
+  wireframe,
+  transformMode,
+  activeTool,
+  setActiveTool,
+  onAddLine,
+  lineConfig,
+  onAddRectangle,
+  rectangleConfig,
+  onAddArc,
+  arcConfig,
+  activeLevel,
+  onAddWall,
+  onAddPolyline,
+  onAddSlab,
+  wallConfig,
+  snapConfig,
+  wallTypes,
+  lineTypes,
+  editingGroupId,
+  onExitGroupEdit,
+  showOutsideGroup = true,
+  viewMode,
+  setViewMode,
+  selectionMode,
+  modelConfig,
+  onContextMenu,
+  scaleSettings,
+  saveViewTrigger,
+  onSaveView,
+  restoreView,
+  activeSlabTypeId,
+  slabTypes,
+  clippingPlaneActive = false,
+  clippingPlaneHeight = 5,
+  mappedElements = [],
+  activeAssignmentTarget
+}: BimViewerProps) {
+  const controlsRef = useRef<OrbitControlsImpl>(null);
+
+  const selectedElement = elements.find(el => selectedIds.includes(el.id)) || null;
+  const isTransforming = transformMode !== null && selectedElement !== null;
+
+  useEffect(() => {
+    if (controlsRef.current) {
+      controlsRef.current.target.set(0, 0, 0);
+      controlsRef.current.update();
+    }
+  }, [viewMode]);
+
+  return (
+    <div
+      className="w-full h-full relative"
+      style={{ backgroundColor: modelConfig.backgroundColor }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        if (onContextMenu) onContextMenu(e.clientX, e.clientY);
+      }}
+    >
+      <Canvas
+        shadows={modelConfig.showShadows ? { type: THREE.PCFShadowMap } : false}
+        onPointerMissed={() => onSelect(null)}
+      >
+        <ClippingPlaneManager active={clippingPlaneActive} height={clippingPlaneHeight} />
+        <CameraManager
+          saveViewTrigger={saveViewTrigger}
+          onSaveView={onSaveView}
+          restoreView={restoreView}
+          controlsRef={controlsRef}
+        />
+        {viewMode === '2D' ? (
+          <OrthographicCamera makeDefault position={[0, 50, 0]} zoom={40} near={0.1} far={1000} />
+        ) : (
+          <PerspectiveCamera makeDefault position={[25, 20, 25]} fov={45} near={0.1} far={1000} />
+        )}
+
+        <color attach="background" args={[modelConfig.backgroundColor]} />
+
+        <ambientLight intensity={0.5} />
+        <directionalLight
+          castShadow={modelConfig.showShadows}
+          position={[10, 20, 10]}
+          intensity={1.5}
+          shadow-mapSize={[2048, 2048]}
+          shadow-camera-left={-20}
+          shadow-camera-right={20}
+          shadow-camera-top={20}
+          shadow-camera-bottom={-20}
+        />
+
+        <Suspense fallback={null}>
+
+          <group position={[0, -0.5, 0]}>
+            {modelConfig.showGrid && (
+              <gridHelper
+                args={[
+                  modelConfig.gridFullCanvas ? 2000 : modelConfig.gridSize,
+                  Math.floor((modelConfig.gridFullCanvas ? 2000 : modelConfig.gridSize) / (modelConfig.gridSpacing || 1)),
+                  "#27272a",
+                  "#18181b"
+                ]}
+                rotation={[0, 0, 0]}
+                position={[0, 0.01, 0]}
+              />
+            )}
+            <BuildingModel
+              elements={elements}
+              selectedIds={selectedIds}
+              onSelect={(el, multi) => {
+                if (editingGroupId && el && el.groupId !== editingGroupId) return;
+                onSelect(el?.id || null, multi);
+              }}
+              onUpdateElement={onUpdateElement}
+              wireframe={wireframe}
+              wallTypes={wallTypes}
+              lineTypes={lineTypes}
+              editingGroupId={editingGroupId}
+              showOutsideGroup={showOutsideGroup}
+              mappedElements={mappedElements}
+              activeAssignmentTarget={activeAssignmentTarget}
+            />
+
+            {/* Render imported IFC models */}
+            {ifcModels.map((model: any, index) => (
+              <IfcModelRenderer
+                key={`ifc-${index}`}
+                model={model}
+                elements={elements}
+                onSelect={(id, multi) => onSelect(id, multi)}
+                activeTool={activeTool}
+              />
+            ))}
+
+            <IfcHighlighter selectedIds={selectedIds} ifcModels={ifcModels} />
+            <IfcMappedHighlighter
+              mappedElements={mappedElements}
+              activeAssignmentTarget={activeAssignmentTarget}
+              ifcModels={ifcModels}
+            />
+
+            <DrawingPlane
+              activeTool={activeTool}
+              onAddLine={onAddLine}
+              setActiveTool={setActiveTool}
+              lineConfig={lineConfig}
+              onAddRectangle={onAddRectangle}
+              rectangleConfig={rectangleConfig}
+              activeLevel={activeLevel}
+              onAddWall={onAddWall}
+              onAddPolyline={onAddPolyline}
+              wallConfig={wallConfig}
+              snapConfig={snapConfig}
+              elements={elements}
+              lineTypes={lineTypes}
+              gridSpacing={modelConfig.gridSpacing}
+              scaleSettings={scaleSettings}
+            />
+
+            <TransformManager
+              selectedElement={selectedElement}
+              transformMode={transformMode}
+              onUpdateElement={onUpdateElement}
+              controlsRef={controlsRef}
+              editingGroupId={editingGroupId}
+            />
+
+            <SelectionManager
+              selectionMode={selectionMode}
+              elements={elements}
+              onSelectMultiple={onSelectMultiple}
+              controlsRef={controlsRef}
+            />
+
+            {selectedElement && (
+              <GripController
+                element={selectedElement}
+                onUpdate={(updates) => onUpdateElement(selectedElement.id, updates)}
+                is2D={viewMode === '2D'}
+                disabled={(editingGroupId !== null && selectedElement.groupId !== editingGroupId) || selectedElement.locked}
+                snapConfig={snapConfig}
+                elements={elements}
+                gridSpacing={modelConfig.gridSpacing}
+                activeLevel={activeLevel}
               />
             )}
 
-            {/* Active Snap Visual Indicator */}
-            {activeMode !== 'none' && snapPoint && (
-              <group position={snapPoint}>
-                <Sphere args={[0.12, 16, 16]}>
-                  <meshStandardMaterial color="#00f2ff" emissive="#00f2ff" emissiveIntensity={4} />
-                </Sphere>
-                <Ring args={[0.15, 0.2, 32]} rotation={[-Math.PI / 2, 0, 0]}>
-                  <meshBasicMaterial color="#00f2ff" transparent opacity={0.5} />
-                </Ring>
-              </group>
+            {modelConfig.showShadows && (
+              <ContactShadows
+                position={[0, -0.26, 0]}
+                opacity={0.4}
+                scale={50}
+                blur={2}
+                far={10}
+              />
             )}
 
-            {activeMode !== 'none' && interactionPoints.length === 1 && (
-              <Sphere position={interactionPoints[0]} args={[0.1, 16, 16]}>
-                <meshStandardMaterial color="#00f2ff" emissive="#00f2ff" emissiveIntensity={2} />
-              </Sphere>
+            {modelConfig.showGrid && (
+              <Grid
+                position={[0, -0.25, 0]}
+                args={[50, 50]}
+                cellSize={1}
+                cellThickness={0.5}
+                cellColor="#3f3f46"
+                sectionSize={5}
+                sectionThickness={1}
+                sectionColor="#52525b"
+                fadeDistance={50}
+                fadeStrength={1}
+              />
             )}
-            <PersistentDimensions dimensions={dimensions} />
-            <DrawnShapes shapes={drawnShapes} />
-          </Stage>
-          {showGrid && <Grid renderOrder={-1} position={[0, -0.06, 0]} infiniteGrid cellSize={1} cellThickness={0.5} sectionSize={5} sectionThickness={1} sectionColor="#333333" fadeDistance={50} />}
-          <Environment preset="night" />
+          </group>
         </Suspense>
-        <OrbitControls 
+
+        <OrbitControls
           ref={controlsRef}
-          makeDefault 
-          enableDamping 
-          dampingFactor={0.05} 
-          maxPolarAngle={viewMode === '3D' ? Math.PI / 2 : 0} 
-          minPolarAngle={viewMode === '3D' ? 0 : 0}
-          enableRotate={viewMode === '3D' && !isGizmoDragging}
-          minDistance={5} 
-          maxDistance={100} 
+          makeDefault
+          enableRotate={viewMode === '3D'}
+          minPolarAngle={0}
+          maxPolarAngle={viewMode === '3D' ? Math.PI / 2 - 0.05 : 0}
+          minDistance={5}
+          maxDistance={100}
+          minZoom={10}
+          maxZoom={200}
         />
+
+        {viewMode === '3D' && (
+          <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
+            <GizmoViewport axisColors={['#ef4444', '#22c55e', '#3b82f6']} labelColor="white" />
+          </GizmoHelper>
+        )}
       </Canvas>
-
-      {/* Floating Status Indicator */}
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 pointer-events-none">
-        <div className="bg-black/80 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-left-4 duration-700 pointer-events-auto">
-          <div className="flex items-center gap-3">
-            <div className={cn("h-2 w-2 rounded-full", isAnyToolActive ? "bg-primary animate-pulse" : "bg-emerald-500")} />
-            <div className="flex flex-col">
-              <p className="text-[10px] font-black uppercase text-primary tracking-[0.2em]">{currentModeLabel}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <Magnet className="h-2.5 w-2.5 text-emerald-500" />
-                <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Snap-to-Vertex Active</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Bottom Toolbar */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 p-1.5 rounded-2xl shadow-2xl pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <TooltipProvider>
-          {/* View Config */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-xl transition-all", configOpen ? "bg-primary text-black" : "hover:bg-white/5 text-muted-foreground")} onClick={toggleConfig}><Settings className="h-4 w-4" /></Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-[9px] font-black uppercase">Configuración Visual</TooltipContent>
-          </Tooltip>
-
-          <Separator orientation="vertical" className="h-4 bg-white/10" />
-
-          {/* Preset Views Menu */}
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white/5 text-muted-foreground transition-all">
-                    <Compass className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-[9px] font-black uppercase">Vistas Predefinidas</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="center" className="bg-[#0a0a0a] border-white/10 text-white shadow-2xl p-1.5 rounded-xl w-48">
-              <DropdownMenuLabel className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground px-2 py-1.5">Alzados / Fachadas</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setCameraView('north', 'Fachada Norte')} className="text-[10px] font-bold uppercase cursor-pointer py-2 focus:bg-primary/10">Fachada Norte</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCameraView('south', 'Fachada Sur')} className="text-[10px] font-bold uppercase cursor-pointer py-2 focus:bg-primary/10">Fachada Sur</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCameraView('east', 'Fachada Este')} className="text-[10px] font-bold uppercase cursor-pointer py-2 focus:bg-primary/10">Fachada Este</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCameraView('west', 'Fachada Oeste')} className="text-[10px] font-bold uppercase cursor-pointer py-2 focus:bg-primary/10">Fachada Oeste</DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/5" />
-              <DropdownMenuLabel className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground px-2 py-1.5">Perspectivas</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setCameraView('top', 'Planta Técnica')} className="text-[10px] font-bold uppercase cursor-pointer py-2 focus:bg-primary/10 flex justify-between">Planta <MapIcon className="h-3 w-3 opacity-40" /></DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCameraView('iso', 'Perspectiva')} className="text-[10px] font-bold uppercase cursor-pointer py-2 focus:bg-primary/10 flex justify-between">Perspectiva <Navigation className="h-3 w-3 opacity-40 rotate-45" /></DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCameraView('axon', 'Axonométrica')} className="text-[10px] font-bold uppercase cursor-pointer py-2 focus:bg-primary/10 flex justify-between">Axonométrica <BoxSelect className="h-3 w-3 opacity-40" /></DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Separator orientation="vertical" className="h-4 bg-white/10" />
-
-          {/* Selection & Transform Tool */}
-          <div className="flex items-center gap-1 bg-white/5 rounded-xl p-0.5">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg transition-all", selectionActive ? "bg-primary text-black" : "hover:bg-white/5 text-muted-foreground")} onClick={() => { setSelectionActive(!selectionActive); if (!selectionActive) { setMeasureActive(false); setCoteActive(false); setDrawingMode('none'); } }}><MousePointer2 className="h-4 w-4" /></Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-[9px] font-black uppercase">Herramienta de Selección</TooltipContent>
-            </Tooltip>
-            
-            {selectionActive && internalSelectedIds.length === 1 && (
-              <>
-                <Separator orientation="vertical" className="h-4 bg-white/10" />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg transition-all", transformMode === 'translate' ? "bg-emerald-500 text-black" : "hover:bg-white/5 text-muted-foreground")} onClick={() => setTransformMode('translate')}><Move className="h-3.5 w-3.5" /></Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-[9px] font-black uppercase">Mover Objeto</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg transition-all", transformMode === 'rotate' ? "bg-amber-500 text-black" : "hover:bg-white/5 text-muted-foreground")} onClick={() => setTransformMode('rotate')}><RotateCw className="h-3.5 w-3.5" /></Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-[9px] font-black uppercase">Rotar Objeto</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg transition-all", transformMode === 'scale' ? "bg-blue-500 text-black" : "hover:bg-white/5 text-muted-foreground")} onClick={() => setTransformMode('scale')}><Maximize2 className="h-3.5 w-3.5" /></Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-[9px] font-black uppercase">Escalar Objeto</TooltipContent>
-                </Tooltip>
-              </>
-            )}
-          </div>
-
-          <Separator orientation="vertical" className="h-4 bg-white/10" />
-
-          {/* Persistent Cote Tool */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-xl transition-all", coteActive ? "bg-[#00f2ff] text-black" : "hover:bg-white/5 text-muted-foreground")} onClick={() => { setCoteActive(!coteActive); if (!coteActive) { setSelectionActive(false); setMeasureActive(false); setDrawingMode('none'); } setInteractionPoints([]); }}><ArrowRightLeft className="h-4 w-4" /></Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-[9px] font-black uppercase">Cotas Persistentes</TooltipContent>
-          </Tooltip>
-
-          {/* Laser Measure Tool */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-xl transition-all", measureActive ? "bg-primary text-black" : "hover:bg-white/5 text-muted-foreground")} onClick={() => { setMeasureActive(!measureActive); if (!measureActive) { setSelectionActive(false); setCoteActive(false); setDrawingMode('none'); } setInteractionPoints([]); }}><Ruler className="h-4 w-4" /></Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-[9px] font-black uppercase">Medición Láser</TooltipContent>
-          </Tooltip>
-
-          <Separator orientation="vertical" className="h-4 bg-white/10" />
-
-          {/* Drawing Tools */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-xl transition-all", drawingMode === 'line' ? "bg-primary text-black" : "hover:bg-white/5 text-muted-foreground")} onClick={() => { setDrawingMode(drawingMode === 'line' ? 'none' : 'line'); setMeasureActive(false); setCoteActive(false); setSelectionActive(false); setInteractionPoints([]); }}><Pencil className="h-4 w-4" /></Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-[9px] font-black uppercase">Dibujar Línea</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-xl transition-all", drawingMode === 'circle' ? "bg-primary text-black" : "hover:bg-white/5 text-muted-foreground")} onClick={() => { setDrawingMode(drawingMode === 'circle' ? 'none' : 'circle'); setMeasureActive(false); setCoteActive(false); setSelectionActive(false); setInteractionPoints([]); }}><CircleIcon className="h-4 w-4" /></Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-[9px] font-black uppercase">Dibujar Círculo</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-xl transition-all", drawingMode === 'rectangle' ? "bg-primary text-black" : "hover:bg-white/5 text-muted-foreground")} onClick={() => { setDrawingMode(drawingMode === 'rectangle' ? 'none' : 'rectangle'); setMeasureActive(false); setCoteActive(false); setSelectionActive(false); setInteractionPoints([]); }}><Square className="h-4 w-4" /></Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-[9px] font-black uppercase">Dibujar Rectángulo</TooltipContent>
-          </Tooltip>
-
-          {(drawnShapes.length > 0 || dimensions.length > 0) && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-red-500 hover:bg-red-500/10" onClick={clearTools}><Eraser className="h-4 w-4" /></Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-[9px] font-black uppercase">Limpiar Anotaciones</TooltipContent>
-            </Tooltip>
-          )}
-
-          <Separator orientation="vertical" className="h-4 bg-white/10" />
-
-          {/* Objects & Toggles */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-xl transition-all", explorerOpen ? "bg-primary text-black" : "hover:bg-white/5 text-muted-foreground")} onClick={toggleExplorer}><Search className="h-4 w-4" /></Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-[9px] font-black uppercase">Explorador de Objetos</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-xl transition-all", xray ? "bg-primary/20 text-primary" : "hover:bg-white/5 text-muted-foreground")} onClick={() => setXray(!xray)}><Zap className="h-4 w-4" /></Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-[9px] font-black uppercase">Modo Rayos X</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-xl transition-all", wireframe ? "bg-primary/20 text-primary" : "hover:bg-white/5 text-muted-foreground")} onClick={() => setWireframe(!wireframe)}><Layers className="h-4 w-4" /></Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-[9px] font-black uppercase">Modo Alámbrico</TooltipContent>
-          </Tooltip>
-
-          <Separator orientation="vertical" className="h-4 bg-white/10" />
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-xl transition-all", historyOpen ? "bg-amber-500 text-black" : "hover:bg-white/5 text-muted-foreground")} onClick={toggleHistory}><History className="h-4 w-4" /></Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-[9px] font-black uppercase">Cambios Recientes</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-
-      {/* Panels (Left/Right) */}
-      {explorerOpen && (
-        <div className="absolute top-4 right-4 bottom-4 w-80 bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-20 animate-in slide-in-from-right-4 duration-300 overflow-hidden">
-          <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/2">
-            <div className="flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /><h3 className="text-[10px] font-black uppercase tracking-widest">Explorador de Objetos</h3></div>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setExplorerOpen(false)}><X className="h-4 w-4" /></Button>
-          </div>
-          <ScrollArea className="flex-1">
-            <div className="p-2 space-y-1">
-              {BIM_OBJECTS.map((obj) => (
-                <div key={obj.id} className="group flex items-center justify-between p-2.5 rounded-xl border border-white/5 bg-white/2 hover:bg-white/5 transition-all cursor-pointer" onClick={() => handleToggleSelect(obj.id, { name: obj.name, value: obj.value })}>
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <div className={cn("h-1.5 w-1.5 rounded-full shrink-0", internalSelectedIds.includes(obj.id) ? "bg-emerald-500" : "bg-white/20")} />
-                    <div className="flex flex-col overflow-hidden"><span className="text-[10px] font-black uppercase truncate tracking-tight">{obj.name}</span><span className="text-[8px] font-bold opacity-40">{obj.type}</span></div>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleToggleVisibility(obj.id); }}>{hiddenIds.includes(obj.id) ? <EyeOff className="h-3.5 w-3.5 text-white/20" /> : <Eye className="h-3.5 w-3.5 text-primary" />}</Button>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </div>
-      )}
-
-      {configOpen && (
-        <div className="absolute top-4 left-4 bottom-4 w-72 bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-20 animate-in slide-in-from-left-4 duration-300 overflow-hidden">
-          <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/2">
-            <div className="flex items-center gap-2 text-primary"><Settings className="h-4 w-4" /><h3 className="text-[10px] font-black uppercase tracking-widest">Configuración</h3></div>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setConfigOpen(false)}><X className="h-4 w-4" /></Button>
-          </div>
-          <ScrollArea className="flex-1 p-6 space-y-8">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Sun className="h-3.5 w-3.5 text-muted-foreground" /><Label className="text-[10px] font-bold uppercase">Luminosidad</Label></div><span className="text-[10px] font-mono text-primary font-black">{Math.round(lightIntensity * 100)}%</span></div>
-              <Slider value={[lightIntensity * 100]} onValueChange={([val]) => setLightIntensity(val / 100)} max={200} step={1} />
-            </div>
-            <Separator className="bg-white/5" />
-            <div className="space-y-4">
-              <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Grid3X3 className="h-3.5 w-3.5 text-muted-foreground" /><Label className="text-[10px] font-bold uppercase">Grilla Global</Label></div><Switch checked={showGrid} onCheckedChange={setShowGrid} /></div>
-              <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Box className="h-3.5 w-3.5 text-muted-foreground" /><Label className="text-[10px] font-bold uppercase">Sombras</Label></div><Switch checked={showShadows} onCheckedChange={setShowShadows} /></div>
-            </div>
-          </ScrollArea>
-        </div>
-      )}
-
-      {historyOpen && (
-        <div className="absolute top-4 right-4 bottom-4 w-80 bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col z-20 animate-in slide-in-from-right-4 duration-300 overflow-hidden">
-          <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/2">
-            <div className="flex items-center gap-2 text-amber-500"><History className="h-4 w-4" /><h3 className="text-[10px] font-black uppercase tracking-widest">Cambios Recientes</h3></div>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setHistoryOpen(false)}><X className="h-4 w-4" /></Button>
-          </div>
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-6 relative pl-4">
-              <div className="absolute left-[11px] top-4 bottom-4 w-px bg-white/5" />
-              {BIM_HISTORY.map((entry) => (
-                <div key={entry.id} className="relative pl-8 space-y-2 group cursor-default">
-                  <div className="absolute left-0 top-1 h-6 w-6 rounded-full border-2 border-[#050505] bg-white/5 flex items-center justify-center z-10 group-hover:bg-amber-500 transition-colors"><Clock className="h-3 w-3 text-muted-foreground group-hover:text-black" /></div>
-                  <div className="flex flex-col">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[8px] font-mono text-muted-foreground/60 uppercase">{entry.date}</span>
-                      <Badge variant="outline" className="text-[7px] font-mono border-white/10 h-3.5">{entry.hash}</Badge>
-                    </div>
-                    <p className="text-[10px] font-black text-white uppercase leading-tight">{entry.action}</p>
-                    <div className="flex items-center gap-1.5 mt-2 opacity-40"><UserCircle className="h-2.5 w-2.5" /><span className="text-[8px] font-black uppercase tracking-widest">{entry.user}</span></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </div>
-      )}
-
-      <div className="absolute bottom-4 left-4 z-10 pointer-events-none opacity-40">
-        <p className="text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground font-mono">Axis: X-Y-Z Global System</p>
-      </div>
+      <PaperDrawingLayer activeTool={activeTool || null} onAddElement={(type, data) => console.log(type, data)} />
     </div>
   );
 }

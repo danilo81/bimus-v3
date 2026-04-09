@@ -17,7 +17,10 @@ import {
     getProjectSiteLogs,
     consolidateProjectSchedule
 } from '@/actions';
+import { getProjectDocuments } from '@/actions/projects/getProjectDocuments';
+import { getMappedElementsForItem } from '@/actions/projects/bimMapping';
 import { calculateAPU } from '@/lib/apu-utils';
+import { BimIsolationModal } from '@/components/bim/BimIsolationModal';
 import { useAuth } from '../../../../hooks/use-auth';
 import {
     Calculator,
@@ -111,6 +114,7 @@ import {
 
 interface ComputationRow {
     id: string;
+    projectItemId: string;
     chapter: string;
     desc: string;
     unit: string;
@@ -162,6 +166,12 @@ export default function ConstructionPage() {
     const [isPayrollHistoryModalOpen, setIsPayrollHistoryModalOpen] = useState(false);
     const [changeOrderReason, setChangeOrderReason] = useState('');
     const [computations, setComputations] = useState<ComputationRow[]>([]);
+
+    // BIM Auditing State
+    const [isIsolationModalOpen, setIsIsolationModalOpen] = useState(false);
+    const [isolationTargetIds, setIsolationTargetIds] = useState<string[]>([]);
+    const [isolationItemName, setIsolationItemName] = useState('');
+    const [isolationIfcUrl, setIsolationIfcUrl] = useState<string>('');
 
     const [searchTermComputo, setSearchTermComputo] = useState('');
     const [searchTermPresupuesto, setSearchTermPresupuesto] = useState('');
@@ -449,6 +459,7 @@ export default function ConstructionPage() {
 
                     return {
                         id: pi.item.id,
+                        projectItemId: pi.id,
                         chapter: pi.item.chapter,
                         desc: pi.item.description,
                         unit: pi.item.unit,
@@ -615,6 +626,42 @@ export default function ConstructionPage() {
     const handleViewDetail = (item: any) => {
         setSelectedItem(item);
         setIsDetailOpen(true);
+    };
+
+    const handleViewIsolation = async (row: ComputationRow) => {
+        if (!project) return;
+        setIsLoading(true);
+        try {
+            const docs = await getProjectDocuments(project.id);
+            const models = docs.filter(d => Boolean(d.bimRole));
+            if (models.length === 0) {
+                toast({ title: "No hay Modelos", description: "El proyecto no tiene modelos IFC asignados.", variant: 'destructive' });
+                return;
+            }
+
+            // Por simplicidad, tomamos el modelo primario (ej. Arquitectura) o el primero disponible.
+            const model = models.find(m => m.bimRole === 'architecture') || models[0];
+            let url = model.url;
+            if (url.includes('.r2.dev/')) {
+                const key = url.split('.r2.dev/')[1];
+                url = `/api/r2/file/${encodeURIComponent(key)}`;
+            }
+
+            const mappedElements = await getMappedElementsForItem(row.projectItemId);
+            if (mappedElements.length === 0) {
+                toast({ title: "Sin Asignaciones", description: "Esta partida no tiene elementos de modelo 3D asignados.", variant: 'destructive' });
+                return;
+            }
+
+            setIsolationTargetIds(mappedElements.map((m: any) => m.elementId));
+            setIsolationItemName(row.desc);
+            setIsolationIfcUrl(url);
+            setIsIsolationModalOpen(true);
+        } catch (e) {
+            toast({ title: "Error", description: "No se pudo cargar el visor 3D.", variant: "destructive" });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleViewExecutionDetail = (feature: GanttFeature) => {
@@ -1930,8 +1977,8 @@ export default function ConstructionPage() {
 
                 <TabsContent value="computo">
                     <Card className="bg-card border-accent text-primary overflow-hidden gap-0">
-                        <CardHeader className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0 pb-7 border-b border-accent">
-                            <div className="flex items-center gap-4 w-full">
+                        <CardHeader className="flex flex-col md:flex-row md:items-center justify-between  border-b border-accent">
+                            <div className="flex items-center gap-4 w-[450px]">
                                 <div className="p-2 bg-primary/20 rounded-lg">
                                     <Calculator className="h-5 w-5 text-primary" />
                                 </div>
@@ -1940,68 +1987,71 @@ export default function ConstructionPage() {
                                     <CardDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mt-1">Cuantificación de actividades por niveles.</CardDescription>
                                 </div>
                             </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4 pt-6">
-                            <div className="flex items-center justify-between gap-4 bg-card p-3 rounded-xl border border-accent">
-                                <div className="relative flex-1 max-w-md">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder="Buscar items..."
-                                        className="pl-10 bg-card border-accent h-11 text-xs"
-                                        value={searchTermComputo}
-                                        onChange={(e) => setSearchTermComputo(e.target.value)}
-                                    />
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <Button
-                                        onClick={handlePrintComputos}
-                                        variant="outline"
-                                        className="border-accent bg-card text-muted-foreground font-bold text-[10px] uppercase tracking-widest px-4 h-11 rounded-xl hover:bg-accent hover:text-primary"
-                                    >
-                                        <Printer className="h-4 w-4" />
-                                    </Button>
-
-                                    {isAuthor && !isConstruccion && (
+                            <div className="w-full border-2 border-accent rounded-lg">
+                                <div className="flex items-center justify-between gap-4 p-3">
+                                    <div className="relative flex-1 max-w-md">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Buscar items..."
+                                            className="pl-10 bg-card border-accent h-11 text-xs"
+                                            value={searchTermComputo}
+                                            onChange={(e) => setSearchTermComputo(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-3">
                                         <Button
-                                            onClick={handleConsolidate}
-                                            className="bg-amber-500 hover:bg-amber-600 text-black font-black text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl "
+                                            onClick={handlePrintComputos}
+                                            variant="outline"
+                                            className="border-accent bg-card text-muted-foreground font-bold text-[10px] uppercase tracking-widest px-4 h-11 rounded-xl hover:bg-accent hover:text-primary"
                                         >
-                                            <CheckCircle2 className="mr-2 h-4 w-4" /> Consolidar Proyecto
+                                            <Printer className="h-4 w-4" />
                                         </Button>
-                                    )}
 
-                                    {isConstruccion && isAuthor && (
-                                        <Button
-                                            onClick={() => setIsChangeOrderOpen(true)}
-                                            className="bg-amber-500 hover:bg-amber-600 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 rounded-xl"
-                                        >
-                                            <FileSignature className="mr-2 h-4 w-4" /> Orden de Cambio
-                                        </Button>
-                                    )}
-                                    {!isConstruccion && (
-                                        <>
+                                        {isAuthor && !isConstruccion && (
                                             <Button
-                                                onClick={handleSaveComputos}
-                                                disabled={isSaving || computations.length === 0}
-                                                className="bg-emerald-500 border-emerald-500 text-background font-bold text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl hover:bg-emerald-600"
+                                                onClick={handleConsolidate}
+                                                className="bg-amber-500 hover:bg-amber-600 text-black font-black text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl "
                                             >
-                                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                Guardar Cambios
+                                                <CheckCircle2 className="mr-2 h-4 w-4" /> Consolidar Proyecto
                                             </Button>
-                                        </>
-                                    )}
-                                    {!isConstruccion && (
-                                        <>
+                                        )}
+
+                                        {isConstruccion && isAuthor && (
                                             <Button
-                                                onClick={() => setIsAddComputoOpen(true)}
-                                                className="bg-primary hover:bg-primary/90 text-background font-bold text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl"
+                                                onClick={() => setIsChangeOrderOpen(true)}
+                                                className="bg-amber-500 hover:bg-amber-600 text-background font-black text-[10px] uppercase tracking-widest px-8 h-11 rounded-xl"
                                             >
-                                                <Plus className="mr-2 h-4 w-4" /> Añadir Partida
+                                                <FileSignature className="mr-2 h-4 w-4" /> Orden de Cambio
                                             </Button>
-                                        </>
-                                    )}
+                                        )}
+                                        {!isConstruccion && (
+                                            <>
+                                                <Button
+                                                    onClick={handleSaveComputos}
+                                                    disabled={isSaving || computations.length === 0}
+                                                    className="bg-emerald-500 border-emerald-500 text-background font-bold text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl hover:bg-emerald-600"
+                                                >
+                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                    Guardar Cambios
+                                                </Button>
+                                            </>
+                                        )}
+                                        {!isConstruccion && (
+                                            <>
+                                                <Button
+                                                    onClick={() => setIsAddComputoOpen(true)}
+                                                    className="bg-primary hover:bg-primary/90 text-background font-bold text-[10px] uppercase tracking-widest px-6 h-11 rounded-xl"
+                                                >
+                                                    <Plus className="mr-2 h-4 w-4" /> Añadir Partida
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4 pt-6">
+
 
                             <div className="border border-accent rounded-xl overflow-x-auto bg-card">
                                 <Table>
@@ -2058,8 +2108,14 @@ export default function ConstructionPage() {
                                                                     <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg">
                                                                         <Calculator className="h-3.5 w-3.5" /> Computar del Modelo
                                                                     </DropdownMenuItem>
+                                                                    <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg" onClick={() => handleViewIsolation(row)}>
+                                                                        <Boxes className="h-3.5 w-3.5" /> Ver Modelo
+                                                                    </DropdownMenuItem>
                                                                     <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg" onClick={() => handleViewDetail(row)}>
                                                                         <Calculator className="h-3.5 w-3.5" /> Ver Análisis APU
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg" onClick={() => handleOpenLocalAPUEditor(row)}>
+                                                                        <Wrench className="h-3.5 w-3.5" /> Editar APU Local
                                                                     </DropdownMenuItem>
                                                                     {isAuthor && !isConstruccion && (
                                                                         <DropdownMenuItem
@@ -2141,33 +2197,26 @@ export default function ConstructionPage() {
                         </Card>
 
                         <Card className="bg-card border-accent text-primary gap-0">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7 bg-card border-b border-accent">
-                                <div className="flex items-center gap-4 w-150">
-                                    <div className="p-2 bg-primary/20 rounded-lg">
-                                        <Coins className="h-5 w-5 text-primary" />
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0  bg-card">
+                                <div className=' flex flex-row border border-accent p-2 rounded-xl justify-between w-full'>
+                                    <div className="flex items-center gap-3 justify-between w-full">
+                                        <div className="relative flex-1 max-w-md">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <Input
+                                                placeholder="Buscar items..."
+                                                className="pl-10 bg-card border-accent h-11 text-xs"
+                                                value={searchTermPresupuesto}
+                                                onChange={(e) => setSearchTermPresupuesto(e.target.value)}
+                                            />
+                                        </div>
+                                        <Button
+                                            onClick={handlePrintPresupuesto}
+                                            variant="outline"
+                                            className="border-accent bg-card text-muted-foreground font-bold text-[10px] uppercase tracking-widest px-4 h-11 rounded-xl hover:bg-accent hover:text-primary"
+                                        >
+                                            <Printer className="h-4 w-4" />
+                                        </Button>
                                     </div>
-                                    <div className="flex flex-col text-left flex-1">
-                                        <CardTitle className="text-lg font-bold uppercase tracking-tight">Resumen de Presupuesto</CardTitle>
-                                        <CardDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mt-1">Desglose detallado de costos operativos.</CardDescription>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3 justify-between w-full">
-                                    <div className="relative flex-1 max-w-md">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            placeholder="Buscar items..."
-                                            className="pl-10 bg-card border-accent h-11 text-xs"
-                                            value={searchTermPresupuesto}
-                                            onChange={(e) => setSearchTermPresupuesto(e.target.value)}
-                                        />
-                                    </div>
-                                    <Button
-                                        onClick={handlePrintPresupuesto}
-                                        variant="outline"
-                                        className="border-accent bg-card text-muted-foreground font-bold text-[10px] uppercase tracking-widest px-4 h-11 rounded-xl hover:bg-accent hover:text-primary"
-                                    >
-                                        <Printer className="h-4 w-4" />
-                                    </Button>
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-4 pt-6">
@@ -2238,7 +2287,7 @@ export default function ConstructionPage() {
                 </TabsContent>
 
                 <TabsContent value="cronograma">
-                    <Card className="bg-card border-accent text-primary overflow-y-auto h-[700px] flex flex-col">
+                    <Card className="bg-card border-accent text-primary overflow-y-auto h-[700px] flex flex-col gap-0">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-accent/2 border-b border-accent">
                             <div className="flex items-center gap-4">
                                 <div className="p-2 bg-primary/20 rounded-lg">
@@ -2328,7 +2377,7 @@ export default function ConstructionPage() {
                                 </Select>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-0 flex-1 overflow-hidden">
+                        <CardContent className="p-0 flex-1 overflow-hidden ">
                             {ganttFeatures.length > 0 ? (
                                 <GanttProvider range={ganttRange} zoom={ganttZoom}>
                                     <GanttSidebar>
@@ -2520,10 +2569,10 @@ export default function ConstructionPage() {
                                 <div className="flex items-center gap-3 w-full">
                                     <div className="flex items-center gap-2 mr-4 justify-between w-full">
                                         <div className="relative w-100">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                             <Input
                                                 placeholder="Buscar por items..."
-                                                className="pl-9 bg-card border-accent h-9 text-[10px]"
+                                                className="pl-9 bg-card border-accent h-11 text-[10px]"
                                                 value={searchTermEjecucion}
                                                 onChange={(e) => setSearchTermEjecucion(e.target.value)}
                                             />
@@ -2625,11 +2674,11 @@ export default function ConstructionPage() {
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end" className="bg-card border-accent text-primary  p-1.5 rounded-xl">
-                                                                        <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg">
-                                                                            <Calculator className="h-3.5 w-3.5" /> Ver Avance Modelo
+                                                                        <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg" onClick={() => handleViewIsolation(row)}>
+                                                                            <Boxes className="h-3.5 w-3.5 text-emerald-500" /> Ver Objetos 3D
                                                                         </DropdownMenuItem>
                                                                         <DropdownMenuItem className="text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary rounded-lg" onClick={() => handleViewDetail(row)}>
-                                                                            <Calculator className="h-3.5 w-3.5" /> Documentos del Item
+                                                                            <Calculator className="h-3.5 w-3.5 text-indigo-400" /> Documentos del Item
                                                                         </DropdownMenuItem>
                                                                     </DropdownMenuContent>
                                                                 </DropdownMenu>
@@ -3741,6 +3790,15 @@ export default function ConstructionPage() {
                     )}
                 </DialogContent>
             </Dialog>
+
+            <BimIsolationModal
+                isOpen={isIsolationModalOpen}
+                onClose={() => setIsIsolationModalOpen(false)}
+                ifcUrl={isolationIfcUrl}
+                targetElementIds={isolationTargetIds}
+                itemName={isolationItemName}
+
+            />
         </div>
     );
 }

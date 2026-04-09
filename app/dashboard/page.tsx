@@ -18,7 +18,15 @@ import {
     Settings,
     Check,
     AlertCircle,
-    RefreshCcw
+    RefreshCcw,
+    Users,
+    Hammer,
+    ShieldCheck,
+    Banknote,
+    Clock,
+    MapPin,
+    ClipboardCheck,
+    DollarSign
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '../../components/ui/button';
@@ -29,7 +37,11 @@ import {
     getGlobalWarehouseMovements,
     getGlobalSiteLogs,
     getGlobalPurchaseOrders,
-    getProjectBalances
+    getProjectBalances,
+    getContacts,
+    getAssets,
+    getGlobalInspectionRecords,
+    getGlobalSupplyPriceUpdates
 } from '@/actions';
 import { cn } from '../../lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
@@ -43,6 +55,10 @@ export default function DashboardPage() {
     const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
     const [warehouseMovements, setWarehouseMovements] = useState<any[]>([]);
     const [siteLogs, setSiteLogs] = useState<any[]>([]);
+    const [contacts, setContacts] = useState<any[]>([]);
+    const [assets, setAssets] = useState<any[]>([]);
+    const [inspections, setInspections] = useState<any[]>([]);
+    const [supplyUpdates, setSupplyUpdates] = useState<any[]>([]);
 
     // 2. Estados de Interfaz
     const [currentDate, setCurrentDate] = useState('');
@@ -53,20 +69,24 @@ export default function DashboardPage() {
 
     // 3. Estados de Carga y Error independientes
     const [isLoading, setIsLoading] = useState({
-        activeProjects: false, balances: false, orders: false, warehouse: false, logs: false
+        activeProjects: false, balances: false, orders: false, warehouse: false, logs: false,
+        contacts: false, assets: false, inspections: false, supplyUpdates: false
     });
     const [isError, setIsError] = useState({
-        activeProjects: false, balances: false, orders: false, warehouse: false, logs: false
+        activeProjects: false, balances: false, orders: false, warehouse: false, logs: false,
+        contacts: false, assets: false, inspections: false, supplyUpdates: false
     });
 
     // 4. Memoria de sesión para no repetir peticiones
     const fetchedData = useRef({
-        activeProjects: false, balances: false, orders: false, warehouse: false, logs: false
+        activeProjects: false, balances: false, orders: false, warehouse: false, logs: false,
+        contacts: false, assets: false, inspections: false, supplyUpdates: false
     });
 
     // 5. Configuración de visibilidad de widgets (Ahora incluye Proyectos Activos)
     const [widgetConfig, setWidgetConfig] = useState({
-        activeProjects: true, balances: true, orders: true, warehouse: true, logs: true
+        activeProjects: true, balances: true, orders: true, warehouse: true, logs: true,
+        contacts: true, assets: true, inspections: true, supplyUpdates: true
     });
 
     // Inicialización general
@@ -173,6 +193,66 @@ export default function DashboardPage() {
         }
     };
 
+    const loadContacts = async () => {
+        setIsLoading(prev => ({ ...prev, contacts: true }));
+        setIsError(prev => ({ ...prev, contacts: false }));
+        try {
+            const data = await getContacts();
+            setContacts(data.slice(0, 5));
+            fetchedData.current.contacts = true;
+        } catch (e) {
+            console.error(e);
+            setIsError(prev => ({ ...prev, contacts: true }));
+        } finally {
+            setIsLoading(prev => ({ ...prev, contacts: false }));
+        }
+    };
+
+    const loadAssets = async () => {
+        setIsLoading(prev => ({ ...prev, assets: true }));
+        setIsError(prev => ({ ...prev, assets: false }));
+        try {
+            const data = await getAssets();
+            setAssets(data.slice(0, 5));
+            fetchedData.current.assets = true;
+        } catch (e) {
+            console.error(e);
+            setIsError(prev => ({ ...prev, assets: true }));
+        } finally {
+            setIsLoading(prev => ({ ...prev, assets: false }));
+        }
+    };
+
+    const loadInspections = async () => {
+        setIsLoading(prev => ({ ...prev, inspections: true }));
+        setIsError(prev => ({ ...prev, inspections: false }));
+        try {
+            const data = await getGlobalInspectionRecords();
+            setInspections(data.slice(0, 5));
+            fetchedData.current.inspections = true;
+        } catch (e) {
+            console.error(e);
+            setIsError(prev => ({ ...prev, inspections: true }));
+        } finally {
+            setIsLoading(prev => ({ ...prev, inspections: false }));
+        }
+    };
+
+    const loadSupplyUpdates = async () => {
+        setIsLoading(prev => ({ ...prev, supplyUpdates: true }));
+        setIsError(prev => ({ ...prev, supplyUpdates: false }));
+        try {
+            const data = await getGlobalSupplyPriceUpdates();
+            setSupplyUpdates(data.slice(0, 5));
+            fetchedData.current.supplyUpdates = true;
+        } catch (e) {
+            console.error(e);
+            setIsError(prev => ({ ...prev, supplyUpdates: true }));
+        } finally {
+            setIsLoading(prev => ({ ...prev, supplyUpdates: false }));
+        }
+    };
+
     // Efecto para escuchar la configuración y descargar datos bajo demanda
     useEffect(() => {
         if (!configLoaded) return;
@@ -182,6 +262,10 @@ export default function DashboardPage() {
         if (widgetConfig.orders && !fetchedData.current.orders) loadOrders();
         if (widgetConfig.warehouse && !fetchedData.current.warehouse) loadWarehouse();
         if (widgetConfig.logs && !fetchedData.current.logs) loadLogs();
+        if (widgetConfig.contacts && !fetchedData.current.contacts) loadContacts();
+        if (widgetConfig.assets && !fetchedData.current.assets) loadAssets();
+        if (widgetConfig.inspections && !fetchedData.current.inspections) loadInspections();
+        if (widgetConfig.supplyUpdates && !fetchedData.current.supplyUpdates) loadSupplyUpdates();
 
     }, [widgetConfig, configLoaded]);
 
@@ -202,11 +286,11 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="relative" ref={menuRef}>
-                        <div className='bg-card h-fit'>
+                        <div className='h-fit'>
                             <Button
                                 variant="default"
                                 size="icon"
-                                className="h-10 w-10 rounded-xl bg-card border border-accent hover:bg-primary/10"
+                                className="h-10 w-10 rounded-xl bg-card hover:bg-primary/10 cursor-pointer"
                                 onClick={() => setShowConfigMenu(!showConfigMenu)}
                             >
                                 <Settings className="h-4 w-4 text-primary" />
@@ -247,6 +331,30 @@ export default function DashboardPage() {
                                             <BookOpen className="h-3.5 w-3.5" /> Libro de Obras
                                         </span>
                                         {widgetConfig.logs && <Check className="h-4 w-4 text-emerald-500" />}
+                                    </button>
+                                    <button onClick={() => toggleWidget('contacts')} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors w-full text-left">
+                                        <span className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                            <Users className="h-3.5 w-3.5" /> Contactos
+                                        </span>
+                                        {widgetConfig.contacts && <Check className="h-4 w-4 text-emerald-500" />}
+                                    </button>
+                                    <button onClick={() => toggleWidget('assets')} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors w-full text-left">
+                                        <span className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                            <Hammer className="h-3.5 w-3.5" /> Activos Fijos
+                                        </span>
+                                        {widgetConfig.assets && <Check className="h-4 w-4 text-emerald-500" />}
+                                    </button>
+                                    <button onClick={() => toggleWidget('inspections')} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors w-full text-left">
+                                        <span className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                            <ShieldCheck className="h-3.5 w-3.5" /> Inspecciones
+                                        </span>
+                                        {widgetConfig.inspections && <Check className="h-4 w-4 text-emerald-500" />}
+                                    </button>
+                                    <button onClick={() => toggleWidget('supplyUpdates')} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors w-full text-left">
+                                        <span className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                            <Banknote className="h-3.5 w-3.5" /> Precios Insumos
+                                        </span>
+                                        {widgetConfig.supplyUpdates && <Check className="h-4 w-4 text-emerald-500" />}
                                     </button>
                                 </div>
                             </div>
@@ -315,9 +423,6 @@ export default function DashboardPage() {
                                     <PieChart className="h-4 w-4 text-primary" /> Resumen balance de obras
                                 </CardTitle>
                             </div>
-                            <Button variant="default" size="sm" className="text-[10px] font-black uppercase tracking-widest text-background mr-4 bg-primary mt-6" render={<Link href="/accounting/balance" />} nativeButton={false}>
-                                Ver Balances
-                            </Button>
                         </CardHeader>
                         <ScrollArea className="h-[220px]">
                             <CardContent className="p-0">
@@ -409,9 +514,6 @@ export default function DashboardPage() {
                                     <ShoppingCart className="h-4 w-4 text-primary" /> Órdenes Activas
                                 </CardTitle>
                             </div>
-                            <Button variant="default" size="sm" className="text-[10px] font-black uppercase tracking-widest mr-4" render={<Link href="/accounting/payables" />} nativeButton={false}>
-                                Gestionar
-                            </Button>
                         </CardHeader>
                         <CardContent className="space-y-1 p-0">
                             {isError.orders ? (
@@ -604,6 +706,168 @@ export default function DashboardPage() {
                                     </div>
                                 )}
                             </div>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* WIDGET: ÚLTIMOS CONTACTOS */}
+                {widgetConfig.contacts && (
+                    <Card className="bg-card border-accent overflow-hidden p-0 gap-0">
+                        <CardHeader className="border-b border-accent bg-card flex flex-row items-center justify-between h-16 pt-6 px-6">
+                            <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                <Users className="h-4 w-4 text-primary" /> Últimos Contactos
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {isLoading.contacts ? (
+                                <div className="flex flex-col items-center justify-center py-10 opacity-30">
+                                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                </div>
+                            ) : contacts.length > 0 ? (
+                                <div className="divide-y divide-white/5">
+                                    {contacts.map((c, i) => (
+                                        <div key={i} className="p-4 hover:bg-white/2 transition-colors flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs border border-primary/20">
+                                                {c.name?.[0] || 'C'}
+                                            </div>
+                                            <div className="flex-1 overflow-hidden">
+                                                <p className="text-[11px] font-bold text-primary uppercase truncate">{c.name}</p>
+                                                <p className="text-[9px] text-muted-foreground uppercase font-black opacity-50 truncate">{c.company || 'Personal'}</p>
+                                            </div>
+                                            <Badge variant="outline" className="text-[8px] font-black uppercase border-accent shrink-0">{c.type}</Badge>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="py-10 text-center opacity-20">
+                                    <p className="text-[9px] font-black uppercase">Sin contactos recientes</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* WIDGET: ACTIVOS FIJOS */}
+                {widgetConfig.assets && (
+                    <Card className="bg-card border-accent overflow-hidden p-0 gap-0">
+                        <CardHeader className="border-b border-accent bg-card flex flex-row items-center justify-between h-16 pt-6 px-6">
+                            <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                <Hammer className="h-4 w-4 text-primary" /> Activos Fijos
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {isLoading.assets ? (
+                                <div className="flex flex-col items-center justify-center py-10 opacity-30">
+                                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                </div>
+                            ) : assets.length > 0 ? (
+                                <div className="divide-y divide-white/5">
+                                    {assets.map((a, i) => (
+                                        <div key={i} className="p-4 hover:bg-white/2 transition-colors space-y-2">
+                                            <div className="flex justify-between items-start">
+                                                <p className="text-[11px] font-bold text-primary uppercase">{a.name}</p>
+                                                <Badge className={cn("text-[8px] font-black uppercase px-1.5 h-4 border-none",
+                                                    a.status === 'disponible' ? 'bg-emerald-500/20 text-emerald-500' :
+                                                        a.status === 'mantenimiento' ? 'bg-amber-500/20 text-amber-500' : 'bg-red-500/20 text-red-500'
+                                                )}>
+                                                    {a.status}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex items-center gap-2 opacity-50">
+                                                <MapPin className="h-3 w-3 text-muted-foreground" />
+                                                <span className="text-[9px] text-muted-foreground uppercase font-black">{a.location || 'Depósito Central'}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="py-10 text-center opacity-20">
+                                    <p className="text-[9px] font-black uppercase">Sin activos registrados</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* WIDGET: INSPECCIONES */}
+                {widgetConfig.inspections && (
+                    <Card className="bg-card border-accent overflow-hidden p-0 gap-0">
+                        <CardHeader className="border-b border-accent bg-card flex flex-row items-center justify-between h-16 pt-6 px-6">
+                            <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                <ClipboardCheck className="h-4 w-4 text-primary" /> Inspecciones Recientes
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {isLoading.inspections ? (
+                                <div className="flex flex-col items-center justify-center py-10 opacity-30">
+                                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                </div>
+                            ) : inspections.length > 0 ? (
+                                <div className="divide-y divide-white/5">
+                                    {inspections.map((ins, i) => (
+                                        <div key={i} className="p-4 hover:bg-white/2 transition-colors space-y-1">
+                                            <div className="flex justify-between items-start">
+                                                <p className="text-[11px] font-bold text-primary uppercase truncate flex-1">{ins.itemName}</p>
+                                                <span className="text-[8px] font-mono text-muted-foreground ml-2 shrink-0">{new Date(ins.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Building2 className="h-2.5 w-2.5 text-muted-foreground/50" />
+                                                    <span className="text-[9px] text-muted-foreground uppercase font-black truncate">{ins.projectName}</span>
+                                                </div>
+                                                <Badge className={cn("text-[8px] font-black uppercase px-1.5 h-3.5 border-none",
+                                                    ins.status === 'aprobado' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-500'
+                                                )}>
+                                                    {ins.status}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="py-10 text-center opacity-20">
+                                    <p className="text-[9px] font-black uppercase">Sin inspecciones recientes</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* WIDGET: PRECIOS INSUMOS */}
+                {widgetConfig.supplyUpdates && (
+                    <Card className="bg-card border-accent overflow-hidden p-0 gap-0">
+                        <CardHeader className="border-b border-accent bg-card flex flex-row items-center justify-between h-16 pt-6 px-6">
+                            <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                <DollarSign className="h-4 w-4 text-primary" /> Actualización de Precios
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {isLoading.supplyUpdates ? (
+                                <div className="flex flex-col items-center justify-center py-10 opacity-30">
+                                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                </div>
+                            ) : supplyUpdates.length > 0 ? (
+                                <div className="divide-y divide-white/5">
+                                    {supplyUpdates.map((up, i) => (
+                                        <div key={i} className="p-4 hover:bg-white/2 transition-colors">
+                                            <div className="flex justify-between items-start">
+                                                <p className="text-[11px] font-bold text-primary uppercase truncate flex-1">{up.supplyName}</p>
+                                                <span className="text-[11px] font-mono font-black text-primary ml-2 shrink-0">${up.price.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between mt-1">
+                                                <span className="text-[9px] text-muted-foreground uppercase font-black truncate max-w-[120px]">{up.supplierName}</span>
+                                                <span className="text-[8px] font-mono text-muted-foreground/40">{new Date(up.date).toLocaleDateString()}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="py-10 text-center opacity-20">
+                                    <p className="text-[9px] font-black uppercase">Sin actualizaciones recientes</p>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 )}

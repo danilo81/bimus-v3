@@ -34,6 +34,11 @@ export function useAuth() {
         router.push('/');
     };
 
+    const updateUser = (userData: User) => {
+        localStorage.setItem(AUTH_KEY, JSON.stringify(userData));
+        setUser(userData);
+    };
+
     const hasRole = (roles: UserRole[]) => {
         return user && roles.includes(user.role);
     };
@@ -44,6 +49,7 @@ export function useAuth() {
         isAuthenticated: !!user,
         login,
         logout,
+        updateUser,
         hasRole,
     };
 }

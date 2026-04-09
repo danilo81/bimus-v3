@@ -12,7 +12,8 @@ import {
     addContactToProject,
     importContactToLibrary,
     getContacts,
-    createContact
+    createContact,
+    addSupplyCost
 } from '@/actions';
 
 import {
@@ -391,18 +392,43 @@ export default function ProjectShopPage() {
         setIsQuotationModalOpen(true);
     };
 
-    const handleSaveQuotation = () => {
+    const handleSaveQuotation = async () => {
         if (!selectedRequestForQuotation) return;
-        setQuotationOverrides(prev => ({
-            ...prev,
-            [selectedRequestForQuotation.id]: {
-                price: parseFloat(quotationData.price) || 0,
+        
+        const price = parseFloat(quotationData.price) || 0;
+        
+        setIsSaving(true);
+        try {
+            // Actualizar la librería global
+            const res = await addSupplyCost({
+                supplyId: selectedRequestForQuotation.supplyId,
                 supplierId: quotationData.supplierId,
-                date: quotationData.date
+                price: price,
+                date: quotationData.date,
+                isPreferred: true, // Lo marcamos como preferido para actualizar el precio base
+                notes: `Cotización vinculada desde proyecto: ${project?.title}`
+            });
+
+            if (res.success) {
+                setQuotationOverrides(prev => ({
+                    ...prev,
+                    [selectedRequestForQuotation.id]: {
+                        price: price,
+                        supplierId: quotationData.supplierId,
+                        date: quotationData.date
+                    }
+                }));
+                toast({ title: "Cotización vinculada", description: "La librería de insumos ha sido actualizada." });
+                setIsQuotationModalOpen(false);
+                fetchProjectData();
+            } else {
+                toast({ variant: 'destructive', title: "Error", description: res.error });
             }
-        }));
-        toast({ title: "Cotización vinculada" });
-        setIsQuotationModalOpen(false);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleImportToLibrary = async (contactId: string) => {

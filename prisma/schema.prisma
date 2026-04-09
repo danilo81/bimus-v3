@@ -11,8 +11,12 @@ model User {
   name                 String?
   email                String              @unique
   password             String
-  role                 String              @default("viewer")
+  role                 String              @default("usuario")
   storageLimit         String              @default("1GB")
+  phone                String?
+  title                String?
+  telefono             String?
+  cargo                String?
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
   bimVersions          BimVersion[]
@@ -30,6 +34,7 @@ model User {
   purchaseOrders       PurchaseOrder[]
   libraryFiles         LibraryFile[]
   projectDocuments     ProjectDocument[]
+  bimIssues            BimIssue[]
 }
 
 model Project {
@@ -66,6 +71,7 @@ model Project {
   changeOrders      ProjectChangeOrder[]
   payrolls          Payroll[]
   valuations        Valuation[]
+  bimIssues         BimIssue[]
 }
 
 model ProjectConfig {
@@ -176,8 +182,23 @@ model ProjectItem {
   consolidatedDays      Int?
   predecessor       ProjectItem?               @relation("ItemDependencies", fields: [predecessorId], references: [id])
   successors        ProjectItem[]              @relation("ItemDependencies")
+  bimMappings       BimElementMapping[]
 
   @@unique([projectId, itemId])
+}
+
+model BimElementMapping {
+  id             String      @id @default(cuid())
+  projectItemId  String
+  elementId      String
+  elementName    String?
+  quantity       Float       @default(0)
+  unit           String      @default("m3")
+  createdAt      DateTime    @default(now())
+  
+  projectItem    ProjectItem @relation(fields: [projectItemId], references: [id], onDelete: Cascade)
+
+  @@unique([projectItemId, elementId])
 }
 
 model ProjectItemLevelQuantity {
@@ -415,6 +436,21 @@ model BimTopic {
   children   BimTopic[]  @relation("TopicHierarchy")
 }
 
+model BimIssue {
+  id          String   @id @default(cuid())
+  projectId   String
+  elementId   String
+  elementName String?
+  title       String
+  description String
+  status      String   @default("pendiente") // "pendiente", "resuelto"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  authorId    String?
+  author      User?    @relation(fields: [authorId], references: [id])
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
 model Unit {
   id           String   @id @default(cuid())
   name         String
@@ -505,6 +541,7 @@ model ProjectDocument {
   url        String
   folder     String   @default("/")
   isFolder   Boolean  @default(false)
+  bimRole    String?  // Example: "arquitectura", "estructura", "instalaciones"
   source     String   @default("local") // local, google_drive
   status     String   @default("uploaded")
   authorName String   @default("Usuario Bimus")

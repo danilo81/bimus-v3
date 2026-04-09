@@ -661,7 +661,7 @@ export default function ContactsPage() {
                             <DialogFooter className="p-6 border-t border-accent bg-card shrink-0">
                                 <div className="flex justify-end gap-3">
                                     <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)} className="w-full text-[10px] font-black uppercase tracking-widest h-12 hover:bg-primary/20 transition-all cursor-pointer">
-                                        CANCELAR OPERACIÓN DE REGISTRO
+                                        CANCELAR
                                     </Button>
                                     <Button
                                         type="button"
@@ -669,7 +669,7 @@ export default function ContactsPage() {
                                         onClick={(e) => handleSubmit(e as any)}
                                         className="bg-primary text-background font-black uppercase text-[11px] h-12 px-12 tracking-widest  transition-all active:scale-95 cursor-pointer"
                                     >
-                                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Finalizar Registro
+                                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Guardar Contacto
                                     </Button>
                                 </div>
                             </DialogFooter>
@@ -1120,7 +1120,7 @@ export default function ContactsPage() {
                                         onClick={(e) => handleProfileUpdate(e as any)}
                                         className="bg-primary text-background font-black uppercase text-[11px] h-12 px-12 tracking-widest  transition-all active:scale-95 cursor-pointer"
                                     >
-                                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Actualizar Datos del Perfil
+                                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Actualizar
                                     </Button>
                                 </div>
                             </DialogFooter>
